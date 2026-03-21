@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find h:/Dropbox/sean-tower/Documents/git/stakeout -maxdepth 3 -type f \\\\\\(-name *.csproj -o -name *.sln -o -name *.json -o -name *.yaml -o -name *.yml \\\\\\))",
+      "Bash(ls \"h:/Dropbox/sean-tower/Documents/git/stakeout/\"*.csproj)",
+      "Bash(ls \"h:/Dropbox/sean-tower/Documents/git/stakeout/\"*.sln)"
+    ]
+  }
+}
