@@ -19,10 +19,13 @@ public partial class SimulationManager : Node
 
     private const int InitialPersonCount = 5;
 
+    public SimulationManager(SimulationState state)
+    {
+        State = state;
+    }
+
     public override void _Ready()
     {
-        State = new SimulationState();
-
         _locationGenerator.GenerateCity(State);
 
         foreach (var address in State.Addresses.Values)
