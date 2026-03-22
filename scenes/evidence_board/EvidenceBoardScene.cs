@@ -70,13 +70,11 @@ public partial class EvidenceBoardScene : Control
         }
     }
 
-    public override void _UnhandledInput(InputEvent @event)
+    public override void _Input(InputEvent @event)
     {
-        if (@event is InputEventMouseButton mouseButton)
-        {
-            HandleMouseButton(mouseButton);
-        }
-        else if (_isCreatingString && @event is InputEventMouseMotion motionEvent)
+        if (!_isCreatingString) return;
+
+        if (@event is InputEventMouseMotion motionEvent)
         {
             _stringLayer.DrawingEndPoint = motionEvent.GlobalPosition;
             var hoverId = FindThumbTackAt(motionEvent.GlobalPosition);
@@ -85,19 +83,11 @@ public partial class EvidenceBoardScene : Control
             {
                 polaroid.SetThumbTackGlow(id == hoverId && id != _stringSourceItemId);
             }
+            GetViewport().SetInputAsHandled();
         }
-        else if (@event is InputEventMouseMotion mouseMotion && _isPanning)
+        else if (@event is InputEventMouseButton mb && !mb.Pressed && mb.ButtonIndex == MouseButton.Left)
         {
-            HandlePanMotion(mouseMotion);
-        }
-    }
-
-    private void HandleMouseButton(InputEventMouseButton mouseButton)
-    {
-        // String creation release must be checked first
-        if (_isCreatingString && !mouseButton.Pressed && mouseButton.ButtonIndex == MouseButton.Left)
-        {
-            var targetId = FindThumbTackAt(mouseButton.GlobalPosition);
+            var targetId = FindThumbTackAt(mb.GlobalPosition);
             if (targetId >= 0 && targetId != _stringSourceItemId)
             {
                 _boardData.AddConnection(_stringSourceItemId, targetId);
@@ -107,9 +97,24 @@ public partial class EvidenceBoardScene : Control
             _stringLayer.HoveredThumbTackItemId = -1;
             foreach (var (_, p) in _polaroidNodes)
                 p.SetThumbTackGlow(false);
-            return;
+            GetViewport().SetInputAsHandled();
         }
+    }
 
+    public override void _UnhandledInput(InputEvent @event)
+    {
+        if (@event is InputEventMouseButton mouseButton)
+        {
+            HandleMouseButton(mouseButton);
+        }
+        else if (@event is InputEventMouseMotion mouseMotion && _isPanning)
+        {
+            HandlePanMotion(mouseMotion);
+        }
+    }
+
+    private void HandleMouseButton(InputEventMouseButton mouseButton)
+    {
         // Zoom with scroll wheel
         if (mouseButton.ButtonIndex == MouseButton.WheelUp && mouseButton.Pressed)
         {
