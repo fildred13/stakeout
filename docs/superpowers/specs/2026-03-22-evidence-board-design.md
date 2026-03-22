@@ -46,7 +46,9 @@ Connections are unordered pairs — (A, B) and (B, A) are the same connection. T
 
 The evidence board and the map screen both need access to the same `SimulationState` and `EvidenceBoard` instances. Since scene changes via `SceneTree.ChangeSceneToFile()` destroy the current scene tree, state must be preserved outside of individual scenes.
 
-**Approach:** `SimulationManager` becomes an autoload singleton (registered in Project Settings). It owns both `SimulationState` and `EvidenceBoard`. Any scene can access it via `GetNode<SimulationManager>("/root/SimulationManager")`. Scene changes swap the active UI but the simulation and evidence data persist.
+**Approach:** Introduce a `GameManager` autoload singleton (registered in Project Settings) that owns both `SimulationState` and `EvidenceBoard`. This replaces the current pattern where `SimulationManager` is manually instantiated as a child of `SimulationDebug`. Any scene can access shared state via `GetNode<GameManager>("/root/GameManager")`. Scene changes swap the active UI but game data persists.
+
+**Migration:** The existing `SimulationManager` (which handles generation and ticking) becomes a non-autoload helper owned by `GameManager`. The manual instantiation in `SimulationDebug._Ready()` is removed. This keeps the simulation domain and evidence domain at the same level under `GameManager`, avoiding a dependency from the simulation layer into the evidence layer.
 
 ## Scene Structure
 
@@ -69,6 +71,7 @@ A narrow all-black `VBoxContainer` anchored to the right edge of the SimulationD
 - Scroll wheel to zoom in/out (with min/max limits)
 - The close button stays fixed in the viewport
 - Dragging a polaroid brings it to the front in z-order
+- Newly instantiated polaroids are added on top; z-order is not persisted in the data model for v1 (instantiation order is sufficient)
 
 ## Polaroid Design
 
@@ -137,7 +140,7 @@ White/off-white background with subtle drop shadow. Feels like a pinned photo.
 
 **Address dossier:**
 - Street address + type (header, e.g., "42 Elm St — Diner")
-- List of people at this address (home or work) — for v1, this reads from simulation truth (all people the simulation knows about), not limited to evidence on the board. Future versions may restrict this to the player's discovered knowledge.
+- List of people whose home or work is at this address (stable relationships, queried by `HomeAddressId`/`WorkAddressId`, not `CurrentAddressId`) — for v1, this reads from simulation truth (all people the simulation knows about), not limited to evidence on the board. Future versions may restrict this to the player's discovered knowledge.
 
 ### Behavior
 
@@ -154,7 +157,7 @@ White/off-white background with subtle drop shadow. Feels like a pinned photo.
 - Right-click a person dot or address icon on the SimulationDebug map
 - Context menu appears with "Add to Evidence Board"
 - Creates an `EvidenceItem` in `EvidenceBoard` with the entity type + ID
-- Default `BoardPosition`: center of the canvas (since the board may not be open when items are added), slightly randomized to prevent stacking
+- Default `BoardPosition`: center of the canvas (since the board may not be open when items are added), with a random offset of +/- 50px on each axis to prevent stacking
 - If entity is already on the board, option is grayed out / shows "Already on Board"
 
 ### Extensibility
