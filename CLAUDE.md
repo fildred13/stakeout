@@ -6,4 +6,13 @@ STAKEOUT is a 1984-themed detective investigation game built in Godot 4.6 using 
 
 ## Workflow
 
-For every change we make, I will direct you to a pre-existing plan folder in docs/plans, or else you will be expected to create one. We will iterate on the plan until it is ready to execute, then you will execute the plan. As you execute the plan, you will maintain a changes.md file in the plan folder. You will use this like a working memory, to succinctly capture what you have implemented from the plan so far and what you changed. This will serve both as a long term detailed documentation of changes, but will also act as a working memory for you and me, so that if we are in the middle of implementing a plan you can quickly review the notes and pick back up where you left off.
+For every change we make, we work out of the /session/ folder. It is our working scratch space for each feature we build, where we store requirements, implementation plans, and our changelog.
+
+Our workflow is:
+
+1. With a clean git tree and an empty session folder, create a /session/requirements.md file which describes the required changes.
+2. Create a /session/plan.md file which describes the technical implementation details of how we will accomplish it. During iterating on the plan, we may decide to iterate on the requirements.
+3. As soon as we begin modifying code, we must always update /session/changelog.md, which describes the changes we have made to the system so far like a timeline. This is important - we record what we're doing AS we are doing it so that if we get interrupted we can come back and immediately jump back in by reading all three of these files to know what the overall goal is, and what we've already tried/built etc. As we are implementing the changes, we may need to modify the plan and/or requirements.
+4. Verify the changes with unit tests and then manual testing. Iterate as needed.
+5. When the feature is complete, move the contents of /session/ to /docs/plans, into a folder that follows the naming scheme `<4 digit year>-<two digit month>-<two digit day>_<two digit integer id starting from 01 each day>_<brief title with underscores>.md`.
+6. Commit to git.
