@@ -20,6 +20,8 @@ public partial class EvidencePolaroid : Control
     private Label _initialsLabel;
     private Label _captionLabel;
     private Panel _thumbtack;
+    private Panel _body;
+    private Panel _imageArea;
     private bool _isDragging;
     private Vector2 _dragOffset;
     private bool _dragStartedOnThumbtrack;
@@ -32,6 +34,31 @@ public partial class EvidencePolaroid : Control
         _initialsLabel = GetNode<Label>("Body/ImageArea/Initials");
         _captionLabel = GetNode<Label>("Body/Caption");
         _thumbtack = GetNode<Panel>("Thumbtack");
+        _body = GetNode<Panel>("Body");
+        _imageArea = GetNode<Panel>("Body/ImageArea");
+
+        // Thumbtack: red circle
+        _thumbtack.AddThemeStyleboxOverride("panel", new StyleBoxFlat
+        {
+            BgColor = new Color(0.8f, 0.1f, 0.1f),
+            CornerRadiusTopLeft = 6, CornerRadiusTopRight = 6,
+            CornerRadiusBottomLeft = 6, CornerRadiusBottomRight = 6
+        });
+
+        // Body: off-white polaroid with subtle shadow
+        _body.AddThemeStyleboxOverride("panel", new StyleBoxFlat
+        {
+            BgColor = new Color(0.96f, 0.95f, 0.92f),
+            ShadowColor = new Color(0, 0, 0, 0.3f),
+            ShadowSize = 3,
+            ShadowOffset = new Vector2(2, 2)
+        });
+
+        // Image area: light gray
+        _imageArea.AddThemeStyleboxOverride("panel", new StyleBoxFlat
+        {
+            BgColor = new Color(0.85f, 0.85f, 0.85f)
+        });
     }
 
     public void SetContent(string initials, string caption)
