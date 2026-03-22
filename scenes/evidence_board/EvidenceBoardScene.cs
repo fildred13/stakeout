@@ -204,15 +204,15 @@ public partial class EvidenceBoardScene : Control
         polaroid.ItemId = item.Id;
         polaroid.Position = item.BoardPosition;
 
-        var (initials, caption) = ResolveEntityDisplay(item);
-        polaroid.SetContent(initials, caption);
-
         polaroid.PolaroidClicked += OnPolaroidClicked;
         polaroid.PolaroidRemoved += OnPolaroidRemoved;
         polaroid.ThumbtackDragStarted += OnThumbtackDragStarted;
         polaroid.ThumbtackRightClicked += OnThumbtackRightClicked;
 
         _polaroidContainer.AddChild(polaroid);
+
+        var (initials, caption) = ResolveEntityDisplay(item);
+        polaroid.SetContent(initials, caption);
         _polaroidNodes[item.Id] = polaroid;
     }
 

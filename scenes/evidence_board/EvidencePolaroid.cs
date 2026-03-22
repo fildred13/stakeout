@@ -59,6 +59,7 @@ public partial class EvidencePolaroid : Control
         {
             BgColor = new Color(0.85f, 0.85f, 0.85f)
         });
+
     }
 
     public void SetContent(string initials, string caption)
