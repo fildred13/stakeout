@@ -7,7 +7,9 @@
       "Bash(xargs wc:*)",
       "Bash(dotnet build:*)",
       "Bash(dotnet --list-sdks)",
-      "Bash(dotnet --version)"
+      "Bash(dotnet --version)",
+      "Bash(find /h/Dropbox/sean-tower/Documents/git/stakeout -name *test* -o -name *Test* -o -name *Tests*)",
+      "Bash(dotnet test:*)"
     ]
   }
 }
