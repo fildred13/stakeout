@@ -1,0 +1,50 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scenes/evidence_board/EvidencePolaroid.cs" id="1_script"]
+[ext_resource type="FontFile" path="res://fonts/PermanentMarker/PermanentMarker.ttf" id="2_marker_font"]
+
+[node name="EvidencePolaroid" type="Control"]
+custom_minimum_size = Vector2(100, 130)
+size_flags_horizontal = 0
+script = ExtResource("1_script")
+
+[node name="Thumbtack" type="Panel" parent="."]
+layout_mode = 0
+offset_left = 42.0
+offset_top = -6.0
+offset_right = 58.0
+offset_bottom = 10.0
+
+[node name="Body" type="Panel" parent="."]
+layout_mode = 0
+offset_left = 5.0
+offset_top = 5.0
+offset_right = 95.0
+offset_bottom = 125.0
+
+[node name="ImageArea" type="Panel" parent="Body"]
+layout_mode = 0
+offset_left = 5.0
+offset_top = 5.0
+offset_right = 85.0
+offset_bottom = 85.0
+
+[node name="Initials" type="Label" parent="Body/ImageArea"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_font_sizes/font_size = 28
+
+[node name="Caption" type="Label" parent="Body"]
+layout_mode = 0
+offset_left = 5.0
+offset_top = 87.0
+offset_right = 85.0
+offset_bottom = 115.0
+horizontal_alignment = 1
+theme_override_fonts/font = ExtResource("2_marker_font")
+theme_override_font_sizes/font_size = 10
+autowrap_mode = 2
