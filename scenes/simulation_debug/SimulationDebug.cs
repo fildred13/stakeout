@@ -236,7 +236,7 @@ public partial class SimulationDebug : Control
             BorderWidthTop = borderWidth,
             BorderWidthBottom = borderWidth
         };
-        var panel = new Panel { Size = size };
+        var panel = new Panel { Size = size, MouseFilter = MouseFilterEnum.Ignore };
         panel.AddThemeStyleboxOverride("panel", style);
         return panel;
     }
