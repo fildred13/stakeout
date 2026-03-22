@@ -4,4 +4,7 @@
     <EnableDynamicLoading>true</EnableDynamicLoading>
     <RootNamespace>Stakeout</RootNamespace>
   </PropertyGroup>
+  <ItemGroup>
+    <Compile Remove="stakeout.tests\**" />
+  </ItemGroup>
 </Project>
