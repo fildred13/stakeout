@@ -9,7 +9,12 @@
       "Bash(dotnet --list-sdks)",
       "Bash(dotnet --version)",
       "Bash(find /h/Dropbox/sean-tower/Documents/git/stakeout -name *test* -o -name *Test* -o -name *Tests*)",
-      "Bash(dotnet test:*)"
+      "Bash(dotnet test:*)",
+      "Bash(git status:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Skill(update-config)",
+      "Skill(update-config:*)"
     ]
   }
 }
