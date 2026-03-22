@@ -57,6 +57,19 @@ public partial class SimulationDebug : Control
         {
             OnPlayerCreated();
         }
+
+        var evidenceBoardButton = GetNode<Button>("Sidebar/VBox/EvidenceBoardButton");
+        evidenceBoardButton.Pressed += OnEvidenceBoardPressed;
+
+        // Style sidebar black
+        var sidebar = GetNode<PanelContainer>("Sidebar");
+        var sidebarStyle = new StyleBoxFlat { BgColor = new Color(0, 0, 0, 1) };
+        sidebar.AddThemeStyleboxOverride("panel", sidebarStyle);
+    }
+
+    private void OnEvidenceBoardPressed()
+    {
+        GetTree().ChangeSceneToFile("res://scenes/evidence_board/EvidenceBoard.tscn");
     }
 
     public override void _Process(double delta)
