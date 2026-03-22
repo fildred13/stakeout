@@ -22,9 +22,16 @@ public partial class EvidenceBoard : Control
     private Vector2 _panStartOffset;
 
     private PackedScene _polaroidScene;
+    private PackedScene _dossierScene;
     private GameManager _gameManager;
     private EvidenceBoardData _boardData;
     private readonly Dictionary<int, EvidencePolaroid> _polaroidNodes = new();
+
+    private StringLayer _stringLayer;
+    private bool _isCreatingString;
+    private int _stringSourceItemId;
+
+    private DossierWindow _currentDossier;
 
     public override void _Ready()
     {
@@ -34,6 +41,12 @@ public partial class EvidenceBoard : Control
         _gameManager = GetNode<GameManager>("/root/GameManager");
         _boardData = (EvidenceBoardData)(object)_gameManager.EvidenceBoard;
         _polaroidScene = GD.Load<PackedScene>("res://scenes/evidence_board/EvidencePolaroid.tscn");
+        _dossierScene = GD.Load<PackedScene>("res://scenes/evidence_board/DossierWindow.tscn");
+
+        _stringLayer = GetNode<StringLayer>("CorkboardCanvas/StringLayer");
+        _stringLayer.Board = _boardData;
+        _stringLayer.PolaroidNodes = _polaroidNodes;
+
         PopulateBoard();
 
         _closeButton = GetNode<Button>("CloseButton");
@@ -64,6 +77,16 @@ public partial class EvidenceBoard : Control
         {
             HandleMouseButton(mouseButton);
         }
+        else if (_isCreatingString && @event is InputEventMouseMotion motionEvent)
+        {
+            _stringLayer.DrawingEndPoint = motionEvent.GlobalPosition;
+            var hoverId = FindThumbTackAt(motionEvent.GlobalPosition);
+            _stringLayer.HoveredThumbTackItemId = hoverId;
+            foreach (var (id, polaroid) in _polaroidNodes)
+            {
+                polaroid.SetThumbTackGlow(id == hoverId && id != _stringSourceItemId);
+            }
+        }
         else if (@event is InputEventMouseMotion mouseMotion && _isPanning)
         {
             HandlePanMotion(mouseMotion);
@@ -72,6 +95,22 @@ public partial class EvidenceBoard : Control
 
     private void HandleMouseButton(InputEventMouseButton mouseButton)
     {
+        // String creation release must be checked first
+        if (_isCreatingString && !mouseButton.Pressed && mouseButton.ButtonIndex == MouseButton.Left)
+        {
+            var targetId = FindThumbTackAt(mouseButton.GlobalPosition);
+            if (targetId >= 0 && targetId != _stringSourceItemId)
+            {
+                _boardData.AddConnection(_stringSourceItemId, targetId);
+            }
+            _isCreatingString = false;
+            _stringLayer.IsDrawingString = false;
+            _stringLayer.HoveredThumbTackItemId = -1;
+            foreach (var (_, p) in _polaroidNodes)
+                p.SetThumbTackGlow(false);
+            return;
+        }
+
         // Zoom with scroll wheel
         if (mouseButton.ButtonIndex == MouseButton.WheelUp && mouseButton.Pressed)
         {
@@ -93,6 +132,25 @@ public partial class EvidenceBoard : Control
             else
             {
                 _isPanning = false;
+            }
+        }
+        // Right-click: check for string hit-test
+        else if (mouseButton.ButtonIndex == MouseButton.Right && mouseButton.Pressed)
+        {
+            var (fromId, toId) = _stringLayer.HitTestString(mouseButton.GlobalPosition);
+            if (fromId >= 0)
+            {
+                var menu = new PopupMenu();
+                menu.AddItem("Remove string", 0);
+                menu.IdPressed += (id) =>
+                {
+                    if (id == 0) _boardData.RemoveConnection(fromId, toId);
+                    menu.QueueFree();
+                };
+                menu.PopupHide += () => menu.QueueFree();
+                AddChild(menu);
+                menu.Position = new Vector2I((int)mouseButton.GlobalPosition.X, (int)mouseButton.GlobalPosition.Y);
+                menu.Popup();
             }
         }
         // Left-click on empty space pans
@@ -122,7 +180,6 @@ public partial class EvidenceBoard : Control
         var oldZoom = _zoom;
         _zoom = Mathf.Clamp(_zoom + delta, MinZoom, MaxZoom);
 
-        // Zoom towards mouse position
         var zoomRatio = _zoom / oldZoom;
         _panOffset = mousePos - (mousePos - _panOffset) * zoomRatio;
         ApplyTransform();
@@ -174,10 +231,10 @@ public partial class EvidenceBoard : Control
             var street = state.Streets[address.StreetId];
             var icon = address.Type switch
             {
-                Stakeout.Simulation.Entities.AddressType.SuburbanHome => "H",
-                Stakeout.Simulation.Entities.AddressType.Diner => "D",
-                Stakeout.Simulation.Entities.AddressType.DiveBar => "B",
-                Stakeout.Simulation.Entities.AddressType.Office => "O",
+                AddressType.SuburbanHome => "H",
+                AddressType.Diner => "D",
+                AddressType.DiveBar => "B",
+                AddressType.Office => "O",
                 _ => "?"
             };
             var caption = $"{address.Number} {street.Name}";
@@ -187,7 +244,17 @@ public partial class EvidenceBoard : Control
         return ("?", "Unknown");
     }
 
-    private void OnPolaroidClicked(int itemId) { /* Task 10: dossier */ }
+    private void OnPolaroidClicked(int itemId)
+    {
+        _currentDossier?.QueueFree();
+
+        if (!_boardData.Items.TryGetValue(itemId, out var item)) return;
+
+        _currentDossier = _dossierScene.Instantiate<DossierWindow>();
+        _currentDossier.Position = GetViewportRect().Size / 2 - new Vector2(125, 100);
+        AddChild(_currentDossier);
+        _currentDossier.Populate(item, _gameManager.SimulationManager.State);
+    }
 
     private void OnPolaroidRemoved(int itemId)
     {
@@ -199,9 +266,42 @@ public partial class EvidenceBoard : Control
         }
     }
 
-    private void OnThumbtackDragStarted(int itemId, Vector2 globalPos) { /* Task 9: strings */ }
+    private void OnThumbtackDragStarted(int itemId, Vector2 globalPos)
+    {
+        _isCreatingString = true;
+        _stringSourceItemId = itemId;
+        _stringLayer.IsDrawingString = true;
+        _stringLayer.DrawingFromItemId = itemId;
+        _stringLayer.DrawingEndPoint = globalPos;
+    }
 
-    private void OnThumbtackRightClicked(int itemId, Vector2 globalPos) { /* Task 9: strings */ }
+    private void OnThumbtackRightClicked(int itemId, Vector2 globalPos)
+    {
+        var menu = new PopupMenu();
+        menu.AddItem("Remove all strings", 0);
+        menu.IdPressed += (id) =>
+        {
+            if (id == 0) _boardData.RemoveAllConnections(itemId);
+            menu.QueueFree();
+        };
+        menu.PopupHide += () => menu.QueueFree();
+        AddChild(menu);
+        menu.Position = new Vector2I((int)globalPos.X, (int)globalPos.Y);
+        menu.Popup();
+    }
+
+    private int FindThumbTackAt(Vector2 globalPos)
+    {
+        foreach (var (itemId, polaroid) in _polaroidNodes)
+        {
+            var thumbCenter = polaroid.GetThumbTackGlobalCenter();
+            if (globalPos.DistanceTo(thumbCenter) <= 15f)
+            {
+                return itemId;
+            }
+        }
+        return -1;
+    }
 
     private void OnClosePressed()
     {
