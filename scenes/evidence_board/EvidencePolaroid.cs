@@ -122,6 +122,7 @@ public partial class EvidencePolaroid : Control
                 }
                 else
                 {
+                    bool wasOurs = _mouseDown;
                     if (_isDragging)
                     {
                         _isDragging = false;
@@ -133,7 +134,10 @@ public partial class EvidencePolaroid : Control
                     }
                     _mouseDown = false;
                     _dragStartedOnThumbtrack = false;
-                    AcceptEvent();
+                    // Only consume if we owned this press; if _mouseDown was false
+                    // (thumbtack drag handed off to board), leave the release for
+                    // _UnhandledInput so the board can finalize the string connection.
+                    if (wasOurs) AcceptEvent();
                 }
             }
             else if (mb.ButtonIndex == MouseButton.Right && mb.Pressed)
