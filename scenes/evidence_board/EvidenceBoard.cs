@@ -3,9 +3,8 @@ using Godot;
 using Stakeout;
 using Stakeout.Evidence;
 using Stakeout.Simulation.Entities;
-using EvidenceBoardData = Stakeout.Evidence.EvidenceBoard;
 
-public partial class EvidenceBoard : Control
+public partial class EvidenceBoardScene : Control
 {
     private Control _corkboardCanvas;
     private Control _polaroidContainer;
@@ -24,7 +23,7 @@ public partial class EvidenceBoard : Control
     private PackedScene _polaroidScene;
     private PackedScene _dossierScene;
     private GameManager _gameManager;
-    private EvidenceBoardData _boardData;
+    private EvidenceBoard _boardData;
     private readonly Dictionary<int, EvidencePolaroid> _polaroidNodes = new();
 
     private StringLayer _stringLayer;
@@ -39,7 +38,7 @@ public partial class EvidenceBoard : Control
         _polaroidContainer = GetNode<Control>("CorkboardCanvas/PolaroidContainer");
 
         _gameManager = GetNode<GameManager>("/root/GameManager");
-        _boardData = (EvidenceBoardData)(object)_gameManager.EvidenceBoard;
+        _boardData = _gameManager.EvidenceBoard;
         _polaroidScene = GD.Load<PackedScene>("res://scenes/evidence_board/EvidencePolaroid.tscn");
         _dossierScene = GD.Load<PackedScene>("res://scenes/evidence_board/DossierWindow.tscn");
 
