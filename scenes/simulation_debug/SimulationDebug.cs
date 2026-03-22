@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Godot;
+using Stakeout;
 using Stakeout.Simulation;
 using Stakeout.Simulation.Entities;
 
@@ -36,14 +37,26 @@ public partial class SimulationDebug : Control
         _locationIcons = GetNode<Control>("CityMap/LocationIcons");
         _entityDots = GetNode<Control>("CityMap/EntityDots");
 
-        _simulationManager = new SimulationManager();
+        var gameManager = GetNode<GameManager>("/root/GameManager");
+        _simulationManager = gameManager.SimulationManager;
 
-        // Subscribe BEFORE AddChild so we catch events fired during _Ready()
         _simulationManager.AddressAdded += OnAddressAdded;
         _simulationManager.PersonAdded += OnPersonAdded;
         _simulationManager.PlayerCreated += OnPlayerCreated;
 
-        AddChild(_simulationManager);
+        // Re-render any addresses/people that were created before this scene loaded
+        foreach (var address in _simulationManager.State.Addresses.Values)
+        {
+            OnAddressAdded(address);
+        }
+        foreach (var person in _simulationManager.State.People.Values)
+        {
+            OnPersonAdded(person);
+        }
+        if (_simulationManager.State.Player != null)
+        {
+            OnPlayerCreated();
+        }
     }
 
     public override void _Process(double delta)
