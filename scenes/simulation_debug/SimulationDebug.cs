@@ -95,16 +95,6 @@ public partial class SimulationDebug : Control
                 lines.Add("You");
         }
 
-        foreach (var (personId, dot) in _personNodes)
-        {
-            var center = dot.Position + new Vector2(EntityDotSize / 2, EntityDotSize / 2);
-            if (mousePos.DistanceTo(center) <= HoverDistance)
-            {
-                var person = _simulationManager.State.People[personId];
-                lines.Add(person.FullName);
-            }
-        }
-
         foreach (var (addressId, icon) in _addressNodes)
         {
             var center = icon.Position + new Vector2(LocationIconSize / 2, LocationIconSize / 2);
@@ -113,6 +103,22 @@ public partial class SimulationDebug : Control
                 var address = _simulationManager.State.Addresses[addressId];
                 var street = _simulationManager.State.Streets[address.StreetId];
                 lines.Add($"{address.Number} {street.Name} ({address.Type})");
+
+                // Use testable query for people at this address
+                lines.AddRange(_simulationManager.State.GetEntityNamesAtAddress(address));
+            }
+        }
+
+        // Check people at positions not co-located with an address icon
+        foreach (var (personId, dot) in _personNodes)
+        {
+            var center = dot.Position + new Vector2(EntityDotSize / 2, EntityDotSize / 2);
+            if (mousePos.DistanceTo(center) <= HoverDistance)
+            {
+                var person = _simulationManager.State.People[personId];
+                // Only add if not already found via address hover above
+                if (!lines.Contains(person.FullName))
+                    lines.Add(person.FullName);
             }
         }
 
