@@ -256,6 +256,7 @@ public partial class EvidenceBoardScene : Control
 
         _currentDossier = _dossierScene.Instantiate<DossierWindow>();
         _currentDossier.Position = GetViewportRect().Size / 2 - new Vector2(125, 100);
+        _currentDossier.TreeExiting += () => _currentDossier = null;
         AddChild(_currentDossier);
         _currentDossier.Populate(item, _gameManager.SimulationManager.State);
     }
