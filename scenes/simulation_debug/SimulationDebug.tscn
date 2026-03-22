@@ -1,7 +1,8 @@
-[gd_scene load_steps=3 format=3 uid="uid://sim_debug"]
+[gd_scene load_steps=4 format=3 uid="uid://sim_debug"]
 
 [ext_resource type="Script" path="res://scenes/simulation_debug/SimulationDebug.cs" id="1_script"]
 [ext_resource type="FontFile" path="res://fonts/exepixelperfect/EXEPixelPerfect.ttf" id="2_font"]
+[ext_resource type="Texture2D" uid="uid://stwfxvxd88xp" path="res://assets/textures/PLACEHOLDER_city_map.png" id="3_map_texture"]
 
 [node name="SimulationDebug" type="Control"]
 layout_mode = 3
@@ -10,40 +11,53 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 script = ExtResource("1_script")
 
-[node name="MarginContainer" type="MarginContainer" parent="."]
+[node name="CityMap" type="Control" parent="."]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-theme_override_constants/margin_left = 40
-theme_override_constants/margin_top = 30
-theme_override_constants/margin_right = 40
-theme_override_constants/margin_bottom = 30
 
-[node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer"]
-layout_mode = 2
-theme_override_constants/separation = 10
+[node name="MapBackground" type="TextureRect" parent="CityMap"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+texture = ExtResource("3_map_texture")
+stretch_mode = 1
 
-[node name="TitleLabel" type="Label" parent="MarginContainer/VBoxContainer"]
-layout_mode = 2
-text = "SIMULATION DEBUG"
+[node name="LocationIcons" type="Control" parent="CityMap"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="EntityDots" type="Control" parent="CityMap"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="ClockLabel" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -200.0
+offset_top = 10.0
+offset_right = -10.0
+offset_bottom = 50.0
+text = "00:00:00"
+horizontal_alignment = 2
 theme_override_fonts/font = ExtResource("2_font")
 theme_override_font_sizes/font_size = 24
 
-[node name="ClockLabel" type="Label" parent="MarginContainer/VBoxContainer"]
-layout_mode = 2
-text = "00:00:00"
+[node name="HoverLabel" type="Label" parent="."]
+visible = false
+layout_mode = 0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 300.0
+offset_bottom = 30.0
 theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 32
-
-[node name="PeopleHeaderLabel" type="Label" parent="MarginContainer/VBoxContainer"]
-layout_mode = 2
-text = "PEOPLE:"
-theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 16
-
-[node name="PeopleList" type="ItemList" parent="MarginContainer/VBoxContainer"]
-layout_mode = 2
-size_flags_vertical = 3
-theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 16
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(1, 1, 1, 1)
