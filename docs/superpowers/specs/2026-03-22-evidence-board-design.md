@@ -14,7 +14,7 @@ Central container for the player's board state.
 
 - `Dictionary<int, EvidenceItem> Items` — all items on the board, keyed by board-specific ID
 - `List<EvidenceConnection> Connections` — red strings between items
-- `GenerateItemId()` — incrementing unique IDs for board items
+- `GenerateItemId()` — incrementing unique IDs for board items (separate ID space from simulation entity IDs — these are board-specific and must not be confused with entity IDs)
 - `AddItem(EntityType, int entityId, Vector2 boardPosition)` — adds an item, returns the new EvidenceItem
 - `RemoveItem(int itemId)` — removes an item and all connections referencing it
 - `AddConnection(int fromItemId, int toItemId)` — creates a connection (ignores duplicates)
@@ -27,7 +27,7 @@ Central container for the player's board state.
 A single piece of evidence pinned to the board.
 
 - `Id` (int) — board-specific unique ID
-- `EntityType` (enum: `Person`, `Address`) — extensible for future entity types
+- `EntityType` (enum: `Person`, `Address`) — declared in `/src/evidence/EvidenceEntityType.cs`, extensible for future entity types. This is the evidence domain's own enum, not shared with the simulation layer.
 - `EntityId` (int) — references the actual entity ID in SimulationState
 - `BoardPosition` (Vector2) — position on the corkboard canvas
 
@@ -40,7 +40,13 @@ A red string between two evidence items.
 - `FromItemId` (int)
 - `ToItemId` (int)
 
-Connections are unordered pairs — (A, B) and (B, A) are the same connection.
+Connections are unordered pairs — (A, B) and (B, A) are the same connection. To enforce this, `EvidenceConnection` normalizes ordering on construction (smaller ID always stored as `FromItemId`). It should implement `Equals`/`GetHashCode` based on the normalized pair for correct duplicate detection and removal.
+
+## State Sharing Between Scenes
+
+The evidence board and the map screen both need access to the same `SimulationState` and `EvidenceBoard` instances. Since scene changes via `SceneTree.ChangeSceneToFile()` destroy the current scene tree, state must be preserved outside of individual scenes.
+
+**Approach:** `SimulationManager` becomes an autoload singleton (registered in Project Settings). It owns both `SimulationState` and `EvidenceBoard`. Any scene can access it via `GetNode<SimulationManager>("/root/SimulationManager")`. Scene changes swap the active UI but the simulation and evidence data persist.
 
 ## Scene Structure
 
@@ -59,9 +65,10 @@ A narrow all-black `VBoxContainer` anchored to the right edge of the SimulationD
 
 ### Pan & Zoom
 
-- Middle-mouse drag or right-mouse drag to pan the canvas
+- Left-click drag on empty canvas, middle-mouse drag, or right-mouse drag to pan the canvas
 - Scroll wheel to zoom in/out (with min/max limits)
 - The close button stays fixed in the viewport
+- Dragging a polaroid brings it to the front in z-order
 
 ## Polaroid Design
 
@@ -108,7 +115,7 @@ White/off-white background with subtle drop shadow. Feels like a pinned photo.
 
 ### Removing
 
-- Right-click a string → context menu with "Remove string" (hit-test via proximity to line segment, few pixels tolerance)
+- Right-click a string → context menu with "Remove string" (hit-test via proximity to line segment, 8px tolerance)
 - Right-click a thumbtack → context menu with "Remove all strings"
 - Removing a polaroid removes all its attached strings
 
@@ -130,13 +137,14 @@ White/off-white background with subtle drop shadow. Feels like a pinned photo.
 
 **Address dossier:**
 - Street address + type (header, e.g., "42 Elm St — Diner")
-- List of known people at this address (home or work)
+- List of people at this address (home or work) — for v1, this reads from simulation truth (all people the simulation knows about), not limited to evidence on the board. Future versions may restrict this to the player's discovered knowledge.
 
 ### Behavior
 
 - Only one dossier open at a time — clicking a different polaroid replaces the current one
 - Reads live from SimulationState to resolve entity references (the UI layer bridges evidence references to simulation truth)
 - Must be closed via X button; clicking the board behind it does not close it
+- All context menus (polaroid, thumbtack, string) are dismissed by clicking elsewhere on the board
 - Font: Caveat Regular for body text, EXEPixelPerfect for labels/headers
 
 ## Adding Evidence to the Board
@@ -146,7 +154,7 @@ White/off-white background with subtle drop shadow. Feels like a pinned photo.
 - Right-click a person dot or address icon on the SimulationDebug map
 - Context menu appears with "Add to Evidence Board"
 - Creates an `EvidenceItem` in `EvidenceBoard` with the entity type + ID
-- Default `BoardPosition`: center of the current board viewport, slightly randomized to prevent stacking
+- Default `BoardPosition`: center of the canvas (since the board may not be open when items are added), slightly randomized to prevent stacking
 - If entity is already on the board, option is grayed out / shows "Already on Board"
 
 ### Extensibility
