@@ -1,6 +1,6 @@
 [gd_scene load_steps=4 format=3]
 
-[ext_resource type="Script" path="res://scenes/evidence_board/EvidenceBoard.cs" id="1_script"]
+[ext_resource type="Script" path="res://scenes/evidence_board/EvidenceBoardScene.cs" id="1_script"]
 [ext_resource type="FontFile" path="res://fonts/exepixelperfect/EXEPixelPerfect.ttf" id="2_font"]
 [ext_resource type="Script" path="res://scenes/evidence_board/StringLayer.cs" id="3_string_layer"]
 
