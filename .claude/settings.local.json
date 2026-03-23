@@ -19,7 +19,8 @@
       "Skill(update-config)",
       "Skill(update-config:*)",
       "Bash(xargs grep:*)",
-      "Bash(grep -v \"^\\\\s*//\")"
+      "Bash(grep -v \"^\\\\s*//\")",
+      "Bash(git -C /h/Dropbox/sean-tower/Documents/git/stakeout:*)"
     ],
     "additionalDirectories": [
       "C:\\Users\\fildr\\.claude\\plugins\\cache\\superpowers-dev"
