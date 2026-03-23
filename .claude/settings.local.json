@@ -15,9 +15,11 @@
       "Bash(git commit:*)",
       "Bash(git log:*)",
       "Bash(git diff:*)",
+      "Bash(git rev-parse:*)",
       "Skill(update-config)",
       "Skill(update-config:*)",
-      "Bash(xargs grep:*)"
+      "Bash(xargs grep:*)",
+      "Bash(grep -v \"^\\\\s*//\")"
     ],
     "additionalDirectories": [
       "C:\\Users\\fildr\\.claude\\plugins\\cache\\superpowers-dev"
