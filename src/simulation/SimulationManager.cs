@@ -13,8 +13,9 @@ public partial class SimulationManager : Node
     public event Action<Address> AddressAdded;
     public event Action PlayerCreated;
 
-    private readonly PersonGenerator _personGenerator = new();
-    private readonly LocationGenerator _locationGenerator = new();
+    private readonly MapConfig _mapConfig = new();
+    private readonly PersonGenerator _personGenerator;
+    private readonly LocationGenerator _locationGenerator;
     private bool _initialPeopleGenerated;
 
     private const int InitialPersonCount = 5;
@@ -22,21 +23,17 @@ public partial class SimulationManager : Node
     public SimulationManager(SimulationState state)
     {
         State = state;
+        _locationGenerator = new LocationGenerator(_mapConfig);
+        _personGenerator = new PersonGenerator(_locationGenerator, _mapConfig);
     }
 
     public override void _Ready()
     {
-        _locationGenerator.GenerateCity(State);
+        _locationGenerator.GenerateCityScaffolding(State);
 
-        foreach (var address in State.Addresses.Values)
-        {
-            AddressAdded?.Invoke(address);
-        }
-
-        var residentialAddresses = State.Addresses.Values
-            .Where(a => a.Category == AddressCategory.Residential).ToList();
-        var random = new Random();
-        var homeAddress = residentialAddresses[random.Next(residentialAddresses.Count)];
+        // Generate a home address for the player
+        var homeAddress = _locationGenerator.GenerateAddress(State, AddressType.SuburbanHome);
+        AddressAdded?.Invoke(homeAddress);
 
         State.Player = new Player
         {
@@ -54,8 +51,14 @@ public partial class SimulationManager : Node
         {
             for (int i = 0; i < InitialPersonCount; i++)
             {
-                var person = _personGenerator.GeneratePerson(State);
+                var (person, _) = _personGenerator.GeneratePerson(State);
                 PersonAdded?.Invoke(person);
+
+                // Notify about newly created addresses
+                foreach (var address in State.Addresses.Values)
+                {
+                    AddressAdded?.Invoke(address);
+                }
             }
             _initialPeopleGenerated = true;
         }

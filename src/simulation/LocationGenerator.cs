@@ -8,16 +8,14 @@ namespace Stakeout.Simulation;
 public class LocationGenerator
 {
     private readonly Random _random = new();
+    private readonly MapConfig _mapConfig;
 
-    private const int StreetCount = 15;
-    private const int MinAddressesPerStreet = 3;
-    private const int MaxAddressesPerStreet = 8;
-    private const float MapMinX = 40f;
-    private const float MapMaxX = 1240f;
-    private const float MapMinY = 40f;
-    private const float MapMaxY = 680f;
+    public LocationGenerator(MapConfig mapConfig)
+    {
+        _mapConfig = mapConfig;
+    }
 
-    public void GenerateCity(SimulationState state)
+    public void GenerateCityScaffolding(SimulationState state)
     {
         var country = new Country { Name = "United States" };
         state.Countries.Add(country);
@@ -29,65 +27,58 @@ public class LocationGenerator
             CountryName = country.Name
         };
         state.Cities[city.Id] = city;
-
-        GenerateStreets(state, city);
     }
 
-    private void GenerateStreets(SimulationState state, City city)
+    public Address GenerateAddress(SimulationState state, AddressType type)
     {
+        // Find the first city
+        int cityId = 0;
+        foreach (var key in state.Cities.Keys) { cityId = key; break; }
+
+        var street = FindOrCreateStreet(state, cityId);
+
+        var address = new Address
+        {
+            Id = state.GenerateEntityId(),
+            Number = GenerateAddressNumber(),
+            StreetId = street.Id,
+            Type = type,
+            Position = new Vector2(
+                (float)(_random.NextDouble() * (_mapConfig.MaxX - _mapConfig.MinX) + _mapConfig.MinX),
+                (float)(_random.NextDouble() * (_mapConfig.MaxY - _mapConfig.MinY) + _mapConfig.MinY)
+            )
+        };
+        state.Addresses[address.Id] = address;
+        return address;
+    }
+
+    private Street FindOrCreateStreet(SimulationState state, int cityId)
+    {
+        if (state.Streets.Count > 0 && _random.NextDouble() < 0.5)
+        {
+            var streets = new System.Collections.Generic.List<Street>(state.Streets.Values);
+            return streets[_random.Next(streets.Count)];
+        }
+
         var usedNames = new System.Collections.Generic.HashSet<string>();
+        foreach (var s in state.Streets.Values) usedNames.Add(s.Name);
 
-        for (int i = 0; i < StreetCount; i++)
+        string streetName;
+        do
         {
-            string streetName;
-            do
-            {
-                var baseName = StreetData.StreetNames[_random.Next(StreetData.StreetNames.Length)];
-                var suffix = StreetData.StreetSuffixes[_random.Next(StreetData.StreetSuffixes.Length)];
-                streetName = $"{baseName} {suffix}";
-            } while (!usedNames.Add(streetName));
+            var baseName = StreetData.StreetNames[_random.Next(StreetData.StreetNames.Length)];
+            var suffix = StreetData.StreetSuffixes[_random.Next(StreetData.StreetSuffixes.Length)];
+            streetName = $"{baseName} {suffix}";
+        } while (!usedNames.Add(streetName));
 
-            var street = new Street
-            {
-                Id = state.GenerateEntityId(),
-                Name = streetName,
-                CityId = city.Id
-            };
-            state.Streets[street.Id] = street;
-
-            GenerateAddresses(state, street);
-        }
-    }
-
-    private void GenerateAddresses(SimulationState state, Street street)
-    {
-        int count = _random.Next(MinAddressesPerStreet, MaxAddressesPerStreet + 1);
-
-        for (int i = 0; i < count; i++)
+        var street = new Street
         {
-            var type = PickAddressType();
-            var address = new Address
-            {
-                Id = state.GenerateEntityId(),
-                Number = GenerateAddressNumber(),
-                StreetId = street.Id,
-                Type = type,
-                Position = new Vector2(
-                    (float)(_random.NextDouble() * (MapMaxX - MapMinX) + MapMinX),
-                    (float)(_random.NextDouble() * (MapMaxY - MapMinY) + MapMinY)
-                )
-            };
-            state.Addresses[address.Id] = address;
-        }
-    }
-
-    private AddressType PickAddressType()
-    {
-        double roll = _random.NextDouble();
-        if (roll < 0.50) return AddressType.SuburbanHome;
-        if (roll < 0.70) return AddressType.Office;
-        if (roll < 0.85) return AddressType.Diner;
-        return AddressType.DiveBar;
+            Id = state.GenerateEntityId(),
+            Name = streetName,
+            CityId = cityId
+        };
+        state.Streets[street.Id] = street;
+        return street;
     }
 
     private int GenerateAddressNumber()

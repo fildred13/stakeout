@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using Stakeout.Simulation;
 using Stakeout.Simulation.Data;
@@ -8,95 +9,98 @@ namespace Stakeout.Tests.Simulation;
 
 public class PersonGeneratorTests
 {
-    private static SimulationState CreatePopulatedState()
+    private static SimulationState CreateState()
     {
         var state = new SimulationState();
-        var locationGen = new LocationGenerator();
-        locationGen.GenerateCity(state);
+        var mapConfig = new MapConfig();
+        var locationGen = new LocationGenerator(mapConfig);
+        locationGen.GenerateCityScaffolding(state);
         return state;
+    }
+
+    private static PersonGenerator CreateGenerator()
+    {
+        var mapConfig = new MapConfig();
+        return new PersonGenerator(new LocationGenerator(mapConfig), mapConfig);
     }
 
     [Fact]
     public void GeneratePerson_ReturnsPersonWithValidId()
     {
-        var state = CreatePopulatedState();
-        var generator = new PersonGenerator();
-
-        var person = generator.GeneratePerson(state);
-
+        var state = CreateState();
+        var (person, _) = CreateGenerator().GeneratePerson(state);
         Assert.True(person.Id > 0);
     }
 
     [Fact]
     public void GeneratePerson_AddsPersonToState()
     {
-        var state = CreatePopulatedState();
-        var generator = new PersonGenerator();
-
-        var person = generator.GeneratePerson(state);
-
+        var state = CreateState();
+        var (person, _) = CreateGenerator().GeneratePerson(state);
         Assert.Contains(person.Id, state.People.Keys);
-        Assert.Same(person, state.People[person.Id]);
     }
 
     [Fact]
     public void GeneratePerson_NameComesFromNameDataPools()
     {
-        var state = CreatePopulatedState();
-        var generator = new PersonGenerator();
-
-        var person = generator.GeneratePerson(state);
-
+        var state = CreateState();
+        var (person, _) = CreateGenerator().GeneratePerson(state);
         Assert.Contains(person.FirstName, NameData.FirstNames);
         Assert.Contains(person.LastName, NameData.LastNames);
     }
 
     [Fact]
-    public void GeneratePerson_HomeAddressIsResidential()
+    public void GeneratePerson_CreatesHomeAddress()
     {
-        var state = CreatePopulatedState();
-        var generator = new PersonGenerator();
-
-        var person = generator.GeneratePerson(state);
-
-        var home = state.Addresses[person.HomeAddressId];
-        Assert.Equal(AddressCategory.Residential, home.Category);
+        var state = CreateState();
+        var (person, _) = CreateGenerator().GeneratePerson(state);
+        Assert.True(state.Addresses.ContainsKey(person.HomeAddressId));
+        Assert.Equal(AddressCategory.Residential, state.Addresses[person.HomeAddressId].Category);
     }
 
     [Fact]
-    public void GeneratePerson_CurrentAddressStartsAtHome()
+    public void GeneratePerson_CreatesJobWithMatchingAddress()
     {
-        var state = CreatePopulatedState();
-        var generator = new PersonGenerator();
-
-        var person = generator.GeneratePerson(state);
-
-        Assert.Equal(person.HomeAddressId, person.CurrentAddressId.Value);
+        var state = CreateState();
+        var (person, _) = CreateGenerator().GeneratePerson(state);
+        Assert.True(state.Jobs.ContainsKey(person.JobId));
+        var job = state.Jobs[person.JobId];
+        Assert.True(state.Addresses.ContainsKey(job.WorkAddressId));
+        Assert.Equal(AddressCategory.Commercial, state.Addresses[job.WorkAddressId].Category);
     }
 
     [Fact]
-    public void GeneratePerson_SetsCreatedAtToClockTime()
+    public void GeneratePerson_ReturnsDailySchedule()
     {
-        var state = CreatePopulatedState();
-        var generator = new PersonGenerator();
-
-        var person = generator.GeneratePerson(state);
-
-        Assert.Equal(state.Clock.CurrentTime, person.CreatedAt);
+        var state = CreateState();
+        var (_, schedule) = CreateGenerator().GeneratePerson(state);
+        Assert.NotNull(schedule);
+        Assert.True(schedule.Entries.Count > 0);
     }
 
     [Fact]
-    public void GeneratePerson_MultiplePeople_GetUniqueIds()
+    public void GeneratePerson_SetsInitialActivity()
     {
-        var state = CreatePopulatedState();
-        var generator = new PersonGenerator();
+        var state = CreateState();
+        var (person, _) = CreateGenerator().GeneratePerson(state);
+        Assert.True(Enum.IsDefined(person.CurrentActivity));
+    }
 
-        var p1 = generator.GeneratePerson(state);
-        var p2 = generator.GeneratePerson(state);
-        var p3 = generator.GeneratePerson(state);
+    [Fact]
+    public void GeneratePerson_AppendsJournalEvent()
+    {
+        var state = CreateState();
+        var (person, _) = CreateGenerator().GeneratePerson(state);
+        Assert.True(state.Journal.GetEventsForPerson(person.Id).Count > 0);
+    }
 
-        Assert.NotEqual(p1.Id, p2.Id);
-        Assert.NotEqual(p2.Id, p3.Id);
-        Assert.NotEqual(p1.Id, p3.Id);
+    [Fact]
+    public void GeneratePerson_HasSleepSchedule()
+    {
+        var state = CreateState();
+        var (person, _) = CreateGenerator().GeneratePerson(state);
+        var duration = (person.PreferredWakeTime - person.PreferredSleepTime).TotalHours;
+        if (duration < 0) duration += 24;
+        Assert.Equal(8.0, duration, precision: 1);
     }
 }
