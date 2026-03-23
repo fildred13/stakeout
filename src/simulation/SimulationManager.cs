@@ -51,13 +51,15 @@ public partial class SimulationManager : Node
         {
             for (int i = 0; i < InitialPersonCount; i++)
             {
+                var knownAddressIds = new System.Collections.Generic.HashSet<int>(State.Addresses.Keys);
                 var (person, _) = _personGenerator.GeneratePerson(State);
                 PersonAdded?.Invoke(person);
 
-                // Notify about newly created addresses
+                // Notify about newly created addresses only
                 foreach (var address in State.Addresses.Values)
                 {
-                    AddressAdded?.Invoke(address);
+                    if (!knownAddressIds.Contains(address.Id))
+                        AddressAdded?.Invoke(address);
                 }
             }
             _initialPeopleGenerated = true;
