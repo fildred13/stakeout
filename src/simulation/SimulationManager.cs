@@ -1,7 +1,8 @@
 using System;
-using System.Linq;
+using System.Collections.Generic;
 using Godot;
 using Stakeout.Simulation.Entities;
+using Stakeout.Simulation.Scheduling;
 
 namespace Stakeout.Simulation;
 
@@ -16,53 +17,60 @@ public partial class SimulationManager : Node
     private readonly MapConfig _mapConfig = new();
     private readonly PersonGenerator _personGenerator;
     private readonly LocationGenerator _locationGenerator;
-    private bool _initialPeopleGenerated;
+    private readonly PersonBehavior _personBehavior;
 
-    private const int InitialPersonCount = 5;
+    private readonly Dictionary<int, DailySchedule> _schedules = new();
 
     public SimulationManager(SimulationState state)
     {
         State = state;
         _locationGenerator = new LocationGenerator(_mapConfig);
         _personGenerator = new PersonGenerator(_locationGenerator, _mapConfig);
+        _personBehavior = new PersonBehavior(_mapConfig);
     }
 
     public override void _Ready()
     {
         _locationGenerator.GenerateCityScaffolding(State);
 
-        // Generate a home address for the player
-        var homeAddress = _locationGenerator.GenerateAddress(State, AddressType.SuburbanHome);
-        AddressAdded?.Invoke(homeAddress);
+        // Generate 1 person
+        var knownAddressIds = new HashSet<int>(State.Addresses.Keys);
+        var (person, schedule) = _personGenerator.GeneratePerson(State);
+        _schedules[person.Id] = schedule;
+
+        // Emit events for newly created addresses
+        foreach (var address in State.Addresses.Values)
+        {
+            if (!knownAddressIds.Contains(address.Id))
+                AddressAdded?.Invoke(address);
+        }
+        PersonAdded?.Invoke(person);
+
+        // Create player at a generated home address
+        var playerHome = _locationGenerator.GenerateAddress(State, AddressType.SuburbanHome);
+        AddressAdded?.Invoke(playerHome);
 
         State.Player = new Player
         {
-            HomeAddressId = homeAddress.Id,
-            CurrentAddressId = homeAddress.Id
+            HomeAddressId = playerHome.Id,
+            CurrentAddressId = playerHome.Id
         };
         PlayerCreated?.Invoke();
     }
 
     public override void _Process(double delta)
     {
-        State.Clock.Tick(delta);
+        var scaledDelta = delta * State.Clock.TimeScale;
+        if (scaledDelta <= 0) return;
 
-        if (!_initialPeopleGenerated && State.Clock.ElapsedSeconds >= 1.0)
+        State.Clock.Tick(scaledDelta);
+
+        foreach (var person in State.People.Values)
         {
-            for (int i = 0; i < InitialPersonCount; i++)
+            if (_schedules.TryGetValue(person.Id, out var schedule))
             {
-                var knownAddressIds = new System.Collections.Generic.HashSet<int>(State.Addresses.Keys);
-                var (person, _) = _personGenerator.GeneratePerson(State);
-                PersonAdded?.Invoke(person);
-
-                // Notify about newly created addresses only
-                foreach (var address in State.Addresses.Values)
-                {
-                    if (!knownAddressIds.Contains(address.Id))
-                        AddressAdded?.Invoke(address);
-                }
+                _personBehavior.Update(person, schedule, State);
             }
-            _initialPeopleGenerated = true;
         }
     }
 }
