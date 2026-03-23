@@ -156,10 +156,9 @@ public partial class SimulationDebug : Control
 
     private void OnPersonAdded(Person person)
     {
-        var address = _simulationManager.State.Addresses[person.CurrentAddressId];
         var size = new Vector2(EntityDotSize, EntityDotSize);
         var dot = CreateIconPanel(size, PersonColor, BorderColor, DotBorderWidth);
-        dot.Position = address.Position - size / 2;
+        dot.Position = person.CurrentPosition - size / 2;
         _entityDots.AddChild(dot);
         _personNodes[person.Id] = dot;
     }

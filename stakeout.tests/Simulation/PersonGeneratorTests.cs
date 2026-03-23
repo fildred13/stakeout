@@ -64,18 +64,6 @@ public class PersonGeneratorTests
     }
 
     [Fact]
-    public void GeneratePerson_WorkAddressIsCommercial()
-    {
-        var state = CreatePopulatedState();
-        var generator = new PersonGenerator();
-
-        var person = generator.GeneratePerson(state);
-
-        var work = state.Addresses[person.WorkAddressId];
-        Assert.Equal(AddressCategory.Commercial, work.Category);
-    }
-
-    [Fact]
     public void GeneratePerson_CurrentAddressStartsAtHome()
     {
         var state = CreatePopulatedState();
@@ -83,7 +71,7 @@ public class PersonGeneratorTests
 
         var person = generator.GeneratePerson(state);
 
-        Assert.Equal(person.HomeAddressId, person.CurrentAddressId);
+        Assert.Equal(person.HomeAddressId, person.CurrentAddressId.Value);
     }
 
     [Fact]

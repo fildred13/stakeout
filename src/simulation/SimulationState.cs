@@ -26,7 +26,7 @@ public class SimulationState
     public List<string> GetEntityNamesAtAddress(Address address)
     {
         return People.Values
-            .Where(p => p.CurrentAddressId == address.Id)
+            .Where(p => p.CurrentAddressId.HasValue && p.CurrentAddressId.Value == address.Id)
             .Select(p => p.FullName)
             .ToList();
     }

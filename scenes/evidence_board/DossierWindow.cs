@@ -43,11 +43,7 @@ public partial class DossierWindow : Panel
                 var street = state.Streets[home.StreetId];
                 lines.Add($"Home: {home.Number} {street.Name}");
             }
-            if (state.Addresses.TryGetValue(person.WorkAddressId, out var work))
-            {
-                var street = state.Streets[work.StreetId];
-                lines.Add($"Work: {work.Number} {street.Name} ({work.Type})");
-            }
+            // Work address lookup will use Jobs dictionary (added in Task 7)
 
             _bodyLabel.Text = string.Join("\n", lines);
         }
@@ -57,15 +53,14 @@ public partial class DossierWindow : Panel
             _titleLabel.Text = $"{address.Number} {street.Name} — {address.Type}";
 
             var people = state.People.Values
-                .Where(p => p.HomeAddressId == address.Id || p.WorkAddressId == address.Id)
+                .Where(p => p.HomeAddressId == address.Id)
                 .ToList();
 
             if (people.Count > 0)
             {
                 var peopleLines = people.Select(p =>
                 {
-                    var rel = p.HomeAddressId == address.Id ? "lives here" : "works here";
-                    return $"{p.FullName} ({rel})";
+                    return $"{p.FullName} (lives here)";
                 });
                 _bodyLabel.Text = string.Join("\n", peopleLines);
             }

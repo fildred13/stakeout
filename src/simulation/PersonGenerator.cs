@@ -14,8 +14,8 @@ public class PersonGenerator
     {
         var residentialAddresses = state.Addresses.Values
             .Where(a => a.Category == AddressCategory.Residential).ToList();
-        var commercialAddresses = state.Addresses.Values
-            .Where(a => a.Category == AddressCategory.Commercial).ToList();
+
+        var homeAddress = residentialAddresses[_random.Next(residentialAddresses.Count)];
 
         var person = new Person
         {
@@ -23,10 +23,12 @@ public class PersonGenerator
             FirstName = NameData.FirstNames[_random.Next(NameData.FirstNames.Length)],
             LastName = NameData.LastNames[_random.Next(NameData.LastNames.Length)],
             CreatedAt = state.Clock.CurrentTime,
-            HomeAddressId = residentialAddresses[_random.Next(residentialAddresses.Count)].Id,
-            WorkAddressId = commercialAddresses[_random.Next(commercialAddresses.Count)].Id
+            HomeAddressId = homeAddress.Id,
+            JobId = 0,
+            CurrentActivity = ActivityType.AtHome
         };
         person.CurrentAddressId = person.HomeAddressId;
+        person.CurrentPosition = homeAddress.Position;
 
         state.People[person.Id] = person;
         return person;
