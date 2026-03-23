@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using Godot;
 using Stakeout.Evidence;
@@ -43,10 +44,15 @@ public partial class DossierWindow : Panel
                 var street = state.Streets[home.StreetId];
                 lines.Add($"Home: {home.Number} {street.Name}");
             }
-            if (state.Addresses.TryGetValue(person.WorkAddressId, out var work))
+            if (state.Jobs.TryGetValue(person.JobId, out var job) &&
+                state.Addresses.TryGetValue(job.WorkAddressId, out var work))
             {
-                var street = state.Streets[work.StreetId];
-                lines.Add($"Work: {work.Number} {street.Name} ({work.Type})");
+                var workStreet = state.Streets[work.StreetId];
+                lines.Add($"Job: {job.Title}");
+                lines.Add($"Work: {work.Number} {workStreet.Name}");
+                var startTime = DateTime.Today.Add(job.ShiftStart).ToString("h:mm tt");
+                var endTime = DateTime.Today.Add(job.ShiftEnd).ToString("h:mm tt");
+                lines.Add($"Shift: {startTime} - {endTime}");
             }
 
             _bodyLabel.Text = string.Join("\n", lines);
@@ -57,7 +63,8 @@ public partial class DossierWindow : Panel
             _titleLabel.Text = $"{address.Number} {street.Name} — {address.Type}";
 
             var people = state.People.Values
-                .Where(p => p.HomeAddressId == address.Id || p.WorkAddressId == address.Id)
+                .Where(p => p.HomeAddressId == address.Id ||
+                            (state.Jobs.TryGetValue(p.JobId, out var j) && j.WorkAddressId == address.Id))
                 .ToList();
 
             if (people.Count > 0)

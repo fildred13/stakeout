@@ -1,0 +1,64 @@
+cd "h:/Dropbox/sean-tower/Documents/git/stakeout" && git add docs/superpowers/specs/2026-03-22-people-move-design.md
+
+---
+
+cd "h:/Dropbox/sean-tower/Documents/git/stakeout" && git commit -m "$(cat <<'EOF'
+Add people-move design spec: AI schedules, event journal, jobs
+
+Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
+EOF
+)"
+
+---
+
+cd "h:/Dropbox/sean-tower/Documents/git/stakeout" && git add docs/superpowers/specs/2026-03-22-people-move-design.md
+
+---
+
+cd "h:/Dropbox/sean-tower/Documents/git/stakeout" && git commit -m "$(cat <<'EOF'
+Clarify diner shift start time range in spec
+
+Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
+EOF
+)"
+
+---
+
+cd "h:/Dropbox/sean-tower/Documents/git/stakeout" && git add docs/superpowers/plans/2026-03-23-people-move.md
+
+---
+
+cd "h:/Dropbox/sean-tower/Documents/git/stakeout" && git commit -m "$(cat <<'EOF'
+Add people-move implementation plan
+
+Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
+EOF
+)"
+
+---
+
+cd "h:/Dropbox/sean-tower/Documents/git/stakeout" && git rev-parse HEAD
+
+---
+
+cd "h:/Dropbox/sean-tower/Documents/git/stakeout" && git add src/simulation/entities/ActivityType.cs src/simulation/entities/TravelInfo.cs src/simulation/entities/Job.cs src/simulation/entities/Person.cs
+
+---
+
+cd "h:/Dropbox/sean-tower/Documents/git/stakeout" && git commit -m "$(cat <<'EOF'
+Add ActivityType, TravelInfo, Job entities; update Person model
+
+Remove WorkAddressId from Person, add JobId, CurrentActivity,
+CurrentPosition, TravelInfo, and sleep preferences.
+
+Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
+EOF
+)"
+
+---
+
+cd "H:\Dropbox\sean-tower\Documents\git\stakeout" && git status
+
+---
+
+cd "H:\Dropbox\sean-tower\Documents\git\stakeout" && git add scenes/evidence_board/DossierWindow.cs scenes/simulation_debug/SimulationDebug.cs src/simulation/PersonGenerator.cs src/simulation/SimulationState.cs stakeout.tests/Simulation/PersonGeneratorTests.cs stakeout.tests/Simulation/SimulationStateTests.cs

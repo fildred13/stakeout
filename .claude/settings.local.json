@@ -13,11 +13,19 @@
       "Bash(git status:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
+      "Bash(git -C commit:*)",
       "Bash(git log:*)",
       "Bash(git diff:*)",
+      "Bash(git rev-parse:*)",
       "Skill(update-config)",
       "Skill(update-config:*)",
-      "Bash(xargs grep:*)"
+      "Bash(xargs grep:*)",
+      "Bash(grep -v \"^\\\\s*//\")",
+      "Bash(git -C /h/Dropbox/sean-tower/Documents/git/stakeout:*)",
+      "Bash(git -C \"H:/Dropbox/sean-tower/Documents/git/stakeout\" status)",
+      "Bash(git -C \"H:/Dropbox/sean-tower/Documents/git/stakeout\" log:*)",
+      "Bash(git -C \"H:/Dropbox/sean-tower/Documents/git/stakeout\" add:*)",
+      "Bash(git -C \"H:/Dropbox/sean-tower/Documents/git/stakeout\" diff --staged --stat)"
     ],
     "additionalDirectories": [
       "C:\\Users\\fildr\\.claude\\plugins\\cache\\superpowers-dev"
