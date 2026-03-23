@@ -15,10 +15,12 @@ public class SimulationStateTests
 
         Assert.NotNull(state.Clock);
         Assert.Empty(state.People);
+        Assert.Empty(state.Jobs);
         Assert.Empty(state.Countries);
         Assert.Empty(state.Cities);
         Assert.Empty(state.Streets);
         Assert.Empty(state.Addresses);
+        Assert.Empty(state.Journal.AllEvents);
         Assert.Null(state.Player);
     }
 

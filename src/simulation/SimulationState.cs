@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Stakeout.Simulation.Entities;
+using Stakeout.Simulation.Events;
 
 namespace Stakeout.Simulation;
 
@@ -8,11 +9,13 @@ public class SimulationState
 {
     public GameClock Clock { get; }
     public Dictionary<int, Person> People { get; } = new();
+    public Dictionary<int, Job> Jobs { get; } = new();
     public Player Player { get; set; }
     public List<Country> Countries { get; } = new();
     public Dictionary<int, City> Cities { get; } = new();
     public Dictionary<int, Street> Streets { get; } = new();
     public Dictionary<int, Address> Addresses { get; } = new();
+    public EventJournal Journal { get; } = new();
 
     private int _nextEntityId = 1;
 
