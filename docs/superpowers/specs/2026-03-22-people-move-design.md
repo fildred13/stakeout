@@ -85,7 +85,7 @@ Job
 
 | JobType | Title | Shift | Notes |
 |---|---|---|---|
-| DinerWaiter | "Waiter"/"Waitress" | Random 12hr block | Random start time per person |
+| DinerWaiter | "Waiter"/"Waitress" | Random 12hr block | Start time randomly chosen between 05:00–21:00 |
 | OfficeWorker | "Office Worker" | 09:00–17:00 | Fixed |
 | Bartender | "Bartender" | 16:00–02:00 | Overnight |
 
