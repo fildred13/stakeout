@@ -7,11 +7,11 @@ namespace Stakeout.Tests.Simulation;
 public class GameClockTests
 {
     [Fact]
-    public void Constructor_Default_StartsAt1980Jan1Midnight()
+    public void Constructor_Default_StartsAt1980Jan1_0830()
     {
         var clock = new GameClock();
 
-        Assert.Equal(new DateTime(1980, 1, 1, 0, 0, 0), clock.CurrentTime);
+        Assert.Equal(new DateTime(1980, 1, 1, 8, 30, 0), clock.CurrentTime);
         Assert.Equal(0.0, clock.ElapsedSeconds);
     }
 
@@ -27,7 +27,8 @@ public class GameClockTests
     [Fact]
     public void Tick_OneSecond_AdvancesCurrentTimeByOneSecond()
     {
-        var clock = new GameClock();
+        var start = new DateTime(1980, 1, 1, 0, 0, 0);
+        var clock = new GameClock(start);
 
         clock.Tick(1.0);
 
@@ -38,7 +39,8 @@ public class GameClockTests
     [Fact]
     public void Tick_MultipleCalls_AccumulatesTime()
     {
-        var clock = new GameClock();
+        var start = new DateTime(1980, 1, 1, 0, 0, 0);
+        var clock = new GameClock(start);
 
         clock.Tick(0.5);
         clock.Tick(0.5);
@@ -51,7 +53,8 @@ public class GameClockTests
     [Fact]
     public void Tick_LargeDelta_AdvancesCorrectly()
     {
-        var clock = new GameClock();
+        var start = new DateTime(1980, 1, 1, 0, 0, 0);
+        var clock = new GameClock(start);
 
         clock.Tick(3600.0); // one hour
 

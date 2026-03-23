@@ -10,7 +10,7 @@ public class GameClock
 
     public GameClock(DateTime? startTime = null)
     {
-        CurrentTime = startTime ?? new DateTime(1980, 1, 1, 0, 0, 0);
+        CurrentTime = startTime ?? new DateTime(1980, 1, 1, 8, 30, 0);
         ElapsedSeconds = 0.0;
     }
 

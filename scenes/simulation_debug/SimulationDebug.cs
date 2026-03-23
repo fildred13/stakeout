@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using Godot;
 using Stakeout;
 using Stakeout.Evidence;
@@ -28,6 +29,10 @@ public partial class SimulationDebug : Control
     private readonly Dictionary<int, Panel> _addressNodes = [];
     private readonly Dictionary<int, Panel> _personNodes = [];
     private Panel _playerNode;
+
+    private Button _debugMenuButton;
+    private PanelContainer _debugSidebar;
+    private VBoxContainer _debugPeopleList;
 
     private static readonly Color SuburbanHomeColor = new(0.2f, 0.8f, 0.2f);
     private static readonly Color DinerColor = new(0.9f, 0.9f, 0.2f);
@@ -82,10 +87,45 @@ public partial class SimulationDebug : Control
 
         _pauseButton.Pressed += () => SetTimeScale(0f);
         _playButton.Pressed += () => SetTimeScale(1f);
-        _fastButton.Pressed += () => SetTimeScale(4f);
-        _superFastButton.Pressed += () => SetTimeScale(8f);
+        _fastButton.Pressed += () => SetTimeScale(32f);
+        _superFastButton.Pressed += () => SetTimeScale(64f);
 
         HighlightActiveTimeButton();
+
+        // Debug menu button (upper left)
+        _debugMenuButton = new Button
+        {
+            Text = "Debug",
+            Position = new Vector2(10, 10),
+            Size = new Vector2(60, 30)
+        };
+        _debugMenuButton.AddThemeFontOverride("font", GetNode<Label>("ClockLabel").GetThemeFont("font"));
+        _debugMenuButton.AddThemeFontSizeOverride("font_size", 12);
+        _debugMenuButton.Pressed += OnDebugMenuPressed;
+        AddChild(_debugMenuButton);
+
+        // Debug left sidebar (hidden by default)
+        _debugSidebar = new PanelContainer
+        {
+            Position = new Vector2(0, 0),
+            Size = new Vector2(200, GetViewportRect().Size.Y),
+            Visible = false
+        };
+        var debugStyle = new StyleBoxFlat { BgColor = new Color(0.1f, 0.1f, 0.1f, 0.95f) };
+        _debugSidebar.AddThemeStyleboxOverride("panel", debugStyle);
+
+        var debugScroll = new ScrollContainer
+        {
+            Position = Vector2.Zero,
+            Size = new Vector2(200, GetViewportRect().Size.Y)
+        };
+        _debugSidebar.AddChild(debugScroll);
+
+        _debugPeopleList = new VBoxContainer();
+        _debugPeopleList.SizeFlagsHorizontal = SizeFlags.Fill | SizeFlags.Expand;
+        debugScroll.AddChild(_debugPeopleList);
+
+        AddChild(_debugSidebar);
     }
 
     private void SetTimeScale(float scale)
@@ -102,8 +142,55 @@ public partial class SimulationDebug : Control
 
         _pauseButton.Modulate = scale == 0f ? activeColor : normalColor;
         _playButton.Modulate = scale == 1f ? activeColor : normalColor;
-        _fastButton.Modulate = scale == 4f ? activeColor : normalColor;
-        _superFastButton.Modulate = scale == 8f ? activeColor : normalColor;
+        _fastButton.Modulate = scale == 32f ? activeColor : normalColor;
+        _superFastButton.Modulate = scale == 64f ? activeColor : normalColor;
+    }
+
+    private void OnDebugMenuPressed()
+    {
+        _debugSidebar.Visible = !_debugSidebar.Visible;
+        if (_debugSidebar.Visible)
+            PopulateDebugPeopleList();
+    }
+
+    private void PopulateDebugPeopleList()
+    {
+        foreach (var child in _debugPeopleList.GetChildren())
+            child.QueueFree();
+
+        var header = new Label { Text = "— People —" };
+        header.AddThemeFontOverride("font", GetNode<Label>("ClockLabel").GetThemeFont("font"));
+        header.AddThemeFontSizeOverride("font_size", 14);
+        header.AddThemeColorOverride("font_color", new Color(0.3f, 0.6f, 1.0f));
+        header.HorizontalAlignment = HorizontalAlignment.Center;
+        _debugPeopleList.AddChild(header);
+
+        var people = _simulationManager.State.People.Values
+            .OrderBy(p => p.FullName)
+            .ToList();
+
+        var board = _gameManager.EvidenceBoard;
+        var font = GetNode<Label>("ClockLabel").GetThemeFont("font");
+
+        foreach (var person in people)
+        {
+            var btn = new Button { Text = person.FullName };
+            btn.AddThemeFontOverride("font", font);
+            btn.AddThemeFontSizeOverride("font_size", 12);
+            btn.Alignment = HorizontalAlignment.Left;
+
+            var personId = person.Id;
+            btn.GuiInput += (@event) =>
+            {
+                if (@event is InputEventMouseButton mb && mb.ButtonIndex == MouseButton.Right && mb.Pressed)
+                {
+                    ShowAddToEvidenceBoardMenu(mb.GlobalPosition, EvidenceEntityType.Person, personId, board);
+                    btn.AcceptEvent();
+                }
+            };
+
+            _debugPeopleList.AddChild(btn);
+        }
     }
 
     private void OnEvidenceBoardPressed()
@@ -177,7 +264,7 @@ public partial class SimulationDebug : Control
     public override void _Process(double delta)
     {
         var time = _simulationManager.State.Clock.CurrentTime;
-        _clockLabel.Text = time.ToString("ddd MMM dd, yyyy HH:mm");
+        _clockLabel.Text = time.ToString("ddd MMM dd, yyyy HH:mm:ss");
 
         // Update person dot positions and colors
         var size = new Vector2(EntityDotSize, EntityDotSize);

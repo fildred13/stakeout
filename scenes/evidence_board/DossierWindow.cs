@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using Godot;
 using Stakeout.Evidence;
@@ -47,7 +48,11 @@ public partial class DossierWindow : Panel
                 state.Addresses.TryGetValue(job.WorkAddressId, out var work))
             {
                 var workStreet = state.Streets[work.StreetId];
-                lines.Add($"Work: {work.Number} {workStreet.Name} ({job.Title})");
+                lines.Add($"Job: {job.Title}");
+                lines.Add($"Work: {work.Number} {workStreet.Name}");
+                var startTime = DateTime.Today.Add(job.ShiftStart).ToString("h:mm tt");
+                var endTime = DateTime.Today.Add(job.ShiftEnd).ToString("h:mm tt");
+                lines.Add($"Shift: {startTime} - {endTime}");
             }
 
             _bodyLabel.Text = string.Join("\n", lines);

@@ -11,7 +11,7 @@ public class PersonBehaviorTests
 {
     private static (SimulationState state, Person person, DailySchedule schedule) CreateTestScenario()
     {
-        var state = new SimulationState();
+        var state = new SimulationState(new GameClock(new DateTime(1980, 1, 1, 0, 0, 0)));
         var home = new Address { Id = state.GenerateEntityId(), Position = new Vector2(100, 100), Type = AddressType.SuburbanHome, Number = 1, StreetId = 1 };
         var work = new Address { Id = state.GenerateEntityId(), Position = new Vector2(600, 100), Type = AddressType.Office, Number = 2, StreetId = 1 };
         state.Addresses[home.Id] = home;

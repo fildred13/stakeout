@@ -19,9 +19,9 @@ public class SimulationState
 
     private int _nextEntityId = 1;
 
-    public SimulationState()
+    public SimulationState(GameClock clock = null)
     {
-        Clock = new GameClock();
+        Clock = clock ?? new GameClock();
     }
 
     public int GenerateEntityId() => _nextEntityId++;

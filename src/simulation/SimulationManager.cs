@@ -33,18 +33,20 @@ public partial class SimulationManager : Node
     {
         _locationGenerator.GenerateCityScaffolding(State);
 
-        // Generate 1 person
-        var knownAddressIds = new HashSet<int>(State.Addresses.Keys);
-        var (person, schedule) = _personGenerator.GeneratePerson(State);
-        _schedules[person.Id] = schedule;
-
-        // Emit events for newly created addresses
-        foreach (var address in State.Addresses.Values)
+        // Generate 5 people
+        for (var i = 0; i < 5; i++)
         {
-            if (!knownAddressIds.Contains(address.Id))
-                AddressAdded?.Invoke(address);
+            var knownAddressIds = new HashSet<int>(State.Addresses.Keys);
+            var (person, schedule) = _personGenerator.GeneratePerson(State);
+            _schedules[person.Id] = schedule;
+
+            foreach (var address in State.Addresses.Values)
+            {
+                if (!knownAddressIds.Contains(address.Id))
+                    AddressAdded?.Invoke(address);
+            }
+            PersonAdded?.Invoke(person);
         }
-        PersonAdded?.Invoke(person);
 
         // Create player at a generated home address
         var playerHome = _locationGenerator.GenerateAddress(State, AddressType.SuburbanHome);
