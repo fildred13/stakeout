@@ -14,6 +14,11 @@ public partial class SimulationDebug : Control
     private Control _locationIcons;
     private Control _entityDots;
 
+    private Button _pauseButton;
+    private Button _playButton;
+    private Button _fastButton;
+    private Button _superFastButton;
+
     private const float LocationIconSize = 12f;
     private const float EntityDotSize = 8f;
     private const float HoverDistance = 10f;
@@ -29,6 +34,7 @@ public partial class SimulationDebug : Control
     private static readonly Color DiveBarColor = new(0.9f, 0.2f, 0.2f);
     private static readonly Color OfficeColor = new(0.2f, 0.7f, 0.9f);
     private static readonly Color PersonColor = new(1f, 1f, 1f);
+    private static readonly Color SleepingPersonColor = new(0.5f, 0.5f, 0.5f);
     private static readonly Color PlayerColor = new(0.3f, 0.5f, 1f);
     private static readonly Color BorderColor = new(0f, 0f, 0f);
 
@@ -67,6 +73,37 @@ public partial class SimulationDebug : Control
         var sidebar = GetNode<PanelContainer>("Sidebar");
         var sidebarStyle = new StyleBoxFlat { BgColor = new Color(0, 0, 0, 1) };
         sidebar.AddThemeStyleboxOverride("panel", sidebarStyle);
+
+        // Time controls
+        _pauseButton = GetNode<Button>("TimeControls/PauseButton");
+        _playButton = GetNode<Button>("TimeControls/PlayButton");
+        _fastButton = GetNode<Button>("TimeControls/FastButton");
+        _superFastButton = GetNode<Button>("TimeControls/SuperFastButton");
+
+        _pauseButton.Pressed += () => SetTimeScale(0f);
+        _playButton.Pressed += () => SetTimeScale(1f);
+        _fastButton.Pressed += () => SetTimeScale(4f);
+        _superFastButton.Pressed += () => SetTimeScale(8f);
+
+        HighlightActiveTimeButton();
+    }
+
+    private void SetTimeScale(float scale)
+    {
+        _simulationManager.State.Clock.TimeScale = scale;
+        HighlightActiveTimeButton();
+    }
+
+    private void HighlightActiveTimeButton()
+    {
+        var scale = _simulationManager.State.Clock.TimeScale;
+        var activeColor = new Color(0.3f, 0.6f, 1.0f);
+        var normalColor = new Color(1f, 1f, 1f);
+
+        _pauseButton.Modulate = scale == 0f ? activeColor : normalColor;
+        _playButton.Modulate = scale == 1f ? activeColor : normalColor;
+        _fastButton.Modulate = scale == 4f ? activeColor : normalColor;
+        _superFastButton.Modulate = scale == 8f ? activeColor : normalColor;
     }
 
     private void OnEvidenceBoardPressed()
@@ -140,7 +177,27 @@ public partial class SimulationDebug : Control
     public override void _Process(double delta)
     {
         var time = _simulationManager.State.Clock.CurrentTime;
-        _clockLabel.Text = time.ToString("HH:mm:ss");
+        _clockLabel.Text = time.ToString("ddd MMM dd, yyyy HH:mm");
+
+        // Update person dot positions and colors
+        var size = new Vector2(EntityDotSize, EntityDotSize);
+        foreach (var (personId, dot) in _personNodes)
+        {
+            var person = _simulationManager.State.People[personId];
+            dot.Position = person.CurrentPosition - size / 2;
+
+            var color = person.CurrentActivity == ActivityType.Sleeping ? SleepingPersonColor : PersonColor;
+            var style = new StyleBoxFlat
+            {
+                BgColor = color,
+                BorderColor = BorderColor,
+                BorderWidthLeft = DotBorderWidth,
+                BorderWidthRight = DotBorderWidth,
+                BorderWidthTop = DotBorderWidth,
+                BorderWidthBottom = DotBorderWidth
+            };
+            dot.AddThemeStyleboxOverride("panel", style);
+        }
 
         UpdateHoverLabel();
     }
@@ -194,21 +251,27 @@ public partial class SimulationDebug : Control
                 var street = _simulationManager.State.Streets[address.StreetId];
                 lines.Add($"{address.Number} {street.Name} ({address.Type})");
 
-                // Use testable query for people at this address
                 lines.AddRange(_simulationManager.State.GetEntityNamesAtAddress(address));
             }
         }
 
-        // Check people at positions not co-located with an address icon
         foreach (var (personId, dot) in _personNodes)
         {
             var center = dot.Position + new Vector2(EntityDotSize / 2, EntityDotSize / 2);
             if (mousePos.DistanceTo(center) <= HoverDistance)
             {
                 var person = _simulationManager.State.People[personId];
-                // Only add if not already found via address hover above
-                if (!lines.Contains(person.FullName))
-                    lines.Add(person.FullName);
+                var activityLabel = person.CurrentActivity switch
+                {
+                    ActivityType.Working => "Working",
+                    ActivityType.Sleeping => "Sleeping",
+                    ActivityType.TravellingByCar => "Travelling",
+                    ActivityType.AtHome => "At Home",
+                    _ => ""
+                };
+                var label = $"{person.FullName} — {activityLabel}";
+                if (!lines.Contains(label) && !lines.Contains(person.FullName))
+                    lines.Add(label);
             }
         }
 
