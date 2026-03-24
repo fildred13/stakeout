@@ -6,7 +6,7 @@ using Stakeout.Evidence;
 using Stakeout.Simulation;
 using Stakeout.Simulation.Entities;
 
-public partial class SimulationDebug : Control
+public partial class CityView : Control
 {
     private GameManager _gameManager;
     private SimulationManager _simulationManager;

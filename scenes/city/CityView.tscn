@@ -1,10 +1,10 @@
 [gd_scene load_steps=4 format=3 uid="uid://sim_debug"]
 
-[ext_resource type="Script" path="res://scenes/simulation_debug/SimulationDebug.cs" id="1_script"]
+[ext_resource type="Script" path="res://scenes/city/CityView.cs" id="1_script"]
 [ext_resource type="FontFile" path="res://fonts/exepixelperfect/EXEPixelPerfect.ttf" id="2_font"]
 [ext_resource type="Texture2D" uid="uid://stwfxvxd88xp" path="res://assets/textures/PLACEHOLDER_city_map.png" id="3_map_texture"]
 
-[node name="SimulationDebug" type="Control"]
+[node name="CityView" type="Control"]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
