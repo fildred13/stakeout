@@ -1,1 +1,0 @@
-- Teach Claude about the importance of writing documentation that allows it and me to drop back in on aspects of the system later. This is not just architecture and design documents that Claude knows to reference as sort of an "index" to the code, but also SOPs on how to do common extensibility tasks. For instance, how to add a new job type, or a new goal, etc.
