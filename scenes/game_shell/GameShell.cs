@@ -106,6 +106,9 @@ public partial class GameShell : Control
         _currentContentView = scene.Instantiate<Control>();
         _contentArea.AddChild(_currentContentView);
 
+        // Ensure the content view fills the content area
+        _currentContentView.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+
         _gameManager.ActiveContentView = scenePath;
 
         if (_currentContentView is IContentView contentView)
@@ -131,7 +134,7 @@ public partial class GameShell : Control
                 Alignment = HorizontalAlignment.Left
             };
             btn.AddThemeFontOverride("font", font);
-            btn.AddThemeFontSizeOverride("font_size", 16);
+            btn.AddThemeFontSizeOverride("font_size", 18);
             btn.AddThemeColorOverride("font_color", new Color(1, 1, 1));
             btn.AddThemeColorOverride("font_hover_color", new Color(0.3f, 0.6f, 1.0f));
 
