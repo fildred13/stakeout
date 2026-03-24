@@ -116,7 +116,7 @@ public partial class CityView : Control, IContentView
 
         foreach (var (addressId, icon) in _addressNodes)
         {
-            var center = icon.Position + new Vector2(LocationIconSize / 2, LocationIconSize / 2);
+            var center = icon.GlobalPosition + new Vector2(LocationIconSize / 2, LocationIconSize / 2);
             if (mousePos.DistanceTo(center) <= HoverDistance)
             {
                 ShowAddressContextMenu(mousePos, addressId, board);
@@ -126,7 +126,7 @@ public partial class CityView : Control, IContentView
 
         foreach (var (personId, dot) in _personNodes)
         {
-            var center = dot.Position + new Vector2(EntityDotSize / 2, EntityDotSize / 2);
+            var center = dot.GlobalPosition + new Vector2(EntityDotSize / 2, EntityDotSize / 2);
             if (mousePos.DistanceTo(center) <= HoverDistance)
             {
                 ShowPersonContextMenu(mousePos, personId, board);
@@ -267,14 +267,14 @@ public partial class CityView : Control, IContentView
 
         if (_playerNode != null)
         {
-            var center = _playerNode.Position + new Vector2(EntityDotSize / 2, EntityDotSize / 2);
+            var center = _playerNode.GlobalPosition + new Vector2(EntityDotSize / 2, EntityDotSize / 2);
             if (mousePos.DistanceTo(center) <= HoverDistance)
                 lines.Add("You");
         }
 
         foreach (var (addressId, icon) in _addressNodes)
         {
-            var center = icon.Position + new Vector2(LocationIconSize / 2, LocationIconSize / 2);
+            var center = icon.GlobalPosition + new Vector2(LocationIconSize / 2, LocationIconSize / 2);
             if (mousePos.DistanceTo(center) <= HoverDistance)
             {
                 var address = _simulationManager.State.Addresses[addressId];
@@ -287,7 +287,7 @@ public partial class CityView : Control, IContentView
 
         foreach (var (personId, dot) in _personNodes)
         {
-            var center = dot.Position + new Vector2(EntityDotSize / 2, EntityDotSize / 2);
+            var center = dot.GlobalPosition + new Vector2(EntityDotSize / 2, EntityDotSize / 2);
             if (mousePos.DistanceTo(center) <= HoverDistance)
             {
                 var person = _simulationManager.State.People[personId];
@@ -308,7 +308,7 @@ public partial class CityView : Control, IContentView
         if (lines.Count > 0)
         {
             _hoverLabel.Text = string.Join("\n", lines);
-            _hoverLabel.Position = mousePos + new Vector2(15, -10);
+            _hoverLabel.GlobalPosition = mousePos + new Vector2(15, -10);
             _hoverLabel.Visible = true;
         }
         else

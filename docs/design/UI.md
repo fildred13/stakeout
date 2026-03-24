@@ -24,6 +24,6 @@
 
 ## UI Patterns
 
-- **Sidebar:** All-black right-hand sidebar for contextual menu items, contents change per screen
+- **Sidebar:** All-black left-hand sidebar (1/4 screen) with clock, time controls, and context-sensitive menu items; contents change per content view
 - **Navigation:** Scene switching via button clicks; close buttons are pixelated X icons
 - **Aesthetic:** 1980 retro theme, pixel art aesthetic, skeuomorphic UI.
