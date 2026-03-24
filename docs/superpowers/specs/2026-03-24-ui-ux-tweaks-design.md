@@ -41,7 +41,9 @@ A set of UI/UX improvements covering display scaling, main menu rework, options 
 ### Settings Persistence
 
 - Resolution and fullscreen settings saved to `user://settings.cfg` via Godot's `ConfigFile`
+- Settings are written to disk when the player clicks "Keep" in the revert dialog
 - Loaded on startup (in an autoload or at the start of MainMenu `_Ready`)
+- Default: 1920x1080, windowed
 
 ### Revert Safety Net
 
@@ -66,17 +68,24 @@ The MainMenu scene serves as both the startup screen and the in-game pause menu.
 
 ### In-Game Pause Menu (IsGameActive = true)
 
-1. New Game
-2. Save (no-op)
-3. Load (no-op)
-4. Options
-5. Quit
+1. Resume
+2. New Game
+3. Save (no-op)
+4. Load (no-op)
+5. Options
+6. Quit
 
 ### Escape Key
 
 - `GameShell` listens for `ui_cancel` (Escape) in `_UnhandledInput`
 - Transitions to MainMenu scene
+- Pressing Escape on the pause menu (or clicking Resume) returns to the game
 - Returning from MainMenu restores the game via `GameManager.ActiveContentView` (existing mechanism)
+
+### Simulation Pausing
+
+- When the pause menu opens, the simulation is paused (time scale set to 0)
+- When returning to the game, the simulation resumes at whatever time scale was active before pausing
 
 ### Removed
 
