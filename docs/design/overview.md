@@ -1,8 +1,8 @@
 STAKEOUT is a game of investigation. You start out as a lowly gumshoe private eye with an ad in the OrangePages, and if you can prove your ability to solve cases, can get recruited by local law enforcement to solve bigger crimes. Maybe someday the CIA may reach out and give you a chance at the big time!
 
-It is heavily stylized to lean into it's 1984 setting. From UI to music to plot points (pay phones, early internet, etc.), the player feels like they are a detective living in the early technology world of the 1980s. 
+It is heavily stylized to lean into it's 1980's setting. From UI to music to plot points (pay phones, early internet, etc.), the player feels like they are a detective living in the early technology world of the 1980s. 
 
-The game is a "game of minigames" a la Sid Meier's Covert Action, inspired by boots-on-the-ground detective work and dynamic simulation of Shadows of Doubt. The fun of the game is the investigation, the clues, the pressure to solve the case before it goes cold. There are moments of action, but the star is the investigation.
+The game is a "game of minigames" a la Sid Meier's Covert Action, inspired by the boots-on-the-ground detective work and dynamic simulation of Shadows of Doubt. The fun of the game is the investigation, the clues, the pressure to solve the case before it goes cold. There are moments of action, but the star is the investigation.
 
 The game itself is experienced by the player through a series of interactive screens, which is menu-heavy supported by minimal graphics. This is where the player will do things like move to different locations, conduct stakeouts, conduct crime scene investigations, do wiretapping, hack into computers, decipher encrypted messages, tail suspects, interview witnesses, etc. This is also where the player will be able to access their corkboard for maintaining clues as notes and maps, pinned to virtual corkboard and tied together by red twine to piece together whodunnit. The game is played mostly in real time, but is paused during various interactions. Read more in the /gameplay/ subfolder.
 

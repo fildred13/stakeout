@@ -6,19 +6,14 @@ using Stakeout.Evidence;
 using Stakeout.Simulation;
 using Stakeout.Simulation.Entities;
 
-public partial class SimulationDebug : Control
+public partial class CityView : Control, IContentView
 {
     private GameManager _gameManager;
     private SimulationManager _simulationManager;
-    private Label _clockLabel;
+    private GameShell _gameShell;
     private Label _hoverLabel;
     private Control _locationIcons;
     private Control _entityDots;
-
-    private Button _pauseButton;
-    private Button _playButton;
-    private Button _fastButton;
-    private Button _superFastButton;
 
     private const float LocationIconSize = 12f;
     private const float EntityDotSize = 8f;
@@ -29,10 +24,7 @@ public partial class SimulationDebug : Control
     private readonly Dictionary<int, Panel> _addressNodes = [];
     private readonly Dictionary<int, Panel> _personNodes = [];
     private Panel _playerNode;
-
-    private Button _debugMenuButton;
-    private PanelContainer _debugSidebar;
-    private VBoxContainer _debugPeopleList;
+    private bool _wasPlayerTraveling;
 
     private static readonly Color SuburbanHomeColor = new(0.2f, 0.8f, 0.2f);
     private static readonly Color DinerColor = new(0.9f, 0.9f, 0.2f);
@@ -43,9 +35,14 @@ public partial class SimulationDebug : Control
     private static readonly Color PlayerColor = new(0.3f, 0.5f, 1f);
     private static readonly Color BorderColor = new(0f, 0f, 0f);
 
+    public void SetGameShell(GameShell shell)
+    {
+        _gameShell = shell;
+        UpdateMenuItems();
+    }
+
     public override void _Ready()
     {
-        _clockLabel = GetNode<Label>("ClockLabel");
         _hoverLabel = GetNode<Label>("HoverLabel");
         _locationIcons = GetNode<Control>("CityMap/LocationIcons");
         _entityDots = GetNode<Control>("CityMap/EntityDots");
@@ -57,191 +54,128 @@ public partial class SimulationDebug : Control
         _simulationManager.PersonAdded += OnPersonAdded;
         _simulationManager.PlayerCreated += OnPlayerCreated;
 
-        // Re-render any addresses/people that were created before this scene loaded
         foreach (var address in _simulationManager.State.Addresses.Values)
-        {
             OnAddressAdded(address);
-        }
         foreach (var person in _simulationManager.State.People.Values)
-        {
             OnPersonAdded(person);
-        }
         if (_simulationManager.State.Player != null)
-        {
             OnPlayerCreated();
-        }
-
-        var evidenceBoardButton = GetNode<Button>("Sidebar/VBox/EvidenceBoardButton");
-        evidenceBoardButton.Pressed += OnEvidenceBoardPressed;
-
-        // Style sidebar black
-        var sidebar = GetNode<PanelContainer>("Sidebar");
-        var sidebarStyle = new StyleBoxFlat { BgColor = new Color(0, 0, 0, 1) };
-        sidebar.AddThemeStyleboxOverride("panel", sidebarStyle);
-
-        // Time controls
-        _pauseButton = GetNode<Button>("TimeControls/PauseButton");
-        _playButton = GetNode<Button>("TimeControls/PlayButton");
-        _fastButton = GetNode<Button>("TimeControls/FastButton");
-        _superFastButton = GetNode<Button>("TimeControls/SuperFastButton");
-
-        _pauseButton.Pressed += () => SetTimeScale(0f);
-        _playButton.Pressed += () => SetTimeScale(1f);
-        _fastButton.Pressed += () => SetTimeScale(32f);
-        _superFastButton.Pressed += () => SetTimeScale(64f);
-
-        HighlightActiveTimeButton();
-
-        // Debug menu button (upper left)
-        _debugMenuButton = new Button
-        {
-            Text = "Debug",
-            Position = new Vector2(10, 10),
-            Size = new Vector2(60, 30)
-        };
-        _debugMenuButton.AddThemeFontOverride("font", GetNode<Label>("ClockLabel").GetThemeFont("font"));
-        _debugMenuButton.AddThemeFontSizeOverride("font_size", 12);
-        _debugMenuButton.Pressed += OnDebugMenuPressed;
-        AddChild(_debugMenuButton);
-
-        // Debug left sidebar (hidden by default)
-        _debugSidebar = new PanelContainer
-        {
-            Position = new Vector2(0, 0),
-            Size = new Vector2(200, GetViewportRect().Size.Y),
-            Visible = false
-        };
-        var debugStyle = new StyleBoxFlat { BgColor = new Color(0.1f, 0.1f, 0.1f, 0.95f) };
-        _debugSidebar.AddThemeStyleboxOverride("panel", debugStyle);
-
-        var debugScroll = new ScrollContainer
-        {
-            Position = Vector2.Zero,
-            Size = new Vector2(200, GetViewportRect().Size.Y)
-        };
-        _debugSidebar.AddChild(debugScroll);
-
-        _debugPeopleList = new VBoxContainer();
-        _debugPeopleList.SizeFlagsHorizontal = SizeFlags.Fill | SizeFlags.Expand;
-        debugScroll.AddChild(_debugPeopleList);
-
-        AddChild(_debugSidebar);
     }
 
-    private void SetTimeScale(float scale)
+    private void UpdateMenuItems()
     {
-        _simulationManager.State.Clock.TimeScale = scale;
-        HighlightActiveTimeButton();
-    }
+        if (_gameShell == null) return;
 
-    private void HighlightActiveTimeButton()
-    {
-        var scale = _simulationManager.State.Clock.TimeScale;
-        var activeColor = new Color(0.3f, 0.6f, 1.0f);
-        var normalColor = new Color(1f, 1f, 1f);
+        var items = new Godot.Collections.Array<Godot.Collections.Dictionary>();
+        var player = _simulationManager.State.Player;
 
-        _pauseButton.Modulate = scale == 0f ? activeColor : normalColor;
-        _playButton.Modulate = scale == 1f ? activeColor : normalColor;
-        _fastButton.Modulate = scale == 32f ? activeColor : normalColor;
-        _superFastButton.Modulate = scale == 64f ? activeColor : normalColor;
-    }
-
-    private void OnDebugMenuPressed()
-    {
-        _debugSidebar.Visible = !_debugSidebar.Visible;
-        if (_debugSidebar.Visible)
-            PopulateDebugPeopleList();
-    }
-
-    private void PopulateDebugPeopleList()
-    {
-        foreach (var child in _debugPeopleList.GetChildren())
-            child.QueueFree();
-
-        var header = new Label { Text = "— People —" };
-        header.AddThemeFontOverride("font", GetNode<Label>("ClockLabel").GetThemeFont("font"));
-        header.AddThemeFontSizeOverride("font_size", 14);
-        header.AddThemeColorOverride("font_color", new Color(0.3f, 0.6f, 1.0f));
-        header.HorizontalAlignment = HorizontalAlignment.Center;
-        _debugPeopleList.AddChild(header);
-
-        var people = _simulationManager.State.People.Values
-            .OrderBy(p => p.FullName)
-            .ToList();
-
-        var board = _gameManager.EvidenceBoard;
-        var font = GetNode<Label>("ClockLabel").GetThemeFont("font");
-
-        foreach (var person in people)
+        if (player?.TravelInfo == null && player?.CurrentAddressId > 0)
         {
-            var btn = new Button { Text = person.FullName };
-            btn.AddThemeFontOverride("font", font);
-            btn.AddThemeFontSizeOverride("font_size", 12);
-            btn.Alignment = HorizontalAlignment.Left;
-
-            var personId = person.Id;
-            btn.GuiInput += (@event) =>
+            var enterItem = new Godot.Collections.Dictionary
             {
-                if (@event is InputEventMouseButton mb && mb.ButtonIndex == MouseButton.Right && mb.Pressed)
-                {
-                    ShowAddToEvidenceBoardMenu(mb.GlobalPosition, EvidenceEntityType.Person, personId, board);
-                    btn.AcceptEvent();
-                }
+                { "label", "Enter Location" },
+                { "callback", Callable.From(OnEnterLocation) }
             };
-
-            _debugPeopleList.AddChild(btn);
+            items.Add(enterItem);
         }
+
+        var ebItem = new Godot.Collections.Dictionary
+        {
+            { "label", "Evidence Board" },
+            { "callback", Callable.From(() => _gameShell.OpenEvidenceBoard()) }
+        };
+        items.Add(ebItem);
+
+        _gameShell.SetMenuItems(items);
     }
 
-    private void OnEvidenceBoardPressed()
+    private void OnEnterLocation()
     {
-        GetTree().ChangeSceneToFile("res://scenes/evidence_board/EvidenceBoard.tscn");
+        _gameShell.LoadContentView("res://scenes/address/AddressView.tscn");
+    }
+
+    public override void _ExitTree()
+    {
+        _simulationManager.AddressAdded -= OnAddressAdded;
+        _simulationManager.PersonAdded -= OnPersonAdded;
+        _simulationManager.PlayerCreated -= OnPlayerCreated;
     }
 
     public override void _UnhandledInput(InputEvent @event)
     {
         if (@event is InputEventMouseButton mb && mb.ButtonIndex == MouseButton.Right && mb.Pressed)
         {
-            TryShowAddToEvidenceBoardMenu(mb.GlobalPosition);
+            TryShowContextMenu(mb.GlobalPosition);
         }
     }
 
-    private void TryShowAddToEvidenceBoardMenu(Vector2 mousePos)
+    private void TryShowContextMenu(Vector2 mousePos)
     {
         var state = _simulationManager.State;
         var board = _gameManager.EvidenceBoard;
 
         foreach (var (addressId, icon) in _addressNodes)
         {
-            var center = icon.Position + new Vector2(LocationIconSize / 2, LocationIconSize / 2);
+            var center = icon.GlobalPosition + new Vector2(LocationIconSize / 2, LocationIconSize / 2);
             if (mousePos.DistanceTo(center) <= HoverDistance)
             {
-                ShowAddToEvidenceBoardMenu(mousePos, EvidenceEntityType.Address, addressId, board);
+                ShowAddressContextMenu(mousePos, addressId, board);
                 return;
             }
         }
 
         foreach (var (personId, dot) in _personNodes)
         {
-            var center = dot.Position + new Vector2(EntityDotSize / 2, EntityDotSize / 2);
+            var center = dot.GlobalPosition + new Vector2(EntityDotSize / 2, EntityDotSize / 2);
             if (mousePos.DistanceTo(center) <= HoverDistance)
             {
-                ShowAddToEvidenceBoardMenu(mousePos, EvidenceEntityType.Person, personId, board);
+                ShowPersonContextMenu(mousePos, personId, board);
                 return;
             }
         }
     }
 
-    private void ShowAddToEvidenceBoardMenu(Vector2 pos, EvidenceEntityType entityType, int entityId, EvidenceBoard board)
+    private void ShowAddressContextMenu(Vector2 pos, int addressId, EvidenceBoard board)
     {
         var menu = new PopupMenu();
-        var alreadyOnBoard = board.HasItem(entityType, entityId);
+        var alreadyOnBoard = board.HasItem(EvidenceEntityType.Address, addressId);
+
+        menu.AddItem("Go here", 0);
+        menu.AddItem(alreadyOnBoard ? "Already on Board" : "Add to Evidence Board", 1);
+        if (alreadyOnBoard)
+            menu.SetItemDisabled(1, true);
+
+        menu.IdPressed += (id) =>
+        {
+            if (id == 0)
+            {
+                SimulationManager.StartPlayerTravel(_simulationManager.State, addressId, _simulationManager.MapConfig);
+                UpdateMenuItems();
+            }
+            else if (id == 1 && !alreadyOnBoard)
+            {
+                var random = new System.Random();
+                var centerX = 3840f / 2 + (float)(random.NextDouble() * 100 - 50);
+                var centerY = 2160f / 2 + (float)(random.NextDouble() * 100 - 50);
+                board.AddItem(EvidenceEntityType.Address, addressId, new Vector2(centerX, centerY));
+            }
+            menu.QueueFree();
+        };
+        menu.PopupHide += () => menu.QueueFree();
+
+        AddChild(menu);
+        menu.Position = new Vector2I((int)pos.X, (int)pos.Y);
+        menu.Popup();
+    }
+
+    private void ShowPersonContextMenu(Vector2 pos, int personId, EvidenceBoard board)
+    {
+        var menu = new PopupMenu();
+        var alreadyOnBoard = board.HasItem(EvidenceEntityType.Person, personId);
 
         menu.AddItem(alreadyOnBoard ? "Already on Board" : "Add to Evidence Board", 0);
         if (alreadyOnBoard)
-        {
             menu.SetItemDisabled(0, true);
-        }
 
         menu.IdPressed += (id) =>
         {
@@ -250,7 +184,7 @@ public partial class SimulationDebug : Control
                 var random = new System.Random();
                 var centerX = 3840f / 2 + (float)(random.NextDouble() * 100 - 50);
                 var centerY = 2160f / 2 + (float)(random.NextDouble() * 100 - 50);
-                board.AddItem(entityType, entityId, new Vector2(centerX, centerY));
+                board.AddItem(EvidenceEntityType.Person, personId, new Vector2(centerX, centerY));
             }
             menu.QueueFree();
         };
@@ -263,10 +197,6 @@ public partial class SimulationDebug : Control
 
     public override void _Process(double delta)
     {
-        var time = _simulationManager.State.Clock.CurrentTime;
-        _clockLabel.Text = time.ToString("ddd MMM dd, yyyy HH:mm:ss");
-
-        // Update person dot positions and colors
         var size = new Vector2(EntityDotSize, EntityDotSize);
         foreach (var (personId, dot) in _personNodes)
         {
@@ -285,6 +215,20 @@ public partial class SimulationDebug : Control
             };
             dot.AddThemeStyleboxOverride("panel", style);
         }
+
+        if (_playerNode != null && _simulationManager.State.Player != null)
+        {
+            _playerNode.Position = _simulationManager.State.Player.CurrentPosition - size / 2;
+        }
+
+        // Refresh menu only on travel state change
+        var player = _simulationManager.State.Player;
+        var isTraveling = player?.TravelInfo != null;
+        if (_wasPlayerTraveling && !isTraveling)
+        {
+            UpdateMenuItems();
+        }
+        _wasPlayerTraveling = isTraveling;
 
         UpdateHoverLabel();
     }
@@ -310,10 +254,9 @@ public partial class SimulationDebug : Control
     private void OnPlayerCreated()
     {
         var player = _simulationManager.State.Player;
-        var address = _simulationManager.State.Addresses[player.CurrentAddressId];
         var size = new Vector2(EntityDotSize, EntityDotSize);
         _playerNode = CreateIconPanel(size, PlayerColor, BorderColor, DotBorderWidth);
-        _playerNode.Position = address.Position - size / 2;
+        _playerNode.Position = player.CurrentPosition - size / 2;
         _entityDots.AddChild(_playerNode);
     }
 
@@ -324,14 +267,14 @@ public partial class SimulationDebug : Control
 
         if (_playerNode != null)
         {
-            var center = _playerNode.Position + new Vector2(EntityDotSize / 2, EntityDotSize / 2);
+            var center = _playerNode.GlobalPosition + new Vector2(EntityDotSize / 2, EntityDotSize / 2);
             if (mousePos.DistanceTo(center) <= HoverDistance)
                 lines.Add("You");
         }
 
         foreach (var (addressId, icon) in _addressNodes)
         {
-            var center = icon.Position + new Vector2(LocationIconSize / 2, LocationIconSize / 2);
+            var center = icon.GlobalPosition + new Vector2(LocationIconSize / 2, LocationIconSize / 2);
             if (mousePos.DistanceTo(center) <= HoverDistance)
             {
                 var address = _simulationManager.State.Addresses[addressId];
@@ -344,7 +287,7 @@ public partial class SimulationDebug : Control
 
         foreach (var (personId, dot) in _personNodes)
         {
-            var center = dot.Position + new Vector2(EntityDotSize / 2, EntityDotSize / 2);
+            var center = dot.GlobalPosition + new Vector2(EntityDotSize / 2, EntityDotSize / 2);
             if (mousePos.DistanceTo(center) <= HoverDistance)
             {
                 var person = _simulationManager.State.People[personId];
@@ -365,7 +308,7 @@ public partial class SimulationDebug : Control
         if (lines.Count > 0)
         {
             _hoverLabel.Text = string.Join("\n", lines);
-            _hoverLabel.Position = mousePos + new Vector2(15, -10);
+            _hoverLabel.GlobalPosition = mousePos + new Vector2(15, -10);
             _hoverLabel.Visible = true;
         }
         else

@@ -12,7 +12,7 @@ public partial class MainMenu : Control
 
     private void _OnNewCareerPressed()
     {
-        GetTree().ChangeSceneToFile("res://scenes/simulation_debug/SimulationDebug.tscn");
+        GetTree().ChangeSceneToFile("res://scenes/game_shell/GameShell.tscn");
     }
     private void _OnLoadCareerPressed() { }
     private void _OnGodModePressed() { }
