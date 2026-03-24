@@ -13,6 +13,7 @@ public partial class GameManager : Node
 
     public override void _Ready()
     {
+        DisplaySettings.Load();
         State = new SimulationState();
         EvidenceBoard = new EvidenceBoard();
         SimulationManager = new SimulationManager(State);
