@@ -14,7 +14,9 @@ A graph-based data model for the player's investigation corkboard. Tracks eviden
 ## How It Works
 EvidenceBoard maintains a dictionary of EvidenceItems (keyed by board-local ID) and a list of EvidenceConnections. Each EvidenceItem maps a simulation entity (Person or Address, by type + ID) to a position on the board.
 
-Connections are bidirectional — EvidenceConnection normalizes the two item IDs so the smaller is always `FromItemId`. This gives set-like deduplication via Equals/GetHashCode. Removing an item cascades to remove all its connections.
+Connections are bidirectional — EvidenceConnection normalizes the two item IDs so the smaller is always `FromItemId`. This gives set-like deduplication via Equals/GetHashCode. Removing an item cascades to remove all its connections via `RemoveAllConnections()`.
+
+`HasItem()` allows callers to check whether a simulation entity is already pinned before adding a duplicate.
 
 The board has its own ID space (`_nextItemId`) separate from simulation entity IDs.
 
