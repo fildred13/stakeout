@@ -19,7 +19,8 @@
       "Bash(find:*)",
       "Bash(grep:*)",
       "Bash(xargs:*)",
-      "Skill(update-config:*)"
+      "Skill(update-config:*)",
+      "Bash(xxd)"
     ],
     "additionalDirectories": [
       "C:\\Users\\fildr\\.claude\\plugins\\cache\\superpowers-dev"

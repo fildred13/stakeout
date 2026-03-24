@@ -23,3 +23,9 @@ The working directory is already the project root (`h:/Dropbox/sean-tower/Docume
 
 - **Git commands:** Run each git command as a separate Bash call — never chain with `&&` or `;`.
 - **Feedback scope:** All feedback given during this project is specific to this project. Store project-specific notes here in CLAUDE.md, not in external memory systems.
+
+### Documentation
+
+- **Session orientation:** Before exploring code for a task, check `docs/architecture/` for a relevant subsystem map. If one exists, read it first — it tells you where to look and why things are shaped that way. Check `docs/design/` if you need to understand design intent or player experience goals.
+- **Doc maintenance:** When finishing a development branch, invoke the `update-docs` skill before completing the branch. This checks whether architecture maps, design docs, or SOP skills need updating based on what changed.
+- **Architecture doc format:** Each architecture doc follows this structure: **Purpose** (1-2 sentences), **Key Files** (table of file → role), **How It Works** (5-10 lines on data/control flow), **Key Decisions** (one-line rationale each), **Connection Points** (what other subsystems it talks to). Target 30-60 lines per doc.
