@@ -310,6 +310,6 @@ public partial class EvidenceBoardScene : Control
 
     private void OnClosePressed()
     {
-        GetTree().ChangeSceneToFile("res://scenes/city/CityView.tscn");
+        GetTree().ChangeSceneToFile("res://scenes/game_shell/GameShell.tscn");
     }
 }

@@ -26,4 +26,4 @@
 
 - **Sidebar:** All-black right-hand sidebar for contextual menu items, contents change per screen
 - **Navigation:** Scene switching via button clicks; close buttons are pixelated X icons
-- **Aesthetic:** 1984 retro theme, pixel fonts for UI chrome, handwritten fonts for player-authored content
+- **Aesthetic:** 1980 retro theme, pixel art aesthetic, skeuomorphic UI.

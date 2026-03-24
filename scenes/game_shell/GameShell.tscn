@@ -1,0 +1,98 @@
+[gd_scene load_steps=3 format=3 uid="uid://game_shell_01"]
+
+[ext_resource type="Script" path="res://scenes/game_shell/GameShell.cs" id="1_script"]
+[ext_resource type="FontFile" path="res://fonts/exepixelperfect/EXEPixelPerfect.ttf" id="2_font"]
+
+[node name="GameShell" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_script")
+
+[node name="LeftSidebar" type="PanelContainer" parent="."]
+layout_mode = 1
+anchor_right = 0.25
+anchor_bottom = 1.0
+
+[node name="VBox" type="VBoxContainer" parent="LeftSidebar"]
+layout_mode = 2
+
+[node name="ClockLabel" type="Label" parent="LeftSidebar/VBox"]
+layout_mode = 2
+text = "Tue Jan 01, 1980 08:30:00"
+horizontal_alignment = 1
+theme_override_fonts/font = ExtResource("2_font")
+theme_override_font_sizes/font_size = 20
+
+[node name="TimeControls" type="HBoxContainer" parent="LeftSidebar/VBox"]
+layout_mode = 2
+
+[node name="PauseButton" type="Button" parent="LeftSidebar/VBox/TimeControls"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "⏸"
+theme_override_fonts/font = ExtResource("2_font")
+theme_override_font_sizes/font_size = 14
+
+[node name="PlayButton" type="Button" parent="LeftSidebar/VBox/TimeControls"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "▶"
+theme_override_fonts/font = ExtResource("2_font")
+theme_override_font_sizes/font_size = 14
+
+[node name="FastButton" type="Button" parent="LeftSidebar/VBox/TimeControls"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "▶▶"
+theme_override_fonts/font = ExtResource("2_font")
+theme_override_font_sizes/font_size = 14
+
+[node name="SuperFastButton" type="Button" parent="LeftSidebar/VBox/TimeControls"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "▶▶▶"
+theme_override_fonts/font = ExtResource("2_font")
+theme_override_font_sizes/font_size = 14
+
+[node name="Spacer" type="Control" parent="LeftSidebar/VBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 20)
+
+[node name="MenuContainer" type="VBoxContainer" parent="LeftSidebar/VBox"]
+layout_mode = 2
+
+[node name="ContentArea" type="Control" parent="."]
+layout_mode = 1
+anchor_left = 0.25
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="DebugMenuButton" type="Button" parent="."]
+layout_mode = 1
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -80.0
+offset_top = -35.0
+text = "Debug"
+theme_override_fonts/font = ExtResource("2_font")
+theme_override_font_sizes/font_size = 12
+
+[node name="DebugSidebar" type="PanelContainer" parent="."]
+visible = false
+layout_mode = 1
+anchor_left = 0.75
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="ScrollContainer" type="ScrollContainer" parent="DebugSidebar"]
+layout_mode = 2
+
+[node name="PeopleList" type="VBoxContainer" parent="DebugSidebar/ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3

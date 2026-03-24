@@ -21,7 +21,7 @@ The working directory is already the project root (`h:/Dropbox/sean-tower/Docume
 
 ### Other conventions
 
-- **Git commands:** Run each git command as a separate Bash call — never chain with `&&` or `;`.
+- **Git commands:** Run each git command as a separate Bash call — never chain with `&&` or `;`. NEVER use `git -C`, because this also breaks permissioning. Just call `git`.
 - **Feedback scope:** All feedback given during this project is specific to this project. Store project-specific notes here in CLAUDE.md, not in external memory systems.
 
 ### Documentation
