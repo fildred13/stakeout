@@ -54,8 +54,10 @@ public partial class SimulationManager : Node
 
         State.Player = new Player
         {
+            Id = State.GenerateEntityId(),
             HomeAddressId = playerHome.Id,
-            CurrentAddressId = playerHome.Id
+            CurrentAddressId = playerHome.Id,
+            CurrentPosition = playerHome.Position
         };
         PlayerCreated?.Invoke();
     }
