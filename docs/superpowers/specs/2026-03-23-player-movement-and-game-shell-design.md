@@ -12,9 +12,13 @@ Rename all references to `simulation_debug` to `city`:
 - `SimulationDebug.tscn` → `CityView.tscn`
 - `SimulationDebug.cs` → `CityView.cs`
 - Class name `SimulationDebug` → `CityView`
-- All `ChangeSceneToFile` references pointing to the old path (e.g., in EvidenceBoardScene.cs)
+- All `ChangeSceneToFile` references pointing to the old path:
+  - `EvidenceBoardScene.cs` — return destination changes to `GameShell.tscn`
+  - `MainMenu.cs` — entry point changes to `GameShell.tscn` (not CityView, since CityView is a content child inside GameShell)
 
 Note: The content view class is named `CityView` (not `City`) to avoid collision with the existing `City` entity class in `src/simulation/entities/City.cs`.
+
+GameShell loads CityView as the default content view on startup.
 
 ## 2. GameShell: Persistent UI Frame
 
@@ -110,9 +114,9 @@ Right-click an address icon on the city map → context menu → "Go here":
 ### Interrupting Travel
 
 If the player right-clicks a different address while traveling:
-1. Player's current interpolated position becomes the new `TravelFromPosition`
+1. Player's current interpolated position becomes the new `TravelInfo.FromPosition`
 2. New travel time recalculates based on distance from current position to new destination
-3. `TravelStartTime` resets to current sim time
+3. `TravelInfo.DepartureTime` resets to current sim time, `ArrivalTime` recalculated
 4. No DepartedAddress event (already departed)
 
 ### Arrival
