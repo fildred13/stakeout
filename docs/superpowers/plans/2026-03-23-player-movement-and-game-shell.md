@@ -305,7 +305,47 @@ UpdatePlayerTravel(State);
 Run: `dotnet test stakeout.tests/ --filter "PlayerTravelTests" -v minimal`
 Expected: All PASS.
 
-- [ ] **Step 6: Write failing test for travel interruption**
+- [ ] **Step 6: Write failing test for DepartedAddress event**
+
+Add to `PlayerTravelTests.cs`:
+
+```csharp
+[Fact]
+public void StartPlayerTravel_LogsDepartedAddressEvent()
+{
+    var state = new SimulationState(new GameClock(new DateTime(1980, 1, 1, 8, 0, 0)));
+    var from = new Address { Id = state.GenerateEntityId(), Position = new Vector2(100, 100), Type = AddressType.SuburbanHome, Number = 1, StreetId = 1 };
+    var to = new Address { Id = state.GenerateEntityId(), Position = new Vector2(500, 100), Type = AddressType.Office, Number = 2, StreetId = 1 };
+    state.Addresses[from.Id] = from;
+    state.Addresses[to.Id] = to;
+
+    var mapConfig = new MapConfig();
+
+    state.Player = new Player
+    {
+        Id = state.GenerateEntityId(),
+        HomeAddressId = from.Id,
+        CurrentAddressId = from.Id,
+        CurrentPosition = from.Position
+    };
+
+    SimulationManager.StartPlayerTravel(state, to.Id, mapConfig);
+
+    var events = state.Journal.GetEventsForPerson(state.Player.Id);
+    Assert.Single(events);
+    Assert.Equal(SimulationEventType.DepartedAddress, events[0].EventType);
+    Assert.Equal(from.Id, events[0].FromAddressId);
+    Assert.Equal(to.Id, events[0].ToAddressId);
+}
+```
+
+- [ ] **Step 7: Run test to verify it fails, then verify it passes after Step 8's implementation**
+
+Run: `dotnet test stakeout.tests/ --filter "StartPlayerTravel_LogsDepartedAddressEvent" -v minimal`
+
+(This test will pass after implementing `StartPlayerTravel` in Step 8 — the event logging is already in the implementation.)
+
+- [ ] **Step 8: Write failing test for travel interruption**
 
 Add to `PlayerTravelTests.cs`:
 
@@ -519,6 +559,14 @@ using Stakeout.Evidence;
 using Stakeout.Simulation;
 using Stakeout.Simulation.Entities;
 
+/// <summary>
+/// Interface implemented by content views that live inside GameShell's content area.
+/// </summary>
+public interface IContentView
+{
+    void SetGameShell(GameShell shell);
+}
+
 public partial class GameShell : Control
 {
     private GameManager _gameManager;
@@ -615,10 +663,12 @@ public partial class GameShell : Control
         // Store on GameManager for scene-change restoration
         _gameManager.ActiveContentView = scenePath;
 
-        // Let the content view know about us so it can set menu items
-        if (_currentContentView.HasMethod("SetGameShell"))
+        // Let the content view know about us so it can set menu items.
+        // Use C# interface check — Godot's Call/HasMethod doesn't reliably
+        // pass typed C# objects through Variant.
+        if (_currentContentView is IContentView contentView)
         {
-            _currentContentView.Call("SetGameShell", this);
+            contentView.SetGameShell(this);
         }
     }
 
@@ -823,7 +873,7 @@ using Stakeout.Evidence;
 using Stakeout.Simulation;
 using Stakeout.Simulation.Entities;
 
-public partial class CityView : Control
+public partial class CityView : Control, IContentView
 {
     private GameManager _gameManager;
     private SimulationManager _simulationManager;
@@ -841,6 +891,7 @@ public partial class CityView : Control
     private readonly Dictionary<int, Panel> _addressNodes = [];
     private readonly Dictionary<int, Panel> _personNodes = [];
     private Panel _playerNode;
+    private bool _wasPlayerTraveling;
 
     private static readonly Color SuburbanHomeColor = new(0.2f, 0.8f, 0.2f);
     private static readonly Color DinerColor = new(0.9f, 0.9f, 0.2f);
@@ -1035,12 +1086,14 @@ public partial class CityView : Control
             _playerNode.Position = _simulationManager.State.Player.CurrentPosition - size / 2;
         }
 
-        // Refresh menu items when player arrives
+        // Refresh menu items only when travel state changes (not every frame)
         var player = _simulationManager.State.Player;
-        if (player?.TravelInfo == null && _gameShell != null)
+        var isTraveling = player?.TravelInfo != null;
+        if (_wasPlayerTraveling && !isTraveling)
         {
-            UpdateMenuItems();
+            UpdateMenuItems(); // Player just arrived
         }
+        _wasPlayerTraveling = isTraveling;
 
         UpdateHoverLabel();
     }
@@ -1157,7 +1210,7 @@ using Stakeout.Evidence;
 using Stakeout.Simulation;
 using Stakeout.Simulation.Entities;
 
-public partial class AddressView : Control
+public partial class AddressView : Control, IContentView
 {
     private GameManager _gameManager;
     private SimulationManager _simulationManager;
