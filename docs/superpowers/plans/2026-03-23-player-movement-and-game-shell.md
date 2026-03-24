@@ -395,12 +395,12 @@ public void PlayerTravel_CanBeInterrupted()
 }
 ```
 
-- [ ] **Step 7: Run test to verify it fails**
+- [ ] **Step 9: Run test to verify it fails**
 
 Run: `dotnet test stakeout.tests/ --filter "PlayerTravel_CanBeInterrupted" -v minimal`
 Expected: FAIL — `SimulationManager.StartPlayerTravel` doesn't exist.
 
-- [ ] **Step 8: Implement StartPlayerTravel**
+- [ ] **Step 10: Implement StartPlayerTravel**
 
 Add to `SimulationManager.cs`:
 
@@ -445,17 +445,17 @@ public static void StartPlayerTravel(SimulationState state, int destinationAddre
 
 Note: We use `0` for "no address" rather than making `CurrentAddressId` nullable on Player, since the existing `Player.CurrentAddressId` is `int` not `int?`. If the implementer prefers, this can be changed to nullable to match Person, but that's a larger refactor.
 
-- [ ] **Step 9: Run tests to verify they pass**
+- [ ] **Step 11: Run tests to verify they pass**
 
 Run: `dotnet test stakeout.tests/ --filter "PlayerTravelTests" -v minimal`
 Expected: All PASS.
 
-- [ ] **Step 10: Run all tests**
+- [ ] **Step 12: Run all tests**
 
 Run: `dotnet test stakeout.tests/ -v minimal`
 Expected: All tests pass.
 
-- [ ] **Step 11: Commit**
+- [ ] **Step 13: Commit**
 
 ```
 git add src/simulation/SimulationManager.cs stakeout.tests/Simulation/PlayerTravelTests.cs
