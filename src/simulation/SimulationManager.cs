@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Godot;
 using Stakeout.Simulation.Entities;
+using Stakeout.Simulation.Events;
 using Stakeout.Simulation.Scheduling;
 
 namespace Stakeout.Simulation;
@@ -76,5 +77,74 @@ public partial class SimulationManager : Node
                 _personBehavior.Update(person, schedule, State);
             }
         }
+
+        UpdatePlayerTravel(State);
+    }
+
+    public static void UpdatePlayerTravel(SimulationState state)
+    {
+        var player = state.Player;
+        if (player?.TravelInfo == null) return;
+
+        var travel = player.TravelInfo;
+        var currentTime = state.Clock.CurrentTime;
+
+        if (currentTime >= travel.ArrivalTime)
+        {
+            player.CurrentPosition = travel.ToPosition;
+            player.CurrentAddressId = travel.ToAddressId;
+            player.TravelInfo = null;
+
+            state.Journal.Append(new SimulationEvent
+            {
+                Timestamp = currentTime,
+                PersonId = player.Id,
+                EventType = SimulationEventType.ArrivedAtAddress,
+                AddressId = travel.ToAddressId
+            });
+        }
+        else
+        {
+            var totalSeconds = (travel.ArrivalTime - travel.DepartureTime).TotalSeconds;
+            var elapsedSeconds = (currentTime - travel.DepartureTime).TotalSeconds;
+            var progress = Math.Clamp(elapsedSeconds / totalSeconds, 0.0, 1.0);
+            player.CurrentPosition = travel.FromPosition.Lerp(travel.ToPosition, (float)progress);
+        }
+    }
+
+    public static void StartPlayerTravel(SimulationState state, int destinationAddressId, MapConfig mapConfig)
+    {
+        var player = state.Player;
+        var destAddress = state.Addresses[destinationAddressId];
+        var currentTime = state.Clock.CurrentTime;
+
+        // Log departure if currently at an address (not already traveling)
+        if (player.TravelInfo == null && player.CurrentAddressId != 0)
+        {
+            state.Journal.Append(new SimulationEvent
+            {
+                Timestamp = currentTime,
+                PersonId = player.Id,
+                EventType = SimulationEventType.DepartedAddress,
+                FromAddressId = player.CurrentAddressId,
+                ToAddressId = destinationAddressId
+            });
+        }
+
+        var fromPosition = player.CurrentPosition;
+        var travelHours = mapConfig.ComputeTravelTimeHours(fromPosition, destAddress.Position);
+        var arrivalTime = currentTime.AddHours(travelHours);
+
+        player.TravelInfo = new TravelInfo
+        {
+            FromPosition = fromPosition,
+            ToPosition = destAddress.Position,
+            DepartureTime = currentTime,
+            ArrivalTime = arrivalTime,
+            FromAddressId = player.CurrentAddressId,
+            ToAddressId = destinationAddressId
+        };
+
+        player.CurrentAddressId = 0; // In transit, no current address
     }
 }
