@@ -94,6 +94,13 @@ public partial class CityView : Control, IContentView
         _gameShell.LoadContentView("res://scenes/address/AddressView.tscn");
     }
 
+    public override void _ExitTree()
+    {
+        _simulationManager.AddressAdded -= OnAddressAdded;
+        _simulationManager.PersonAdded -= OnPersonAdded;
+        _simulationManager.PlayerCreated -= OnPlayerCreated;
+    }
+
     public override void _UnhandledInput(InputEvent @event)
     {
         if (@event is InputEventMouseButton mb && mb.ButtonIndex == MouseButton.Right && mb.Pressed)
@@ -142,7 +149,7 @@ public partial class CityView : Control, IContentView
         {
             if (id == 0)
             {
-                SimulationManager.StartPlayerTravel(_simulationManager.State, addressId, new MapConfig());
+                SimulationManager.StartPlayerTravel(_simulationManager.State, addressId, _simulationManager.MapConfig);
                 UpdateMenuItems();
             }
             else if (id == 1 && !alreadyOnBoard)

@@ -16,6 +16,7 @@ public partial class SimulationManager : Node
     public event Action PlayerCreated;
 
     private readonly MapConfig _mapConfig = new();
+    public MapConfig MapConfig => _mapConfig;
     private readonly PersonGenerator _personGenerator;
     private readonly LocationGenerator _locationGenerator;
     private readonly PersonBehavior _personBehavior;
