@@ -69,12 +69,16 @@ public partial class OptionsMenu : Control
         _revertCountdown = 15f;
         UpdateCountdownText();
         _revertDialog.Visible = true;
+        _resolutionDropdown.Disabled = true;
+        _fullscreenCheck.Disabled = true;
         _revertTimer.Start();
     }
 
     private void HideRevertDialog()
     {
         _revertDialog.Visible = false;
+        _resolutionDropdown.Disabled = false;
+        _fullscreenCheck.Disabled = false;
         _revertTimer.Stop();
     }
 
@@ -105,7 +109,6 @@ public partial class OptionsMenu : Control
         HideRevertDialog();
         DisplaySettings.SetResolution(_previousResolution);
         DisplaySettings.SetFullscreen(_previousFullscreen);
-        DisplaySettings.Save();
 
         // Update UI to reflect reverted state
         _resolutionDropdown.Selected = DisplaySettings.GetCurrentResolutionIndex();
