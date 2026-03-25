@@ -284,6 +284,7 @@ public partial class GameShell : Control
             btn.Alignment = HorizontalAlignment.Left;
 
             var personId = person.Id;
+            btn.Pressed += () => ShowPersonInspector(personId);
             btn.GuiInput += (@event) =>
             {
                 if (@event is InputEventMouseButton mb && mb.ButtonIndex == MouseButton.Right && mb.Pressed)
@@ -295,6 +296,136 @@ public partial class GameShell : Control
 
             _debugPeopleList.AddChild(btn);
         }
+    }
+
+    private void ShowPersonInspector(int personId)
+    {
+        var person = _simulationManager.State.People[personId];
+        var state = _simulationManager.State;
+
+        var window = new Window
+        {
+            Title = $"Inspector: {person.FullName}",
+            Size = new Vector2I(500, 700),
+            Position = new Vector2I(200, 100),
+            Exclusive = false
+        };
+
+        var scroll = new ScrollContainer();
+        scroll.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+
+        var vbox = new VBoxContainer();
+        vbox.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        var font = _clockLabel.GetThemeFont("font");
+
+        // Identity
+        AddInspectorSection(vbox, font, "— Identity —", new[]
+        {
+            $"Name: {person.FullName}",
+            $"ID: {person.Id}",
+            $"Alive: {person.IsAlive}"
+        });
+
+        // Location
+        var locationLines = new List<string>();
+        if (person.TravelInfo != null)
+        {
+            var toAddr = state.Addresses.GetValueOrDefault(person.TravelInfo.ToAddressId);
+            var street = toAddr != null ? state.Streets.GetValueOrDefault(toAddr.StreetId) : null;
+            locationLines.Add($"In transit to: {toAddr?.Number} {street?.Name ?? "Unknown"}");
+        }
+        else if (person.CurrentAddressId.HasValue)
+        {
+            var addr = state.Addresses.GetValueOrDefault(person.CurrentAddressId.Value);
+            var street = addr != null ? state.Streets.GetValueOrDefault(addr.StreetId) : null;
+            locationLines.Add($"At: {addr?.Number} {street?.Name ?? "Unknown"} ({addr?.Type})");
+        }
+        locationLines.Add($"Position: ({person.CurrentPosition.X:F0}, {person.CurrentPosition.Y:F0})");
+        AddInspectorSection(vbox, font, "— Location —", locationLines.ToArray());
+
+        // Current State
+        AddInspectorSection(vbox, font, "— Current State —", new[]
+        {
+            $"Action: {person.CurrentAction}"
+        });
+
+        // Job
+        if (state.Jobs.TryGetValue(person.JobId, out var job))
+        {
+            var workAddr = state.Addresses.GetValueOrDefault(job.WorkAddressId);
+            var workStreet = workAddr != null ? state.Streets.GetValueOrDefault(workAddr.StreetId) : null;
+            AddInspectorSection(vbox, font, "— Job —", new[]
+            {
+                $"Title: {job.Title}",
+                $"Work: {workAddr?.Number} {workStreet?.Name ?? "Unknown"}",
+                $"Shift: {job.ShiftStart:hh\\:mm} - {job.ShiftEnd:hh\\:mm}"
+            });
+        }
+
+        // Objectives
+        var objLines = new List<string>();
+        foreach (var obj in person.Objectives)
+        {
+            objLines.Add($"[{obj.Status}] {obj.Type} (pri:{obj.Priority}, src:{obj.Source})");
+            for (int i = 0; i < obj.Steps.Count; i++)
+            {
+                var step = obj.Steps[i];
+                var marker = step.Status == StepStatus.Completed ? "✓"
+                    : i == obj.CurrentStepIndex ? "→"
+                    : " ";
+                objLines.Add($"  {marker} {step.Description} [{step.Status}]");
+            }
+        }
+        if (objLines.Count > 0)
+            AddInspectorSection(vbox, font, "— Objectives —", objLines.ToArray());
+
+        // Schedule
+        if (person.Schedule != null)
+        {
+            var schedLines = person.Schedule.Entries.Select(e =>
+            {
+                var targetStr = e.TargetAddressId.HasValue
+                    ? $" @ addr {e.TargetAddressId.Value}"
+                    : "";
+                return $"[{e.StartTime:hh\\:mm}-{e.EndTime:hh\\:mm}] {e.Action}{targetStr}";
+            }).ToArray();
+            AddInspectorSection(vbox, font, "— Schedule —", schedLines);
+        }
+
+        // Recent Events
+        var events = state.Journal.GetEventsForPerson(person.Id);
+        var recentEvents = events.TakeLast(10).Reverse().Select(e =>
+            $"{e.Timestamp:HH:mm:ss} {e.EventType}"
+        ).ToArray();
+        if (recentEvents.Length > 0)
+            AddInspectorSection(vbox, font, "— Recent Events —", recentEvents);
+
+        scroll.AddChild(vbox);
+        window.AddChild(scroll);
+        window.CloseRequested += () => window.QueueFree();
+        AddChild(window);
+        window.Show();
+    }
+
+    private static void AddInspectorSection(VBoxContainer vbox, Font font, string header, string[] lines)
+    {
+        var headerLabel = new Label { Text = header };
+        headerLabel.AddThemeFontOverride("font", font);
+        headerLabel.AddThemeFontSizeOverride("font_size", 14);
+        headerLabel.AddThemeColorOverride("font_color", new Color(0.3f, 0.6f, 1.0f));
+        vbox.AddChild(headerLabel);
+
+        foreach (var line in lines)
+        {
+            var label = new Label { Text = line };
+            label.AddThemeFontOverride("font", font);
+            label.AddThemeFontSizeOverride("font_size", 12);
+            label.AddThemeColorOverride("font_color", new Color(0.9f, 0.9f, 0.9f));
+            vbox.AddChild(label);
+        }
+
+        // Spacer
+        vbox.AddChild(new Control { CustomMinimumSize = new Vector2(0, 10) });
     }
 
     private void ShowAddToEvidenceBoardMenu(Vector2 pos, EvidenceEntityType entityType, int entityId)
