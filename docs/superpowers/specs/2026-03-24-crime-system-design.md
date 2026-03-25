@@ -25,8 +25,9 @@ An Objective is a high-level goal an NPC wants to achieve. Objectives live on th
 **ObjectiveStep:**
 - `Description: string`
 - `Status: StepStatus` enum (Pending, Active, Completed, Failed)
-- `ActionType: ActionType` — what action to execute for this step
-- `ResolveTaskFunc` — logic to generate a Task from this step (may depend on prior step results in `Data`)
+- `ActionType: ActionType?` — what action to execute for this step (null for resolution-time steps)
+- `IsInstant: bool` — if true, executes during ObjectiveResolver.ResolveTasks() rather than being scheduled. Used for setup steps like ChooseVictim that compute data needed by later steps.
+- `ResolveFunc: Func<Objective, SimulationState, Task?>` — returns a Task to schedule, or null for instant steps that execute their side effects directly within the func
 
 ### Tasks
 
@@ -53,7 +54,6 @@ An Action is an atomic behavior that a person performs. Actions replace the curr
 - `Sleep` — sleeping at home (replaces `Sleeping`)
 - `TravelByCar` — in transit between locations (replaces `TravellingByCar`)
 - `KillPerson` — committing murder at target location
-- `ChooseVictim` — internal/instant: pick a target (no scheduled duration)
 
 Actions know:
 - Where they happen (derived from Task.TargetAddressId)
@@ -177,29 +177,29 @@ Objective: CommitMurder
   Priority: 40
   Sequential steps:
     1. ChooseVictim
-       - Action: ChooseVictim (instant)
-       - Picks a random alive NPC (not self) as victim
-       - Stores victimId in Objective.Data
-       - Immediately advances to step 2
-    2. TravelToVictimHome
-       - Action: TravelByCar
-       - Task: be at victim's HomeAddressId at 1:00 AM, priority 40
-       - Completes when person arrives at destination
-    3. KillVictim
+       - Resolution-time step (not a scheduled Task)
+       - Executes during ObjectiveResolver.ResolveTasks(): picks a random alive NPC (not self)
+       - Stores victimId in Objective.Data["VictimId"]
+       - Updates Crime.Roles["Victim"] with the chosen person
+       - Immediately marks complete and advances to step 2
+    2. KillVictim
        - Action: KillPerson
-       - Task: at victim's home, 1:00-1:30 AM, priority 40
+       - Task: be at victim's HomeAddressId, 1:00-1:30 AM, priority 40
+       - ScheduleBuilder auto-inserts TravelByCar to get there from wherever the killer is
        - Execution: sets victim.IsAlive = false, produces Traces
        - Produces: Condition trace (cause of death on victim), Mark trace (crime scene at address)
-    4. ReturnHome
-       - Action: TravelByCar
-       - Task: go to killer's home, ~1:30 AM
-       - Completes when person arrives home
-       - On completion: Objective status → Completed
+    3. GoHome
+       - Action: Idle
+       - Task: be at killer's HomeAddressId, 1:30 AM onward, priority 40
+       - ScheduleBuilder auto-inserts TravelByCar to get home
+       - On completion: Objective status → Completed, Crime status → Completed
 ```
 
+Travel is NOT modeled as explicit objective steps. ScheduleBuilder automatically inserts TravelByCar entries when consecutive tasks have different target addresses, exactly as it does today for home→work transitions.
+
 **Crime record created on instantiation:**
-- Roles: { "Killer": killerId, "Victim": victimId }  (victim assigned after step 1)
-- Status: InProgress → Completed when step 4 finishes
+- Roles: { "Killer": killerId, "Victim": null } — Victim populated when ChooseVictim resolves during first ObjectiveResolver pass
+- Status: InProgress → Completed when step 3 finishes
 
 ## Debug UI
 
@@ -272,7 +272,7 @@ src/simulation/SimulationManager.cs        — remove _schedules, add schedule r
 src/simulation/PersonGenerator.cs          — create CoreNeed Objectives instead of GoalSet
 src/simulation/scheduling/ScheduleBuilder.cs — take Tasks instead of GoalSet
 src/simulation/scheduling/PersonBehavior.cs  — execute actions, handle dead NPCs
-src/simulation/events/SimulationEvent.cs   — new event types, ActionType fields
+src/simulation/events/SimulationEvent.cs   — new event types; OldActivity/NewActivity fields renamed to OldAction/NewAction and changed from ActivityType? to ActionType?
 scenes/game_shell/GameShell.cs             — crime generator UI, person inspector dialog
 scenes/city/CityView.cs                    — enhanced tooltips, dead NPC rendering
 ```
