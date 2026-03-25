@@ -42,9 +42,11 @@ public partial class GameShell : Control
     private VBoxContainer _debugPeopleList;
 
     // Crime Generator
-    private Button _generateCrimeButton;
     private Label _crimeResultLabel;
     private CrimeGenerator _crimeGenerator;
+
+    // Person Inspector
+    private Window _activeInspectorWindow;
 
     public override void _Ready()
     {
@@ -100,32 +102,6 @@ public partial class GameShell : Control
 
         var scroll = _debugSidebar.GetNode<ScrollContainer>("ScrollContainer");
         _debugPeopleList = scroll.GetNode<VBoxContainer>("PeopleList");
-
-        // Crime Generator UI
-        var font = _clockLabel.GetThemeFont("font");
-
-        var crimeHeader = new Label { Text = "— Crime Generator —" };
-        crimeHeader.AddThemeFontOverride("font", font);
-        crimeHeader.AddThemeFontSizeOverride("font_size", 14);
-        crimeHeader.AddThemeColorOverride("font_color", new Color(0.3f, 0.6f, 1.0f));
-        crimeHeader.HorizontalAlignment = HorizontalAlignment.Center;
-        _debugPeopleList.AddChild(crimeHeader);
-
-        var templateLabel = new Label { Text = "Template: Serial Killer" };
-        templateLabel.AddThemeFontOverride("font", font);
-        templateLabel.AddThemeFontSizeOverride("font_size", 12);
-        _debugPeopleList.AddChild(templateLabel);
-
-        _generateCrimeButton = new Button { Text = "Generate Now" };
-        _generateCrimeButton.AddThemeFontOverride("font", font);
-        _generateCrimeButton.AddThemeFontSizeOverride("font_size", 12);
-        _generateCrimeButton.Pressed += OnGenerateCrimePressed;
-        _debugPeopleList.AddChild(_generateCrimeButton);
-
-        _crimeResultLabel = new Label { Text = "No crime active", AutowrapMode = TextServer.AutowrapMode.Word };
-        _crimeResultLabel.AddThemeFontOverride("font", font);
-        _crimeResultLabel.AddThemeFontSizeOverride("font_size", 12);
-        _debugPeopleList.AddChild(_crimeResultLabel);
 
         _crimeGenerator = new CrimeGenerator();
     }
@@ -263,8 +239,35 @@ public partial class GameShell : Control
         foreach (var child in _debugPeopleList.GetChildren())
             child.QueueFree();
 
+        var font = _clockLabel.GetThemeFont("font");
+
+        // Crime Generator section
+        var crimeHeader = new Label { Text = "— Crime Generator —" };
+        crimeHeader.AddThemeFontOverride("font", font);
+        crimeHeader.AddThemeFontSizeOverride("font_size", 14);
+        crimeHeader.AddThemeColorOverride("font_color", new Color(0.3f, 0.6f, 1.0f));
+        crimeHeader.HorizontalAlignment = HorizontalAlignment.Center;
+        _debugPeopleList.AddChild(crimeHeader);
+
+        var templateLabel = new Label { Text = "Template: Serial Killer" };
+        templateLabel.AddThemeFontOverride("font", font);
+        templateLabel.AddThemeFontSizeOverride("font_size", 12);
+        _debugPeopleList.AddChild(templateLabel);
+
+        var generateBtn = new Button { Text = "Generate Now" };
+        generateBtn.AddThemeFontOverride("font", font);
+        generateBtn.AddThemeFontSizeOverride("font_size", 12);
+        generateBtn.Pressed += OnGenerateCrimePressed;
+        _debugPeopleList.AddChild(generateBtn);
+
+        _crimeResultLabel = new Label { Text = _crimeResultLabel?.Text ?? "No crime active", AutowrapMode = TextServer.AutowrapMode.Word };
+        _crimeResultLabel.AddThemeFontOverride("font", font);
+        _crimeResultLabel.AddThemeFontSizeOverride("font_size", 12);
+        _debugPeopleList.AddChild(_crimeResultLabel);
+
+        // People section
         var header = new Label { Text = "— People —" };
-        header.AddThemeFontOverride("font", _clockLabel.GetThemeFont("font"));
+        header.AddThemeFontOverride("font", font);
         header.AddThemeFontSizeOverride("font_size", 14);
         header.AddThemeColorOverride("font_color", new Color(0.3f, 0.6f, 1.0f));
         header.HorizontalAlignment = HorizontalAlignment.Center;
@@ -273,8 +276,6 @@ public partial class GameShell : Control
         var people = _simulationManager.State.People.Values
             .OrderBy(p => p.FullName)
             .ToList();
-
-        var font = _clockLabel.GetThemeFont("font");
 
         foreach (var person in people)
         {
@@ -300,6 +301,9 @@ public partial class GameShell : Control
 
     private void ShowPersonInspector(int personId)
     {
+        if (_activeInspectorWindow != null && IsInstanceValid(_activeInspectorWindow))
+            _activeInspectorWindow.QueueFree();
+
         var person = _simulationManager.State.People[personId];
         var state = _simulationManager.State;
 
@@ -404,6 +408,7 @@ public partial class GameShell : Control
         window.AddChild(scroll);
         window.CloseRequested += () => window.QueueFree();
         AddChild(window);
+        _activeInspectorWindow = window;
         window.Show();
     }
 
