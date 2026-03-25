@@ -1,6 +1,7 @@
 using System;
 using Godot;
 using Stakeout.Simulation;
+using Stakeout.Simulation.Actions;
 using Stakeout.Simulation.Entities;
 using Stakeout.Simulation.Scheduling;
 using Xunit;
@@ -41,7 +42,7 @@ public class PersonBehaviorTests
             JobId = job.Id,
             CurrentAddressId = home.Id,
             CurrentPosition = home.Position,
-            CurrentActivity = ActivityType.Sleeping,
+            CurrentAction = ActionType.Sleep,
             PreferredSleepTime = sleepTime,
             PreferredWakeTime = wakeTime
         };
@@ -62,7 +63,7 @@ public class PersonBehaviorTests
 
         behavior.Update(person, schedule, state);
 
-        Assert.Equal(ActivityType.Working, person.CurrentActivity);
+        Assert.Equal(ActionType.Work, person.CurrentAction);
     }
 
     [Fact]
@@ -74,7 +75,7 @@ public class PersonBehaviorTests
 
         behavior.Update(person, schedule, state);
 
-        Assert.Equal(ActivityType.Sleeping, person.CurrentActivity);
+        Assert.Equal(ActionType.Sleep, person.CurrentAction);
     }
 
     [Fact]
@@ -99,7 +100,7 @@ public class PersonBehaviorTests
         ScheduleEntry travelEntry = null;
         foreach (var entry in schedule.Entries)
         {
-            if (entry.Activity == ActivityType.TravellingByCar)
+            if (entry.Action == ActionType.TravelByCar)
             {
                 travelEntry = entry;
                 break;
@@ -114,7 +115,7 @@ public class PersonBehaviorTests
 
         behavior.Update(person, schedule, state);
 
-        Assert.Equal(ActivityType.TravellingByCar, person.CurrentActivity);
+        Assert.Equal(ActionType.TravelByCar, person.CurrentAction);
         Assert.Null(person.CurrentAddressId);
         Assert.NotNull(person.TravelInfo);
     }

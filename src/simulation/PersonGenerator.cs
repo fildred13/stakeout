@@ -1,4 +1,5 @@
 using System;
+using Stakeout.Simulation.Actions;
 using Stakeout.Simulation.Data;
 using Stakeout.Simulation.Entities;
 using Stakeout.Simulation.Events;
@@ -43,16 +44,16 @@ public class PersonGenerator
         // 6. Determine initial state from schedule and current time
         var timeOfDay = state.Clock.CurrentTime.TimeOfDay;
         var currentEntry = schedule.GetEntryAtTime(timeOfDay);
-        var initialActivity = currentEntry.Activity;
+        var initialActivity = currentEntry.Action;
 
         int? currentAddressId;
         var currentPosition = homeAddress.Position;
-        if (initialActivity == ActivityType.TravellingByCar)
+        if (initialActivity == ActionType.TravelByCar)
         {
-            initialActivity = ActivityType.AtHome;
+            initialActivity = ActionType.Idle;
             currentAddressId = homeAddress.Id;
         }
-        else if (initialActivity == ActivityType.Working)
+        else if (initialActivity == ActionType.Work)
         {
             currentAddressId = workAddress.Id;
             currentPosition = workAddress.Position;
@@ -73,7 +74,7 @@ public class PersonGenerator
             JobId = job.Id,
             CurrentAddressId = currentAddressId,
             CurrentPosition = currentPosition,
-            CurrentActivity = initialActivity,
+            CurrentAction = initialActivity,
             PreferredSleepTime = sleepTime,
             PreferredWakeTime = wakeTime
         };
@@ -84,8 +85,8 @@ public class PersonGenerator
         {
             Timestamp = state.Clock.CurrentTime,
             PersonId = person.Id,
-            EventType = SimulationEventType.ActivityChanged,
-            NewActivity = initialActivity
+            EventType = SimulationEventType.ActionChanged,
+            NewAction = initialActivity
         });
 
         return (person, schedule);

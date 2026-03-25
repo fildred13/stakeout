@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Stakeout.Simulation.Actions;
 using Stakeout.Simulation.Entities;
 
 namespace Stakeout.Simulation.Scheduling;
@@ -49,7 +50,7 @@ public static class ScheduleBuilder
 
                 schedule.Entries.Add(new ScheduleEntry
                 {
-                    Activity = ActivityType.TravellingByCar,
+                    Action = ActionType.TravelByCar,
                     StartTime = TimeSpan.FromMinutes(travelStart),
                     EndTime = TimeSpan.FromMinutes(travelEnd),
                     FromAddressId = prevAddress.Id,
@@ -61,7 +62,7 @@ public static class ScheduleBuilder
 
             schedule.Entries.Add(new ScheduleEntry
             {
-                Activity = GoalTypeToActivity(block.GoalType),
+                Action = GoalTypeToActivity(block.GoalType),
                 StartTime = TimeSpan.FromMinutes(blockStart),
                 EndTime = TimeSpan.FromMinutes(blockEnd)
             });
@@ -134,13 +135,13 @@ public static class ScheduleBuilder
         return goalType == GoalType.BeAtWork ? work : home;
     }
 
-    private static ActivityType GoalTypeToActivity(GoalType goalType)
+    private static ActionType GoalTypeToActivity(GoalType goalType)
     {
         return goalType switch
         {
-            GoalType.BeAtWork => ActivityType.Working,
-            GoalType.Sleep => ActivityType.Sleeping,
-            _ => ActivityType.AtHome
+            GoalType.BeAtWork => ActionType.Work,
+            GoalType.Sleep => ActionType.Sleep,
+            _ => ActionType.Idle
         };
     }
 

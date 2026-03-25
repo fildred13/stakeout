@@ -4,6 +4,7 @@ using Godot;
 using Stakeout;
 using Stakeout.Evidence;
 using Stakeout.Simulation;
+using Stakeout.Simulation.Actions;
 using Stakeout.Simulation.Entities;
 
 public partial class CityView : Control, IContentView
@@ -203,7 +204,7 @@ public partial class CityView : Control, IContentView
             var person = _simulationManager.State.People[personId];
             dot.Position = person.CurrentPosition - size / 2;
 
-            var color = person.CurrentActivity == ActivityType.Sleeping ? SleepingPersonColor : PersonColor;
+            var color = person.CurrentAction == ActionType.Sleep ? SleepingPersonColor : PersonColor;
             var style = new StyleBoxFlat
             {
                 BgColor = color,
@@ -291,12 +292,12 @@ public partial class CityView : Control, IContentView
             if (mousePos.DistanceTo(center) <= HoverDistance)
             {
                 var person = _simulationManager.State.People[personId];
-                var activityLabel = person.CurrentActivity switch
+                var activityLabel = person.CurrentAction switch
                 {
-                    ActivityType.Working => "Working",
-                    ActivityType.Sleeping => "Sleeping",
-                    ActivityType.TravellingByCar => "Travelling",
-                    ActivityType.AtHome => "At Home",
+                    ActionType.Work => "Working",
+                    ActionType.Sleep => "Sleeping",
+                    ActionType.TravelByCar => "Travelling",
+                    ActionType.Idle => "At Home",
                     _ => ""
                 };
                 var label = $"{person.FullName} — {activityLabel}";

@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using Godot;
 using Stakeout.Simulation;
+using Stakeout.Simulation.Actions;
 using Stakeout.Simulation.Entities;
 using Stakeout.Simulation.Scheduling;
 using Xunit;
@@ -30,11 +31,11 @@ public class ScheduleBuilderTests
         var goalSet = GoalSetBuilder.Build(job, sleepTime, wakeTime);
         var schedule = ScheduleBuilder.Build(goalSet, home, work, DefaultConfig);
 
-        var activities = schedule.Entries.Select(e => e.Activity).ToList();
-        Assert.Contains(ActivityType.Sleeping, activities);
-        Assert.Contains(ActivityType.AtHome, activities);
-        Assert.Contains(ActivityType.Working, activities);
-        Assert.Contains(ActivityType.TravellingByCar, activities);
+        var activities = schedule.Entries.Select(e => e.Action).ToList();
+        Assert.Contains(ActionType.Sleep, activities);
+        Assert.Contains(ActionType.Idle, activities);
+        Assert.Contains(ActionType.Work, activities);
+        Assert.Contains(ActionType.TravelByCar, activities);
     }
 
     [Fact]
@@ -69,7 +70,7 @@ public class ScheduleBuilderTests
         var goalSet = GoalSetBuilder.Build(job, sleepTime, wakeTime);
         var schedule = ScheduleBuilder.Build(goalSet, home, work, DefaultConfig);
 
-        var travelEntries = schedule.Entries.Where(e => e.Activity == ActivityType.TravellingByCar).ToList();
+        var travelEntries = schedule.Entries.Where(e => e.Action == ActionType.TravelByCar).ToList();
         Assert.True(travelEntries.Count >= 2);
         foreach (var travel in travelEntries)
         {
@@ -90,9 +91,9 @@ public class ScheduleBuilderTests
         var schedule = ScheduleBuilder.Build(goalSet, home, work, DefaultConfig);
 
         var midday = schedule.GetEntryAtTime(new TimeSpan(12, 0, 0));
-        Assert.Equal(ActivityType.Working, midday.Activity);
+        Assert.Equal(ActionType.Work, midday.Action);
 
         var night = schedule.GetEntryAtTime(new TimeSpan(3, 0, 0));
-        Assert.Equal(ActivityType.Sleeping, night.Activity);
+        Assert.Equal(ActionType.Sleep, night.Action);
     }
 }

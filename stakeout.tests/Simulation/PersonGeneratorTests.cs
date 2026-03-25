@@ -83,7 +83,7 @@ public class PersonGeneratorTests
     {
         var state = CreateState();
         var (person, _) = CreateGenerator().GeneratePerson(state);
-        Assert.True(Enum.IsDefined(person.CurrentActivity));
+        Assert.True(Enum.IsDefined(person.CurrentAction));
     }
 
     [Fact]
