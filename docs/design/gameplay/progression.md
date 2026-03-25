@@ -213,13 +213,3 @@ Tier 6: foreign funding
 Tier 7: geopolitical destabilization
 
 Players subconsciously feel a single unfolding story.
-
-If you want next, I can help you design one of these (very powerful for games like Shadows of Doubt and Covert Action):
-
-✅ A crime taxonomy system (procedural case generator rules)
-✅ A case escalation flowchart for pacing the campaign
-✅ A recurring villain structure that spans all tiers
-✅ The signature “first murder” case that hooks the police chief
-✅ A list of 1980s-specific crimes that feel era-authentic (very fun category)
-
-Which direction do you want to build next?
