@@ -30,6 +30,7 @@ public partial class GameShell : Control
     private Button _playButton;
     private Button _fastButton;
     private Button _superFastButton;
+    private Button _ultraFastButton;
     private VBoxContainer _menuContainer;
 
     // Content area
@@ -74,11 +75,13 @@ public partial class GameShell : Control
         _playButton = GetNode<Button>("LeftSidebar/VBox/TimeControls/PlayButton");
         _fastButton = GetNode<Button>("LeftSidebar/VBox/TimeControls/FastButton");
         _superFastButton = GetNode<Button>("LeftSidebar/VBox/TimeControls/SuperFastButton");
+        _ultraFastButton = GetNode<Button>("LeftSidebar/VBox/TimeControls/UltraFastButton");
 
         _pauseButton.Pressed += () => SetTimeScale(0f);
         _playButton.Pressed += () => SetTimeScale(1f);
-        _fastButton.Pressed += () => SetTimeScale(32f);
-        _superFastButton.Pressed += () => SetTimeScale(64f);
+        _fastButton.Pressed += () => SetTimeScale(64f);
+        _superFastButton.Pressed += () => SetTimeScale(256f);
+        _ultraFastButton.Pressed += () => SetTimeScale(512f);
 
         HighlightActiveTimeButton();
 
@@ -194,6 +197,7 @@ public partial class GameShell : Control
         _playButton.Modulate = scale == 1f ? activeColor : normalColor;
         _fastButton.Modulate = scale == 32f ? activeColor : normalColor;
         _superFastButton.Modulate = scale == 64f ? activeColor : normalColor;
+        _ultraFastButton.Modulate = scale == 256f ? activeColor : normalColor;
     }
 
     public override void _UnhandledInput(InputEvent @event)

@@ -14,4 +14,3 @@ One is an office. Let's assume the address is a high rise. An office has a build
 The park is outdoors, and maybe has a small beach along the shore, a jogging path, a central woods area, a parking lot, a baseball diamond.
 
 The dive bar has a front door and back door. A storage room in the back. A small office for the manager. The main bar area. An alley with a dumpster where employees park, etc.
-

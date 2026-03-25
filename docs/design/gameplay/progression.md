@@ -45,7 +45,7 @@ Illegal gambling in back rooms
 🚔 Tier 2 — Private Investigator Work
 
 Theme: Real consequences begin
-Pay: Enough to survive + Yellow Pages ad unlocked
+Pay: Enough to survive + OrangePages ad unlocked
 Sources: Phone calls, lawyers, small businesses
 
 Now investigations require planning and evidence.
@@ -174,8 +174,9 @@ Intelligence leaks inside government
 Double agents
 Extraction missions
 Political assassinations
-☢️ Tier 8 — Endgame Threats
 
+
+☢️ Tier 8 — Endgame Threats
 Theme: World-scale consequences
 
 Cases blur crime vs geopolitics.
