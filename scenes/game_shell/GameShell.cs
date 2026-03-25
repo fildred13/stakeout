@@ -184,6 +184,20 @@ public partial class GameShell : Control
         _superFastButton.Modulate = scale == 64f ? activeColor : normalColor;
     }
 
+    public override void _UnhandledInput(InputEvent @event)
+    {
+        if (@event.IsActionPressed("ui_cancel"))
+        {
+            // Save current time scale so it can be restored on Resume
+            _gameManager.PreviousTimeScale = _simulationManager.State.Clock.TimeScale;
+            // Pause the simulation
+            _simulationManager.State.Clock.TimeScale = 0f;
+            // Open the main menu as a pause menu
+            GetTree().ChangeSceneToFile("res://scenes/main_menu/MainMenu.tscn");
+            GetViewport().SetInputAsHandled();
+        }
+    }
+
     public override void _Process(double delta)
     {
         var time = _simulationManager.State.Clock.CurrentTime;

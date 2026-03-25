@@ -4,7 +4,7 @@
 [ext_resource type="FontFile" uid="uid://cywjcf06f322g" path="res://fonts/karma-future/Karma Future.otf" id="2_title_font"]
 [ext_resource type="FontFile" uid="uid://b1rib3oax2wve" path="res://fonts/exepixelperfect/EXEPixelPerfect.ttf" id="3_menu_font"]
 
-[node name="MainMenu" type="Control" unique_id=2115752152]
+[node name="MainMenu" type="Control"]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -13,7 +13,7 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_script")
 
-[node name="VBoxContainer" type="VBoxContainer" parent="." unique_id=1829203333]
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
@@ -21,40 +21,52 @@ anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
 offset_left = -150.0
-offset_top = -120.0
+offset_top = -150.0
 offset_right = 150.0
-offset_bottom = 120.0
+offset_bottom = 150.0
 grow_horizontal = 2
 grow_vertical = 2
 alignment = 1
 
-[node name="TitleLabel" type="Label" parent="VBoxContainer" unique_id=2086128712]
+[node name="TitleLabel" type="Label" parent="VBoxContainer"]
 layout_mode = 2
 theme_override_fonts/font = ExtResource("2_title_font")
 theme_override_font_sizes/font_size = 72
 text = "STAKEOUT"
 horizontal_alignment = 1
 
-[node name="NewCareerButton" type="Button" parent="VBoxContainer" unique_id=1017241079]
+[node name="ResumeButton" type="Button" parent="VBoxContainer"]
 layout_mode = 2
 theme_override_fonts/font = ExtResource("3_menu_font")
 theme_override_font_sizes/font_size = 16
-text = "New Career"
+text = "Resume"
 
-[node name="LoadCareerButton" type="Button" parent="VBoxContainer" unique_id=721204084]
+[node name="NewGameButton" type="Button" parent="VBoxContainer"]
 layout_mode = 2
 theme_override_fonts/font = ExtResource("3_menu_font")
 theme_override_font_sizes/font_size = 16
-text = "Load Career"
+text = "New Game"
 
-[node name="GodModeButton" type="Button" parent="VBoxContainer" unique_id=1927119986]
+[node name="SaveButton" type="Button" parent="VBoxContainer"]
 layout_mode = 2
 theme_override_fonts/font = ExtResource("3_menu_font")
 theme_override_font_sizes/font_size = 16
-text = "God Mode"
+text = "Save"
 
-[node name="OptionsButton" type="Button" parent="VBoxContainer" unique_id=59326174]
+[node name="LoadButton" type="Button" parent="VBoxContainer"]
+layout_mode = 2
+theme_override_fonts/font = ExtResource("3_menu_font")
+theme_override_font_sizes/font_size = 16
+text = "Load"
+
+[node name="OptionsButton" type="Button" parent="VBoxContainer"]
 layout_mode = 2
 theme_override_fonts/font = ExtResource("3_menu_font")
 theme_override_font_sizes/font_size = 16
 text = "Options"
+
+[node name="QuitButton" type="Button" parent="VBoxContainer"]
+layout_mode = 2
+theme_override_fonts/font = ExtResource("3_menu_font")
+theme_override_font_sizes/font_size = 16
+text = "Quit"
