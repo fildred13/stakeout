@@ -17,4 +17,14 @@ public static class SublocationGeneratorRegistry
     {
         return _generators.TryGetValue(type, out var gen) ? gen : null;
     }
+
+    public static void RegisterAll()
+    {
+        Register(AddressType.SuburbanHome, new SuburbanHomeGenerator());
+        Register(AddressType.Office, new OfficeGenerator());
+        Register(AddressType.Diner, new DinerGenerator());
+        Register(AddressType.DiveBar, new DiveBarGenerator());
+        Register(AddressType.ApartmentBuilding, new ApartmentBuildingGenerator());
+        Register(AddressType.Park, new ParkGenerator());
+    }
 }
