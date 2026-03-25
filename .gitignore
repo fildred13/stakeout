@@ -5,3 +5,8 @@
 # .NET build output
 bin/
 obj/
+
+# Superpowers server state
+.superpowers/**/.server-stopped
+.superpowers/**/.server.pid
+.superpowers/**/waiting.html

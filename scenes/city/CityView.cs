@@ -4,6 +4,7 @@ using Godot;
 using Stakeout;
 using Stakeout.Evidence;
 using Stakeout.Simulation;
+using Stakeout.Simulation.Actions;
 using Stakeout.Simulation.Entities;
 
 public partial class CityView : Control, IContentView
@@ -32,6 +33,7 @@ public partial class CityView : Control, IContentView
     private static readonly Color OfficeColor = new(0.2f, 0.7f, 0.9f);
     private static readonly Color PersonColor = new(1f, 1f, 1f);
     private static readonly Color SleepingPersonColor = new(0.5f, 0.5f, 0.5f);
+    private static readonly Color DeadPersonColor = new(1f, 0f, 0f);
     private static readonly Color PlayerColor = new(0.3f, 0.5f, 1f);
     private static readonly Color BorderColor = new(0f, 0f, 0f);
 
@@ -203,7 +205,13 @@ public partial class CityView : Control, IContentView
             var person = _simulationManager.State.People[personId];
             dot.Position = person.CurrentPosition - size / 2;
 
-            var color = person.CurrentActivity == ActivityType.Sleeping ? SleepingPersonColor : PersonColor;
+            Color color;
+            if (!person.IsAlive)
+                color = DeadPersonColor;
+            else if (person.CurrentAction == ActionType.Sleep)
+                color = SleepingPersonColor;
+            else
+                color = PersonColor;
             var style = new StyleBoxFlat
             {
                 BgColor = color,
@@ -291,15 +299,25 @@ public partial class CityView : Control, IContentView
             if (mousePos.DistanceTo(center) <= HoverDistance)
             {
                 var person = _simulationManager.State.People[personId];
-                var activityLabel = person.CurrentActivity switch
+
+                string label;
+                if (!person.IsAlive)
                 {
-                    ActivityType.Working => "Working",
-                    ActivityType.Sleeping => "Sleeping",
-                    ActivityType.TravellingByCar => "Travelling",
-                    ActivityType.AtHome => "At Home",
-                    _ => ""
-                };
-                var label = $"{person.FullName} — {activityLabel}";
+                    label = $"{person.FullName}: Dead";
+                }
+                else
+                {
+                    var actionLabel = person.CurrentAction switch
+                    {
+                        ActionType.Work => FormatWorkLabel(person),
+                        ActionType.Sleep => "Sleep",
+                        ActionType.TravelByCar => FormatTravelLabel(person),
+                        ActionType.Idle => "Idle",
+                        ActionType.KillPerson => "KillPerson",
+                        _ => person.CurrentAction.ToString()
+                    };
+                    label = $"{person.FullName}: {actionLabel}";
+                }
                 if (!lines.Contains(label) && !lines.Contains(person.FullName))
                     lines.Add(label);
             }
@@ -315,6 +333,25 @@ public partial class CityView : Control, IContentView
         {
             _hoverLabel.Visible = false;
         }
+    }
+
+    private string FormatTravelLabel(Person person)
+    {
+        if (person.TravelInfo == null) return "TravelByCar";
+        var toAddr = _simulationManager.State.Addresses.GetValueOrDefault(person.TravelInfo.ToAddressId);
+        if (toAddr == null) return "TravelByCar";
+        var street = _simulationManager.State.Streets.GetValueOrDefault(toAddr.StreetId);
+        return $"TravelByCar → {toAddr.Number} {street?.Name ?? "Unknown"}";
+    }
+
+    private string FormatWorkLabel(Person person)
+    {
+        var job = _simulationManager.State.Jobs.GetValueOrDefault(person.JobId);
+        if (job == null) return "Work";
+        var workAddr = _simulationManager.State.Addresses.GetValueOrDefault(job.WorkAddressId);
+        if (workAddr == null) return "Work";
+        var street = _simulationManager.State.Streets.GetValueOrDefault(workAddr.StreetId);
+        return $"Work at {workAddr.Number} {street?.Name ?? "Unknown"}";
     }
 
     private static Panel CreateIconPanel(Vector2 size, Color fillColor, Color borderColor, int borderWidth)

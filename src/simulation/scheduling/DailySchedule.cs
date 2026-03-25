@@ -1,12 +1,12 @@
 using System;
 using System.Collections.Generic;
-using Stakeout.Simulation.Entities;
+using Stakeout.Simulation.Actions;
 
 namespace Stakeout.Simulation.Scheduling;
 
 public class ScheduleEntry
 {
-    public ActivityType Activity { get; set; }
+    public ActionType Action { get; set; }
     public TimeSpan StartTime { get; set; }
     public TimeSpan EndTime { get; set; }
     public int? TargetAddressId { get; set; }

@@ -1,33 +1,40 @@
 # Simulation Scheduling
 
 ## Purpose
-Gives each Person an AI "brain" that follows a daily schedule derived from prioritized goals. Handles goal resolution, schedule building, sleep computation, and per-frame activity execution with state transitions.
+Gives each Person an AI "brain" that follows a daily schedule derived from prioritized Objectives. Handles objective resolution into Tasks, schedule building, sleep computation, and per-frame action execution with state transitions.
 
 ## Key Files
 | File | Role |
 |------|------|
-| `src/simulation/scheduling/Goal.cs` | GoalType enum (BeAtWork, BeAtHome, Sleep), Goal class (type, priority, time window), GoalSet, GoalSetBuilder |
-| `src/simulation/scheduling/SleepScheduleCalculator.cs` | Pure function: computes sleep/wake times from job shift + commute, handles midnight wrapping |
-| `src/simulation/scheduling/ScheduleBuilder.cs` | Converts (GoalSet, addresses, MapConfig) → DailySchedule — minute-by-minute priority resolution, block merging, travel insertion |
-| `src/simulation/scheduling/DailySchedule.cs` | DailySchedule (list of ScheduleEntry) and ScheduleEntry (activity, time window, target/from address IDs) |
-| `src/simulation/scheduling/PersonBehavior.cs` | Per-frame updater: compares current activity to schedule, triggers transitions, interpolates travel, logs events to journal |
+| `src/simulation/objectives/Objective.cs` | Objective, ObjectiveStep, enums (ObjectiveType, ObjectiveSource, ObjectiveStatus, StepStatus) |
+| `src/simulation/objectives/ObjectiveResolver.cs` | Decomposes Objectives → Tasks; executes instant steps (e.g., ChooseVictim); factory methods for CoreNeed objectives |
+| `src/simulation/objectives/Task.cs` | SimTask class — schedulable item with ActionType, priority, time window, target address |
+| `src/simulation/actions/ActionType.cs` | ActionType enum (Idle, Work, Sleep, TravelByCar, KillPerson) |
+| `src/simulation/actions/ActionExecutor.cs` | Executes actions on task boundaries — modifies world state, produces Traces |
+| `src/simulation/scheduling/ScheduleBuilder.cs` | Converts List\<SimTask\> → DailySchedule — minute-by-minute priority resolution, block merging, travel insertion |
+| `src/simulation/scheduling/DailySchedule.cs` | DailySchedule (list of ScheduleEntry) and ScheduleEntry (ActionType, time window, target/from address IDs) |
+| `src/simulation/scheduling/SleepScheduleCalculator.cs` | Pure function: computes sleep/wake times from job shift + commute |
+| `src/simulation/scheduling/PersonBehavior.cs` | Per-frame updater: compares current action to schedule, triggers transitions, executes actions (e.g., KillPerson), skips dead NPCs |
 
 ## How It Works
-When a Person is created, PersonGenerator orchestrates the full pipeline:
-1. GoalSetBuilder creates 3 goals: Sleep (priority 30), Work (priority 20), Home (priority 10, always active)
-2. SleepScheduleCalculator computes sleep/wake times, adjusting around job shifts and commute
-3. ScheduleBuilder resolves goals minute-by-minute — highest priority wins — then merges into contiguous blocks and inserts travel entries between location changes
+The pipeline flows: **Objectives → Tasks → Schedule → Actions → Traces**.
 
-Each frame, PersonBehavior.Update() checks the person's current activity against what the schedule says they should be doing. On mismatch, it triggers a transition: logging the end of the old activity, starting travel if a location change is needed, or switching directly. During travel, position is interpolated between origin and destination based on elapsed time.
+1. **Objectives** live on `Person.Objectives`. Sources include CoreNeed (sleep, work, idle), CrimeTemplate (murder), and future sources (Trait, Assignment).
+2. **ObjectiveResolver.ResolveTasks()** iterates objectives, executes any instant steps (side effects computed at resolution time), then generates SimTasks for the current non-instant step.
+3. **ScheduleBuilder.BuildFromTasks()** takes the task list and resolves minute-by-minute — highest priority wins — then merges contiguous blocks and inserts TravelByCar entries between location changes.
+4. **PersonBehavior.Update()** each frame checks the person's current action against schedule. On mismatch, triggers transitions. On KillPerson action boundary, finds the matching objective and calls ActionExecutor.Execute().
+5. **ActionExecutor** modifies world state (e.g., victim.IsAlive = false) and produces Traces (Condition on victim, Mark at location).
+
+When Objectives change (crime injected, step advances), `Person.NeedsScheduleRebuild` is flagged. SimulationManager detects this and re-runs the ObjectiveResolver → ScheduleBuilder pipeline.
 
 ## Key Decisions
-- **Priority-based goal resolution:** Each minute has a winning goal. This is simple, deterministic, and easy to extend with new goal types (criminal plots, player interactions) by just adding goals with appropriate priorities.
-- **Pre-computed daily schedules:** Schedules are built once per day (currently once at creation), not evaluated reactively. Reactive re-evaluation is a designed-for future extension.
-- **Travel as explicit schedule entries:** ScheduleBuilder inserts TravellingByCar entries into the schedule, so PersonBehavior doesn't need to decide when to travel — it just follows the schedule.
-- **Sleep priority is highest (30):** Ensures people sleep even if other goals overlap. Work (20) beats Home (10).
+- **Priority-based task resolution:** Each minute has a winning task. Crime tasks at priority 40 override sleep (30) and work (20). Simple, deterministic, extensible.
+- **Instant steps:** Some objective steps (like ChooseVictim) compute data at resolution time rather than being scheduled. They execute in a while-loop during ResolveTasks() and advance the objective immediately.
+- **Travel auto-insertion:** ScheduleBuilder inserts TravelByCar between blocks with different target addresses, computing per-pair travel times from MapConfig.
+- **SimTask (not Task):** Named to avoid collision with System.Threading.Tasks.Task.
 
 ## Connection Points
-- **Reads from:** SimulationState (Job shift hours, Address positions for commute calculation, MapConfig for travel times)
-- **Writes to:** Person entity (CurrentActivity, CurrentPosition, CurrentAddressId, TravelInfo) and EventJournal (all transitions)
-- **Called by:** SimulationManager._Process() invokes PersonBehavior.Update() each frame
-- **Built by:** PersonGenerator orchestrates the full Goal → Sleep → Schedule pipeline during NPC creation
+- **Reads from:** SimulationState (Jobs, Addresses, People, MapConfig, Crimes)
+- **Writes to:** Person (CurrentAction, Position, AddressId, TravelInfo, IsAlive), SimulationState (Traces), EventJournal
+- **Called by:** SimulationManager._Process() invokes PersonBehavior.Update() each frame; SimulationManager.RebuildSchedule() re-derives schedules
+- **Built by:** PersonGenerator creates CoreNeed Objectives and builds initial schedule; CrimeGenerator injects crime Objectives

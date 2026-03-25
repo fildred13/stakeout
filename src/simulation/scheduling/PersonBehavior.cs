@@ -1,6 +1,9 @@
 using System;
+using System.Linq;
+using Stakeout.Simulation.Actions;
 using Stakeout.Simulation.Entities;
 using Stakeout.Simulation.Events;
+using Stakeout.Simulation.Objectives;
 
 namespace Stakeout.Simulation.Scheduling;
 
@@ -13,21 +16,25 @@ public class PersonBehavior
         _mapConfig = mapConfig;
     }
 
-    public void Update(Person person, DailySchedule schedule, SimulationState state)
+    public void Update(Person person, SimulationState state)
     {
+        if (!person.IsAlive) return;
+        if (person.Schedule == null) return;
+
+        var schedule = person.Schedule;
         var currentTime = state.Clock.CurrentTime;
         var timeOfDay = currentTime.TimeOfDay;
         var entry = schedule.GetEntryAtTime(timeOfDay);
 
         // If person is currently travelling, handle travel interpolation
-        if (person.CurrentActivity == ActivityType.TravellingByCar && person.TravelInfo != null)
+        if (person.CurrentAction == ActionType.TravelByCar && person.TravelInfo != null)
         {
             UpdateTravel(person, state);
             return;
         }
 
         // If the scheduled activity differs from current, transition
-        if (entry.Activity != person.CurrentActivity)
+        if (entry.Action != person.CurrentAction)
         {
             Transition(person, entry, state);
         }
@@ -71,12 +78,12 @@ public class PersonBehavior
     private void Transition(Person person, ScheduleEntry entry, SimulationState state)
     {
         var currentTime = state.Clock.CurrentTime;
-        var oldActivity = person.CurrentActivity;
+        var oldActivity = person.CurrentAction;
 
         // Log end of old activity
         LogActivityEnd(person, oldActivity, state);
 
-        if (entry.Activity == ActivityType.TravellingByCar)
+        if (entry.Action == ActionType.TravelByCar)
         {
             // Start travel
             StartTravel(person, entry, state);
@@ -94,8 +101,34 @@ public class PersonBehavior
             else
             {
                 // Same location, switch activity directly
-                person.CurrentActivity = entry.Activity;
-                LogActivityStart(person, entry.Activity, state);
+                person.CurrentAction = entry.Action;
+                LogActivityStart(person, entry.Action, state);
+            }
+        }
+
+        // Check if this is an executable action (KillPerson)
+        if (entry.Action == ActionType.KillPerson)
+        {
+            // Find the active CommitMurder objective whose current step matches
+            var objective = person.Objectives.FirstOrDefault(o =>
+                o.Status == ObjectiveStatus.Active &&
+                o.Type == ObjectiveType.CommitMurder &&
+                o.CurrentStep != null &&
+                o.CurrentStep.ActionType == ActionType.KillPerson);
+
+            if (objective != null)
+            {
+                // Build a minimal SimTask with ActionData from the objective
+                var task = new SimTask
+                {
+                    ActionType = ActionType.KillPerson,
+                    ObjectiveId = objective.Id,
+                    ActionData = new System.Collections.Generic.Dictionary<string, object>(objective.Data)
+                };
+
+                ActionExecutor.Execute(task, person, objective, state);
+                objective.AdvanceStep();
+                person.NeedsScheduleRebuild = true;
             }
         }
 
@@ -104,9 +137,9 @@ public class PersonBehavior
         {
             Timestamp = currentTime,
             PersonId = person.Id,
-            EventType = SimulationEventType.ActivityChanged,
-            OldActivity = oldActivity,
-            NewActivity = person.CurrentActivity
+            EventType = SimulationEventType.ActionChanged,
+            OldAction = oldActivity,
+            NewAction = person.CurrentAction
         });
     }
 
@@ -133,7 +166,7 @@ public class PersonBehavior
             ToAddressId = toAddressId
         };
 
-        person.CurrentActivity = ActivityType.TravellingByCar;
+        person.CurrentAction = ActionType.TravelByCar;
         person.CurrentAddressId = null;
 
         state.Journal.Append(new SimulationEvent
@@ -167,7 +200,7 @@ public class PersonBehavior
             ToAddressId = targetAddressId
         };
 
-        person.CurrentActivity = ActivityType.TravellingByCar;
+        person.CurrentAction = ActionType.TravelByCar;
         person.CurrentAddressId = null;
 
         state.Journal.Append(new SimulationEvent
@@ -185,12 +218,12 @@ public class PersonBehavior
         return entry.TargetAddressId;
     }
 
-    private void LogActivityEnd(Person person, ActivityType activity, SimulationState state)
+    private void LogActivityEnd(Person person, ActionType activity, SimulationState state)
     {
         var eventType = activity switch
         {
-            ActivityType.Working => SimulationEventType.StoppedWorking,
-            ActivityType.Sleeping => SimulationEventType.WokeUp,
+            ActionType.Work => SimulationEventType.StoppedWorking,
+            ActionType.Sleep => SimulationEventType.WokeUp,
             _ => (SimulationEventType?)null
         };
 
@@ -206,12 +239,12 @@ public class PersonBehavior
         }
     }
 
-    private void LogActivityStart(Person person, ActivityType activity, SimulationState state)
+    private void LogActivityStart(Person person, ActionType activity, SimulationState state)
     {
         var eventType = activity switch
         {
-            ActivityType.Working => SimulationEventType.StartedWorking,
-            ActivityType.Sleeping => SimulationEventType.FellAsleep,
+            ActionType.Work => SimulationEventType.StartedWorking,
+            ActionType.Sleep => SimulationEventType.FellAsleep,
             _ => (SimulationEventType?)null
         };
 

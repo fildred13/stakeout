@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>NPC Cognitive Architecture — STAKEOUT</title>
+<style>
+  body { background: #121212; color: #e0e0e0; font-family: system-ui, sans-serif; margin: 2rem; }
+  h2 { color: #e0e0e0; margin-bottom: 0.5rem; }
+  h3 { color: #ccc; margin-top: 2rem; }
+  p.subtitle { color: #888; font-size: 0.95rem; margin-top: 0; }
+  strong { color: inherit; }
+  p { color: #aaa; font-size: 0.85rem; }
+</style>
+</head>
+<body>
+
+<h2>NPC Cognitive Architecture</h2>
+<p class="subtitle">How Traits, Objectives, Tasks, Actions, and Traces connect</p>
+
+<div style="margin: 2rem auto; max-width: 900px;">
+  <svg viewBox="0 0 900 720" style="width:100%; font-family: inherit;">
+    <defs>
+      <marker id="arrow" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+        <polygon points="0 0, 10 3.5, 0 7" fill="#e0e0e0"/>
+      </marker>
+      <marker id="arrow-accent" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+        <polygon points="0 0, 10 3.5, 0 7" fill="#64b5f6"/>
+      </marker>
+      <marker id="arrow-green" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+        <polygon points="0 0, 10 3.5, 0 7" fill="#81c784"/>
+      </marker>
+      <marker id="arrow-orange" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+        <polygon points="0 0, 10 3.5, 0 7" fill="#ffb74d"/>
+      </marker>
+    </defs>
+
+    <!-- SOURCES ROW -->
+    <text x="450" y="25" text-anchor="middle" fill="#888" font-size="11" letter-spacing="2">OBJECTIVE SOURCES</text>
+
+    <!-- Traits box -->
+    <rect x="50" y="40" width="180" height="70" rx="8" fill="#1a1a2e" stroke="#9c27b0" stroke-width="2"/>
+    <text x="140" y="68" text-anchor="middle" fill="#ce93d8" font-size="14" font-weight="bold">Traits</text>
+    <text x="140" y="88" text-anchor="middle" fill="#888" font-size="11">"barfly", "party animal"</text>
+
+    <!-- Crime Templates box -->
+    <rect x="280" y="40" width="180" height="70" rx="8" fill="#1a1a2e" stroke="#f44336" stroke-width="2"/>
+    <text x="370" y="68" text-anchor="middle" fill="#ef9a9a" font-size="14" font-weight="bold">Crime Templates</text>
+    <text x="370" y="88" text-anchor="middle" fill="#888" font-size="11">"serial killer"</text>
+
+    <!-- Assignments box -->
+    <rect x="510" y="40" width="180" height="70" rx="8" fill="#1a1a2e" stroke="#ff9800" stroke-width="2"/>
+    <text x="600" y="68" text-anchor="middle" fill="#ffb74d" font-size="14" font-weight="bold">Assignments</text>
+    <text x="600" y="88" text-anchor="middle" fill="#888" font-size="11">from other NPCs</text>
+
+    <!-- Core Needs box -->
+    <rect x="740" y="40" width="130" height="70" rx="8" fill="#1a1a2e" stroke="#607d8b" stroke-width="2"/>
+    <text x="805" y="68" text-anchor="middle" fill="#90a4ae" font-size="14" font-weight="bold">Core Needs</text>
+    <text x="805" y="88" text-anchor="middle" fill="#888" font-size="11">sleep, work</text>
+
+    <!-- Arrows from sources to Objectives -->
+    <line x1="140" y1="110" x2="370" y2="170" stroke="#9c27b0" stroke-width="1.5" marker-end="url(#arrow)" opacity="0.7"/>
+    <line x1="370" y1="110" x2="370" y2="170" stroke="#f44336" stroke-width="1.5" marker-end="url(#arrow)" opacity="0.7"/>
+    <line x1="600" y1="110" x2="500" y2="170" stroke="#ff9800" stroke-width="1.5" marker-end="url(#arrow)" opacity="0.7"/>
+    <line x1="805" y1="110" x2="560" y2="170" stroke="#607d8b" stroke-width="1.5" marker-end="url(#arrow)" opacity="0.7"/>
+
+    <!-- OBJECTIVES -->
+    <rect x="250" y="170" width="400" height="80" rx="10" fill="#1b2a1b" stroke="#4caf50" stroke-width="2.5"/>
+    <text x="450" y="198" text-anchor="middle" fill="#81c784" font-size="16" font-weight="bold">Objectives</text>
+    <text x="450" y="218" text-anchor="middle" fill="#aaa" font-size="11">High-level goals with priority</text>
+    <text x="450" y="234" text-anchor="middle" fill="#666" font-size="10">"Kill someone" · "Hold a job" · "Go to bar nightly" · "Plan heist"</text>
+
+    <!-- Arrow: Objectives → Tasks -->
+    <line x1="450" y1="250" x2="450" y2="300" stroke="#81c784" stroke-width="2" marker-end="url(#arrow-green)"/>
+    <text x="465" y="282" fill="#81c784" font-size="10">spawns</text>
+
+    <!-- TASKS -->
+    <rect x="250" y="300" width="400" height="80" rx="10" fill="#1a1a2e" stroke="#64b5f6" stroke-width="2.5"/>
+    <text x="450" y="328" text-anchor="middle" fill="#90caf9" font-size="16" font-weight="bold">Tasks</text>
+    <text x="450" y="348" text-anchor="middle" fill="#aaa" font-size="11">Concrete scheduled items (time, place, priority)</text>
+    <text x="450" y="364" text-anchor="middle" fill="#666" font-size="10">"Go to 42 Oak St at 1am" · "Work 9-5 at diner" · "Sleep 10pm-6am"</text>
+
+    <!-- Arrow: Tasks → Schedule -->
+    <path d="M 350 380 Q 250 410 250 430" stroke="#64b5f6" stroke-width="1.5" fill="none" marker-end="url(#arrow-accent)"/>
+    <text x="260" y="412" fill="#64b5f6" font-size="10">builds</text>
+
+    <!-- Arrow: Tasks → Actions -->
+    <line x1="450" y1="380" x2="450" y2="440" stroke="#64b5f6" stroke-width="2" marker-end="url(#arrow-accent)"/>
+    <text x="465" y="418" fill="#64b5f6" font-size="10">executes as</text>
+
+    <!-- SCHEDULE (side box) -->
+    <rect x="80" y="430" width="220" height="60" rx="8" fill="#1a1a2e" stroke="#42a5f5" stroke-width="1.5" stroke-dasharray="6,3"/>
+    <text x="190" y="455" text-anchor="middle" fill="#90caf9" font-size="13" font-weight="bold">Daily Schedule</text>
+    <text x="190" y="472" text-anchor="middle" fill="#888" font-size="10">Priority-resolved minute-by-minute</text>
+
+    <!-- Recalc arrow -->
+    <path d="M 190 430 Q 190 400 250 370" stroke="#42a5f5" stroke-width="1" fill="none" stroke-dasharray="4,3"/>
+    <text x="168" y="395" fill="#42a5f5" font-size="9">recalc on change</text>
+
+    <!-- ACTIONS -->
+    <rect x="310" y="440" width="280" height="70" rx="10" fill="#2a1a1a" stroke="#ff7043" stroke-width="2.5"/>
+    <text x="450" y="468" text-anchor="middle" fill="#ff8a65" font-size="16" font-weight="bold">Actions</text>
+    <text x="450" y="488" text-anchor="middle" fill="#aaa" font-size="11">Atomic behaviors that change world state</text>
+    <text x="450" y="500" text-anchor="middle" fill="#666" font-size="10">"travel to" · "kill person" · "buy drinks"</text>
+
+    <!-- Arrow: Actions → Traces -->
+    <line x1="450" y1="510" x2="450" y2="570" stroke="#ff7043" stroke-width="2" marker-end="url(#arrow-orange)"/>
+    <text x="465" y="548" fill="#ffb74d" font-size="10">produces</text>
+
+    <!-- TRACES -->
+    <rect x="130" y="570" width="640" height="130" rx="10" fill="#1a1a1a" stroke="#ffd54f" stroke-width="2"/>
+    <text x="450" y="595" text-anchor="middle" fill="#ffd54f" font-size="14" font-weight="bold">Traces</text>
+
+    <!-- Five trace types -->
+    <rect x="140" y="610" width="115" height="75" rx="6" fill="#2a2a1a" stroke="#ffd54f" stroke-width="1"/>
+    <text x="197" y="632" text-anchor="middle" fill="#fff59d" font-size="12" font-weight="bold">Items</text>
+    <text x="197" y="648" text-anchor="middle" fill="#888" font-size="9">Physical objects</text>
+    <text x="197" y="661" text-anchor="middle" fill="#666" font-size="8">receipt, weapon, note</text>
+    <text x="197" y="678" text-anchor="middle" fill="#555" font-size="8">has location lifecycle</text>
+
+    <rect x="265" y="610" width="115" height="75" rx="6" fill="#2a2a1a" stroke="#ffd54f" stroke-width="1"/>
+    <text x="322" y="632" text-anchor="middle" fill="#fff59d" font-size="12" font-weight="bold">Sightings</text>
+    <text x="322" y="648" text-anchor="middle" fill="#888" font-size="9">NPC perceptions</text>
+    <text x="322" y="661" text-anchor="middle" fill="#666" font-size="8">saw person, heard noise</text>
+    <text x="322" y="678" text-anchor="middle" fill="#555" font-size="8">lives in NPC memory</text>
+
+    <rect x="390" y="610" width="115" height="75" rx="6" fill="#2a2a1a" stroke="#ffd54f" stroke-width="1"/>
+    <text x="447" y="632" text-anchor="middle" fill="#fff59d" font-size="12" font-weight="bold">Marks</text>
+    <text x="447" y="648" text-anchor="middle" fill="#888" font-size="9">Environmental</text>
+    <text x="447" y="661" text-anchor="middle" fill="#666" font-size="8">blood, tire marks, etc.</text>
+    <text x="447" y="678" text-anchor="middle" fill="#555" font-size="8">bound to a location</text>
+
+    <rect x="515" y="610" width="115" height="75" rx="6" fill="#2a2a1a" stroke="#ffd54f" stroke-width="1"/>
+    <text x="572" y="632" text-anchor="middle" fill="#fff59d" font-size="12" font-weight="bold">Conditions</text>
+    <text x="572" y="648" text-anchor="middle" fill="#888" font-size="9">States on persons</text>
+    <text x="572" y="661" text-anchor="middle" fill="#666" font-size="8">wounds, DNA, death</text>
+    <text x="572" y="678" text-anchor="middle" fill="#555" font-size="8">attached to a person</text>
+
+    <rect x="640" y="610" width="115" height="75" rx="6" fill="#2a2a1a" stroke="#ffd54f" stroke-width="1"/>
+    <text x="697" y="632" text-anchor="middle" fill="#fff59d" font-size="12" font-weight="bold">Records</text>
+    <text x="697" y="648" text-anchor="middle" fill="#888" font-size="9">Data in systems</text>
+    <text x="697" y="661" text-anchor="middle" fill="#666" font-size="8">footage, logs, emails</text>
+    <text x="697" y="678" text-anchor="middle" fill="#555" font-size="8">in a data system</text>
+
+  </svg>
+</div>
+
+<h3 style="margin-top: 2rem;">Key Relationships</h3>
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+  <div style="background: #1a1a2e; padding: 1rem; border-radius: 8px; border-left: 3px solid #4caf50;">
+    <strong style="color: #81c784;">Objectives → Tasks</strong>
+    <p style="color: #aaa; font-size: 0.85rem; margin: 0.5rem 0 0;">An Objective like "kill someone" decomposes into Tasks: "choose target", "go to their home at 1am", "kill target", "go home". Each Task has a time window and priority.</p>
+  </div>
+  <div style="background: #1a1a2e; padding: 1rem; border-radius: 8px; border-left: 3px solid #64b5f6;">
+    <strong style="color: #90caf9;">Tasks → Schedule</strong>
+    <p style="color: #aaa; font-size: 0.85rem; margin: 0.5rem 0 0;">When Tasks change, the Schedule recalculates. Higher-priority Tasks win conflicts. A crime task at priority 40 overrides the sleep task at priority 30.</p>
+  </div>
+  <div style="background: #1a1a2e; padding: 1rem; border-radius: 8px; border-left: 3px solid #ff7043;">
+    <strong style="color: #ff8a65;">Tasks → Actions</strong>
+    <p style="color: #aaa; font-size: 0.85rem; margin: 0.5rem 0 0;">When the Schedule says "now", the Task executes as one or more Actions. Actions are the atomic unit that changes world state and produces Traces.</p>
+  </div>
+  <div style="background: #1a1a2e; padding: 1rem; border-radius: 8px; border-left: 3px solid #ffd54f;">
+    <strong style="color: #ffd54f;">Actions → Traces</strong>
+    <p style="color: #aaa; font-size: 0.85rem; margin: 0.5rem 0 0;">Every Action declares what Traces it may produce. "Buy drinks" → Item(receipt). "Kill person" → Condition(death), Mark(blood). Traces exist in the world independently after creation.</p>
+  </div>
+</div>
+
+</body>
+</html>

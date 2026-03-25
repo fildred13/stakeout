@@ -45,7 +45,7 @@ Illegal gambling in back rooms
 🚔 Tier 2 — Private Investigator Work
 
 Theme: Real consequences begin
-Pay: Enough to survive + Yellow Pages ad unlocked
+Pay: Enough to survive + OrangePages ad unlocked
 Sources: Phone calls, lawyers, small businesses
 
 Now investigations require planning and evidence.
@@ -174,8 +174,9 @@ Intelligence leaks inside government
 Double agents
 Extraction missions
 Political assassinations
-☢️ Tier 8 — Endgame Threats
 
+
+☢️ Tier 8 — Endgame Threats
 Theme: World-scale consequences
 
 Cases blur crime vs geopolitics.
@@ -213,13 +214,3 @@ Tier 6: foreign funding
 Tier 7: geopolitical destabilization
 
 Players subconsciously feel a single unfolding story.
-
-If you want next, I can help you design one of these (very powerful for games like Shadows of Doubt and Covert Action):
-
-✅ A crime taxonomy system (procedural case generator rules)
-✅ A case escalation flowchart for pacing the campaign
-✅ A recurring villain structure that spans all tiers
-✅ The signature “first murder” case that hooks the police chief
-✅ A list of 1980s-specific crimes that feel era-authentic (very fun category)
-
-Which direction do you want to build next?

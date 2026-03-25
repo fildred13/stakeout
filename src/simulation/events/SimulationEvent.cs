@@ -1,5 +1,5 @@
 using System;
-using Stakeout.Simulation.Entities;
+using Stakeout.Simulation.Actions;
 
 namespace Stakeout.Simulation.Events;
 
@@ -11,7 +11,13 @@ public enum SimulationEventType
     StoppedWorking,
     FellAsleep,
     WokeUp,
-    ActivityChanged
+    ActionChanged,
+    PersonDied,
+    CrimeCommitted,
+    ObjectiveStarted,
+    ObjectiveCompleted,
+    TaskStarted,
+    TaskCompleted
 }
 
 public class SimulationEvent
@@ -22,6 +28,6 @@ public class SimulationEvent
     public int? FromAddressId { get; set; }
     public int? ToAddressId { get; set; }
     public int? AddressId { get; set; }
-    public ActivityType? OldActivity { get; set; }
-    public ActivityType? NewActivity { get; set; }
+    public ActionType? OldAction { get; set; }
+    public ActionType? NewAction { get; set; }
 }
