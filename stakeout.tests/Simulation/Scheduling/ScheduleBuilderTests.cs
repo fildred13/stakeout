@@ -1,9 +1,11 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using Godot;
 using Stakeout.Simulation;
 using Stakeout.Simulation.Actions;
 using Stakeout.Simulation.Entities;
+using Stakeout.Simulation.Objectives;
 using Stakeout.Simulation.Scheduling;
 using Xunit;
 
@@ -95,5 +97,84 @@ public class ScheduleBuilderTests
 
         var night = schedule.GetEntryAtTime(new TimeSpan(3, 0, 0));
         Assert.Equal(ActionType.Sleep, night.Action);
+    }
+
+    // --- BuildFromTasks tests ---
+
+    private static List<SimTask> CreateOfficeWorkerTasks(Address home, Address work)
+    {
+        return new List<SimTask>
+        {
+            new SimTask { Id = 1, ActionType = ActionType.Sleep, Priority = 30,
+                WindowStart = new TimeSpan(22, 0, 0), WindowEnd = new TimeSpan(6, 0, 0),
+                TargetAddressId = home.Id },
+            new SimTask { Id = 2, ActionType = ActionType.Work, Priority = 20,
+                WindowStart = new TimeSpan(9, 0, 0), WindowEnd = new TimeSpan(17, 0, 0),
+                TargetAddressId = work.Id },
+            new SimTask { Id = 3, ActionType = ActionType.Idle, Priority = 10,
+                WindowStart = TimeSpan.Zero, WindowEnd = TimeSpan.Zero,
+                TargetAddressId = home.Id }
+        };
+    }
+
+    [Fact]
+    public void BuildFromTasks_OfficeWorker_HasCorrectActionSequence()
+    {
+        var (home, work) = CreateAddresses();
+        var tasks = CreateOfficeWorkerTasks(home, work);
+        var addresses = new Dictionary<int, Address> { { home.Id, home }, { work.Id, work } };
+        var schedule = ScheduleBuilder.BuildFromTasks(tasks, addresses, DefaultConfig);
+        var actions = schedule.Entries.Select(e => e.Action).ToList();
+        Assert.Contains(ActionType.Sleep, actions);
+        Assert.Contains(ActionType.Idle, actions);
+        Assert.Contains(ActionType.Work, actions);
+        Assert.Contains(ActionType.TravelByCar, actions);
+    }
+
+    [Fact]
+    public void BuildFromTasks_ScheduleCovers24Hours()
+    {
+        var (home, work) = CreateAddresses();
+        var tasks = CreateOfficeWorkerTasks(home, work);
+        var addresses = new Dictionary<int, Address> { { home.Id, home }, { work.Id, work } };
+        var schedule = ScheduleBuilder.BuildFromTasks(tasks, addresses, DefaultConfig);
+        double totalHours = 0;
+        foreach (var entry in schedule.Entries)
+        {
+            var duration = (entry.EndTime - entry.StartTime).TotalHours;
+            if (duration < 0) duration += 24;
+            totalHours += duration;
+        }
+        Assert.Equal(24.0, totalHours, precision: 1);
+    }
+
+    [Fact]
+    public void BuildFromTasks_ThirdAddress_KillPersonAppears()
+    {
+        var home = new Address { Id = 1, Position = new Vector2(100, 100), Type = AddressType.SuburbanHome };
+        var work = new Address { Id = 2, Position = new Vector2(600, 100), Type = AddressType.Office };
+        var crimeScene = new Address { Id = 3, Position = new Vector2(1000, 500), Type = AddressType.SuburbanHome };
+        var addresses = new Dictionary<int, Address>
+            { { 1, home }, { 2, work }, { 3, crimeScene } };
+        var tasks = new List<SimTask>
+        {
+            new SimTask { Id = 1, ActionType = ActionType.Sleep, Priority = 30,
+                WindowStart = new TimeSpan(22, 0, 0), WindowEnd = new TimeSpan(6, 0, 0),
+                TargetAddressId = home.Id },
+            new SimTask { Id = 2, ActionType = ActionType.Work, Priority = 20,
+                WindowStart = new TimeSpan(9, 0, 0), WindowEnd = new TimeSpan(17, 0, 0),
+                TargetAddressId = work.Id },
+            new SimTask { Id = 3, ActionType = ActionType.KillPerson, Priority = 40,
+                WindowStart = new TimeSpan(1, 0, 0), WindowEnd = new TimeSpan(1, 30, 0),
+                TargetAddressId = crimeScene.Id },
+            new SimTask { Id = 4, ActionType = ActionType.Idle, Priority = 10,
+                WindowStart = TimeSpan.Zero, WindowEnd = TimeSpan.Zero,
+                TargetAddressId = home.Id }
+        };
+        var schedule = ScheduleBuilder.BuildFromTasks(tasks, addresses, DefaultConfig);
+        var killEntry = schedule.Entries.FirstOrDefault(e => e.Action == ActionType.KillPerson);
+        Assert.NotNull(killEntry);
+        var travelEntries = schedule.Entries.Where(e => e.Action == ActionType.TravelByCar).ToList();
+        Assert.True(travelEntries.Count >= 2);
     }
 }
