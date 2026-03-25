@@ -2,6 +2,8 @@ using System.Collections.Generic;
 using System.Linq;
 using Stakeout.Simulation.Entities;
 using Stakeout.Simulation.Events;
+using Stakeout.Simulation.Crimes;
+using Stakeout.Simulation.Traces;
 
 namespace Stakeout.Simulation;
 
@@ -16,6 +18,8 @@ public class SimulationState
     public Dictionary<int, Street> Streets { get; } = new();
     public Dictionary<int, Address> Addresses { get; } = new();
     public EventJournal Journal { get; } = new();
+    public Dictionary<int, Crime> Crimes { get; } = new();
+    public Dictionary<int, Trace> Traces { get; } = new();
 
     private int _nextEntityId = 1;
 

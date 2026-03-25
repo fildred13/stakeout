@@ -1,6 +1,9 @@
 using System;
+using System.Collections.Generic;
 using Godot;
 using Stakeout.Simulation.Actions;
+using Stakeout.Simulation.Objectives;
+using Stakeout.Simulation.Scheduling;
 
 namespace Stakeout.Simulation.Entities;
 
@@ -18,6 +21,10 @@ public class Person
     public TravelInfo TravelInfo { get; set; }
     public TimeSpan PreferredSleepTime { get; set; }
     public TimeSpan PreferredWakeTime { get; set; }
+    public bool IsAlive { get; set; } = true;
+    public List<Objective> Objectives { get; set; } = new();
+    public DailySchedule Schedule { get; set; }
+    public bool NeedsScheduleRebuild { get; set; }
 
     public string FullName => $"{FirstName} {LastName}";
 }
