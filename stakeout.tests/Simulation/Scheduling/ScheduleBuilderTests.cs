@@ -7,6 +7,7 @@ using Stakeout.Simulation.Actions;
 using Stakeout.Simulation.Entities;
 using Stakeout.Simulation.Objectives;
 using Stakeout.Simulation.Scheduling;
+using Stakeout.Simulation.Sublocations;
 using Xunit;
 
 namespace Stakeout.Tests.Simulation.Scheduling;
@@ -98,6 +99,31 @@ public class ScheduleBuilderTests
 
         var night = schedule.GetEntryAtTime(new TimeSpan(3, 0, 0));
         Assert.Equal(ActionType.Sleep, night.Action);
+    }
+
+    [Fact]
+    public void BuildFromTasks_WithSublocations_EntriesHaveSublocationIds()
+    {
+        var state = new SimulationState();
+        var home = new Address { Id = 1, Position = new Vector2(100, 100), Type = AddressType.SuburbanHome };
+        var work = new Address { Id = 2, Position = new Vector2(600, 100), Type = AddressType.Office };
+        state.Addresses[1] = home;
+        state.Addresses[2] = work;
+
+        // Generate sublocations
+        SublocationGeneratorRegistry.RegisterAll();
+        new SuburbanHomeGenerator().Generate(1, state, new Random(42));
+        new OfficeGenerator().Generate(2, state, new Random(42));
+
+        var tasks = CreateOfficeWorkerTasks(home, work);
+        var schedule = ScheduleBuilder.BuildFromTasks(tasks, state, DefaultConfig);
+
+        // Non-travel entries at addresses with sublocations should have sublocation IDs
+        var nonTravelEntries = schedule.Entries
+            .Where(e => e.Action != ActionType.TravelByCar)
+            .ToList();
+
+        Assert.True(nonTravelEntries.Any(e => e.TargetSublocationId.HasValue));
     }
 
     [Fact]
