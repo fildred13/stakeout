@@ -150,4 +150,47 @@ public class PersonBehaviorTests
         behavior.Update(person, state);
         Assert.Equal(ActionType.Idle, person.CurrentAction);
     }
+
+    [Fact]
+    public void Update_EntryWithSublocation_UpdatesCurrentSublocationId()
+    {
+        var state = new SimulationState(new GameClock(new DateTime(1980, 1, 1, 0, 0, 0)));
+        var address = new Address { Id = 1, Position = new Vector2(0, 0), Type = AddressType.SuburbanHome, Number = 1, StreetId = 1 };
+        state.Addresses[1] = address;
+
+        var person = new Person
+        {
+            Id = 1, FirstName = "Test", LastName = "Test",
+            HomeAddressId = 1, CurrentAddressId = 1,
+            CurrentPosition = new Vector2(0, 0),
+            CurrentAction = ActionType.Idle,
+            Schedule = new DailySchedule()
+        };
+        // Add a schedule with sublocation entries
+        person.Schedule.Entries.Add(new ScheduleEntry
+        {
+            Action = ActionType.Sleep,
+            StartTime = new TimeSpan(22, 0, 0),
+            EndTime = new TimeSpan(6, 0, 0),
+            TargetAddressId = 1,
+            TargetSublocationId = 42
+        });
+        person.Schedule.Entries.Add(new ScheduleEntry
+        {
+            Action = ActionType.Idle,
+            StartTime = new TimeSpan(6, 0, 0),
+            EndTime = new TimeSpan(22, 0, 0),
+            TargetAddressId = 1,
+            TargetSublocationId = 43
+        });
+        state.People[1] = person;
+
+        // Advance to 23:00 (sleep time)
+        state.Clock.Tick(23 * 3600);
+
+        var behavior = new PersonBehavior(new MapConfig());
+        behavior.Update(person, state);
+
+        Assert.Equal(42, person.CurrentSublocationId);
+    }
 }
