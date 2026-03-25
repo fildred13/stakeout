@@ -96,7 +96,7 @@ public class SimTask
 2. **Root SimTasks → task tree** — TaskResolver (new) decomposes each root task into sublocation-level sub-tasks using decomposition strategies and pathfinding.
 3. **Task tree → flat schedule** — the tree is flattened into a linear `List<ScheduleEntry>` (extended with `TargetSublocationId`). This is the runtime execution structure.
 4. **Per-tick execution** — identical to today. Compare current time to next entry, transition if needed. O(1).
-5. **Interrupts** — inject a high-priority task, rebuild from the current point forward, re-flatten. Most NPCs on most days are never interrupted.
+5. **Interrupts** — inject a high-priority task, re-run decomposition from the current point forward (since remaining tasks may need different room assignments post-interrupt), re-flatten. Most NPCs on most days are never interrupted.
 
 The task tree is optionally retained on Person for the debug inspector but is not used for runtime execution.
 
@@ -151,7 +151,7 @@ One generator class per AddressType:
 - **ApartmentBuildingGenerator** — Road → Lobby → Elevator/Stairwell → Floor placeholders (lazy). Floor template on demand: Hallway → individual units with simplified home layouts.
 - **ParkGenerator** — Road → Parking Lot, Main Entrance, Side Gate. Inner zones: Jogging Path, Picnic Area, Playground, Wooded Area, Shore/Beach. Restrooms with door. Connections mostly OpenPassage.
 
-New AddressTypes `ApartmentBuilding` and `Park` added to the AddressType enum.
+New AddressTypes `ApartmentBuilding` and `Park` added to the AddressType enum. `ApartmentBuilding` maps to `AddressCategory.Residential`; `Park` maps to a new `AddressCategory.Public`.
 
 Generators use seeded RNG for variety. Tags assigned during generation. Called by LocationGenerator after creating an Address.
 
