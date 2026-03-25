@@ -46,8 +46,9 @@ public partial class GameShell : Control
     private Label _crimeResultLabel;
     private CrimeGenerator _crimeGenerator;
 
-    // Person Inspector
-    private Window _activeInspectorWindow;
+    // Person Inspectors (multiple allowed, auto-updating)
+    private readonly List<(int personId, Window window, VBoxContainer content)> _inspectorWindows = new();
+    private double _inspectorRefreshTimer;
 
     public override void _Ready()
     {
@@ -195,9 +196,9 @@ public partial class GameShell : Control
 
         _pauseButton.Modulate = scale == 0f ? activeColor : normalColor;
         _playButton.Modulate = scale == 1f ? activeColor : normalColor;
-        _fastButton.Modulate = scale == 32f ? activeColor : normalColor;
-        _superFastButton.Modulate = scale == 64f ? activeColor : normalColor;
-        _ultraFastButton.Modulate = scale == 256f ? activeColor : normalColor;
+        _fastButton.Modulate = scale == 64f ? activeColor : normalColor;
+        _superFastButton.Modulate = scale == 256f ? activeColor : normalColor;
+        _ultraFastButton.Modulate = scale == 512f ? activeColor : normalColor;
     }
 
     public override void _UnhandledInput(InputEvent @event)
@@ -218,6 +219,8 @@ public partial class GameShell : Control
     {
         var time = _simulationManager.State.Clock.CurrentTime;
         _clockLabel.Text = time.ToString("ddd MMM dd, yyyy HH:mm:ss");
+
+        RefreshInspectorWindows(delta);
     }
 
     private void OnGenerateCrimePressed()
@@ -319,17 +322,26 @@ public partial class GameShell : Control
 
     private void ShowPersonInspector(int personId)
     {
-        if (_activeInspectorWindow != null && IsInstanceValid(_activeInspectorWindow))
-            _activeInspectorWindow.QueueFree();
+        // If already open for this person, bring it to front
+        var existing = _inspectorWindows.FindIndex(w => w.personId == personId);
+        if (existing >= 0 && IsInstanceValid(_inspectorWindows[existing].window))
+        {
+            _inspectorWindows[existing].window.GrabFocus();
+            return;
+        }
 
         var person = _simulationManager.State.People[personId];
-        var state = _simulationManager.State;
+
+        // Offset each new window so they don't stack exactly
+        var offset = _inspectorWindows.Count(w => IsInstanceValid(w.window)) * 30;
+        var screenHeight = (int)GetViewportRect().Size.Y;
+        var windowHeight = (int)(screenHeight * 0.75f);
 
         var window = new Window
         {
             Title = $"Inspector: {person.FullName}",
-            Size = new Vector2I(500, 700),
-            Position = new Vector2I(200, 100),
+            Size = new Vector2I(400, windowHeight),
+            Position = new Vector2I(200 + offset, 50 + offset),
             Exclusive = false
         };
 
@@ -338,6 +350,46 @@ public partial class GameShell : Control
 
         var vbox = new VBoxContainer();
         vbox.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+
+        PopulateInspectorContent(vbox, personId);
+
+        scroll.AddChild(vbox);
+        window.AddChild(scroll);
+        window.CloseRequested += () =>
+        {
+            _inspectorWindows.RemoveAll(w => w.window == window);
+            window.QueueFree();
+        };
+        AddChild(window);
+        _inspectorWindows.Add((personId, window, vbox));
+        window.Show();
+    }
+
+    private const double InspectorRefreshInterval = 0.5;
+
+    private void RefreshInspectorWindows(double delta)
+    {
+        // Clean up freed windows
+        _inspectorWindows.RemoveAll(w => !IsInstanceValid(w.window));
+
+        if (_inspectorWindows.Count == 0) return;
+
+        _inspectorRefreshTimer += delta;
+        if (_inspectorRefreshTimer < InspectorRefreshInterval) return;
+        _inspectorRefreshTimer = 0;
+
+        foreach (var (personId, _, vbox) in _inspectorWindows)
+        {
+            foreach (var child in vbox.GetChildren())
+                child.QueueFree();
+            PopulateInspectorContent(vbox, personId);
+        }
+    }
+
+    private void PopulateInspectorContent(VBoxContainer vbox, int personId)
+    {
+        var person = _simulationManager.State.People[personId];
+        var state = _simulationManager.State;
         var font = _clockLabel.GetThemeFont("font");
 
         // Identity
@@ -406,9 +458,20 @@ public partial class GameShell : Control
         {
             var schedLines = person.Schedule.Entries.Select(e =>
             {
-                var targetStr = e.TargetAddressId.HasValue
-                    ? $" @ addr {e.TargetAddressId.Value}"
-                    : "";
+                var targetStr = "";
+                if (e.TargetAddressId.HasValue)
+                {
+                    var addr = state.Addresses.GetValueOrDefault(e.TargetAddressId.Value);
+                    if (addr != null)
+                    {
+                        var street = state.Streets.GetValueOrDefault(addr.StreetId);
+                        targetStr = $" @ {addr.Number} {street?.Name ?? "Unknown"} ({addr.Type})";
+                    }
+                    else
+                    {
+                        targetStr = $" @ addr {e.TargetAddressId.Value}";
+                    }
+                }
                 return $"[{e.StartTime:hh\\:mm}-{e.EndTime:hh\\:mm}] {e.Action}{targetStr}";
             }).ToArray();
             AddInspectorSection(vbox, font, "— Schedule —", schedLines);
@@ -421,13 +484,6 @@ public partial class GameShell : Control
         ).ToArray();
         if (recentEvents.Length > 0)
             AddInspectorSection(vbox, font, "— Recent Events —", recentEvents);
-
-        scroll.AddChild(vbox);
-        window.AddChild(scroll);
-        window.CloseRequested += () => window.QueueFree();
-        AddChild(window);
-        _activeInspectorWindow = window;
-        window.Show();
     }
 
     private static void AddInspectorSection(VBoxContainer vbox, Font font, string header, string[] lines)

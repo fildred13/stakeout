@@ -14,3 +14,7 @@ One is an office. Let's assume the address is a high rise. An office has a build
 The park is outdoors, and maybe has a small beach along the shore, a jogging path, a central woods area, a parking lot, a baseball diamond.
 
 The dive bar has a front door and back door. A storage room in the back. A small office for the manager. The main bar area. An alley with a dumpster where employees park, etc.
+
+Critical to the detective fantasy is the idea of exploring a crime scene. Critical to the spy fantasy is snooping around places you aren't allowed to be - secret rooms, security rooms, hidden drug dens, etc.
+
+We need to build that model of sublocations into the data model early, so that the task system can hook into it, so Traces can be left at 
