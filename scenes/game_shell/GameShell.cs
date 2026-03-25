@@ -5,7 +5,10 @@ using Godot;
 using Stakeout;
 using Stakeout.Evidence;
 using Stakeout.Simulation;
+using Stakeout.Simulation.Actions;
+using Stakeout.Simulation.Crimes;
 using Stakeout.Simulation.Entities;
+using Stakeout.Simulation.Objectives;
 
 /// <summary>
 /// Interface implemented by content views that live inside GameShell's content area.
@@ -37,6 +40,11 @@ public partial class GameShell : Control
     private Button _debugMenuButton;
     private PanelContainer _debugSidebar;
     private VBoxContainer _debugPeopleList;
+
+    // Crime Generator
+    private Button _generateCrimeButton;
+    private Label _crimeResultLabel;
+    private CrimeGenerator _crimeGenerator;
 
     public override void _Ready()
     {
@@ -92,6 +100,34 @@ public partial class GameShell : Control
 
         var scroll = _debugSidebar.GetNode<ScrollContainer>("ScrollContainer");
         _debugPeopleList = scroll.GetNode<VBoxContainer>("PeopleList");
+
+        // Crime Generator UI
+        var font = _clockLabel.GetThemeFont("font");
+
+        var crimeHeader = new Label { Text = "— Crime Generator —" };
+        crimeHeader.AddThemeFontOverride("font", font);
+        crimeHeader.AddThemeFontSizeOverride("font_size", 14);
+        crimeHeader.AddThemeColorOverride("font_color", new Color(0.3f, 0.6f, 1.0f));
+        crimeHeader.HorizontalAlignment = HorizontalAlignment.Center;
+        _debugPeopleList.AddChild(crimeHeader);
+
+        var templateLabel = new Label { Text = "Template: Serial Killer" };
+        templateLabel.AddThemeFontOverride("font", font);
+        templateLabel.AddThemeFontSizeOverride("font_size", 12);
+        _debugPeopleList.AddChild(templateLabel);
+
+        _generateCrimeButton = new Button { Text = "Generate Now" };
+        _generateCrimeButton.AddThemeFontOverride("font", font);
+        _generateCrimeButton.AddThemeFontSizeOverride("font_size", 12);
+        _generateCrimeButton.Pressed += OnGenerateCrimePressed;
+        _debugPeopleList.AddChild(_generateCrimeButton);
+
+        _crimeResultLabel = new Label { Text = "No crime active", AutowrapMode = TextServer.AutowrapMode.Word };
+        _crimeResultLabel.AddThemeFontOverride("font", font);
+        _crimeResultLabel.AddThemeFontSizeOverride("font_size", 12);
+        _debugPeopleList.AddChild(_crimeResultLabel);
+
+        _crimeGenerator = new CrimeGenerator();
     }
 
     public void LoadContentView(string scenePath)
@@ -188,6 +224,31 @@ public partial class GameShell : Control
     {
         var time = _simulationManager.State.Clock.CurrentTime;
         _clockLabel.Text = time.ToString("ddd MMM dd, yyyy HH:mm:ss");
+    }
+
+    private void OnGenerateCrimePressed()
+    {
+        var crime = _crimeGenerator.Generate(CrimeTemplateType.SerialKiller, _simulationManager.State);
+        if (crime == null)
+        {
+            _crimeResultLabel.Text = "Failed: not enough people";
+            return;
+        }
+
+        var killerId = crime.Roles["Killer"].Value;
+        var killer = _simulationManager.State.People[killerId];
+
+        // Rebuild killer's schedule to include crime tasks
+        _simulationManager.RebuildSchedule(killer);
+
+        // Resolve objectives to pick victim
+        ObjectiveResolver.ResolveTasks(killer.Objectives, _simulationManager.State);
+        var victimId = crime.Roles["Victim"];
+        var victimName = victimId.HasValue
+            ? _simulationManager.State.People[victimId.Value].FullName
+            : "unknown";
+
+        _crimeResultLabel.Text = $"{killer.FullName} → murder → {victimName}";
     }
 
     private void OnDebugMenuPressed()
