@@ -24,7 +24,10 @@ public static class ObjectiveResolver
                 {
                     var task = step.ResolveFunc(objective, state);
                     if (task != null)
+                    {
+                        task.Id = tasks.Count + 1;
                         tasks.Add(task);
+                    }
                 }
             }
             else
@@ -44,7 +47,10 @@ public static class ObjectiveResolver
                 {
                     var task = objective.CurrentStep.ResolveFunc(objective, state);
                     if (task != null)
+                    {
+                        task.Id = tasks.Count + 1;
                         tasks.Add(task);
+                    }
                 }
             }
         }

@@ -1,7 +1,9 @@
 using System;
+using System.Linq;
 using Stakeout.Simulation.Actions;
 using Stakeout.Simulation.Entities;
 using Stakeout.Simulation.Events;
+using Stakeout.Simulation.Objectives;
 
 namespace Stakeout.Simulation.Scheduling;
 
@@ -14,8 +16,12 @@ public class PersonBehavior
         _mapConfig = mapConfig;
     }
 
-    public void Update(Person person, DailySchedule schedule, SimulationState state)
+    public void Update(Person person, SimulationState state)
     {
+        if (!person.IsAlive) return;
+        if (person.Schedule == null) return;
+
+        var schedule = person.Schedule;
         var currentTime = state.Clock.CurrentTime;
         var timeOfDay = currentTime.TimeOfDay;
         var entry = schedule.GetEntryAtTime(timeOfDay);
@@ -97,6 +103,32 @@ public class PersonBehavior
                 // Same location, switch activity directly
                 person.CurrentAction = entry.Action;
                 LogActivityStart(person, entry.Action, state);
+            }
+        }
+
+        // Check if this is an executable action (KillPerson)
+        if (entry.Action == ActionType.KillPerson)
+        {
+            // Find the active CommitMurder objective whose current step matches
+            var objective = person.Objectives.FirstOrDefault(o =>
+                o.Status == ObjectiveStatus.Active &&
+                o.Type == ObjectiveType.CommitMurder &&
+                o.CurrentStep != null &&
+                o.CurrentStep.ActionType == ActionType.KillPerson);
+
+            if (objective != null)
+            {
+                // Build a minimal SimTask with ActionData from the objective
+                var task = new SimTask
+                {
+                    ActionType = ActionType.KillPerson,
+                    ObjectiveId = objective.Id,
+                    ActionData = new System.Collections.Generic.Dictionary<string, object>(objective.Data)
+                };
+
+                ActionExecutor.Execute(task, person, objective, state);
+                objective.AdvanceStep();
+                person.NeedsScheduleRebuild = true;
             }
         }
 

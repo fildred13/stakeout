@@ -22,85 +22,6 @@ public class ScheduleBuilderTests
         return (home, work);
     }
 
-    [Fact]
-    public void Build_OfficeWorker_HasCorrectActivitySequence()
-    {
-        var (home, work) = CreateAddresses();
-        var job = new Job { ShiftStart = new TimeSpan(9, 0, 0), ShiftEnd = new TimeSpan(17, 0, 0), WorkAddressId = work.Id };
-        var commuteHours = DefaultConfig.ComputeTravelTimeHours(home.Position, work.Position);
-        var (sleepTime, wakeTime) = SleepScheduleCalculator.Compute(job, commuteHours);
-
-        var goalSet = GoalSetBuilder.Build(job, sleepTime, wakeTime);
-        var schedule = ScheduleBuilder.Build(goalSet, home, work, DefaultConfig);
-
-        var activities = schedule.Entries.Select(e => e.Action).ToList();
-        Assert.Contains(ActionType.Sleep, activities);
-        Assert.Contains(ActionType.Idle, activities);
-        Assert.Contains(ActionType.Work, activities);
-        Assert.Contains(ActionType.TravelByCar, activities);
-    }
-
-    [Fact]
-    public void Build_ScheduleCovers24Hours()
-    {
-        var (home, work) = CreateAddresses();
-        var job = new Job { ShiftStart = new TimeSpan(9, 0, 0), ShiftEnd = new TimeSpan(17, 0, 0), WorkAddressId = work.Id };
-        var commuteHours = DefaultConfig.ComputeTravelTimeHours(home.Position, work.Position);
-        var (sleepTime, wakeTime) = SleepScheduleCalculator.Compute(job, commuteHours);
-
-        var goalSet = GoalSetBuilder.Build(job, sleepTime, wakeTime);
-        var schedule = ScheduleBuilder.Build(goalSet, home, work, DefaultConfig);
-
-        double totalHours = 0;
-        foreach (var entry in schedule.Entries)
-        {
-            var duration = (entry.EndTime - entry.StartTime).TotalHours;
-            if (duration < 0) duration += 24;
-            totalHours += duration;
-        }
-        Assert.Equal(24.0, totalHours, precision: 1);
-    }
-
-    [Fact]
-    public void Build_TravelEntriesHaveAddressIds()
-    {
-        var (home, work) = CreateAddresses();
-        var job = new Job { ShiftStart = new TimeSpan(9, 0, 0), ShiftEnd = new TimeSpan(17, 0, 0), WorkAddressId = work.Id };
-        var commuteHours = DefaultConfig.ComputeTravelTimeHours(home.Position, work.Position);
-        var (sleepTime, wakeTime) = SleepScheduleCalculator.Compute(job, commuteHours);
-
-        var goalSet = GoalSetBuilder.Build(job, sleepTime, wakeTime);
-        var schedule = ScheduleBuilder.Build(goalSet, home, work, DefaultConfig);
-
-        var travelEntries = schedule.Entries.Where(e => e.Action == ActionType.TravelByCar).ToList();
-        Assert.True(travelEntries.Count >= 2);
-        foreach (var travel in travelEntries)
-        {
-            Assert.NotNull(travel.FromAddressId);
-            Assert.NotNull(travel.TargetAddressId);
-        }
-    }
-
-    [Fact]
-    public void GetEntryAtTime_ReturnsCorrectEntry()
-    {
-        var (home, work) = CreateAddresses();
-        var job = new Job { ShiftStart = new TimeSpan(9, 0, 0), ShiftEnd = new TimeSpan(17, 0, 0), WorkAddressId = work.Id };
-        var commuteHours = DefaultConfig.ComputeTravelTimeHours(home.Position, work.Position);
-        var (sleepTime, wakeTime) = SleepScheduleCalculator.Compute(job, commuteHours);
-
-        var goalSet = GoalSetBuilder.Build(job, sleepTime, wakeTime);
-        var schedule = ScheduleBuilder.Build(goalSet, home, work, DefaultConfig);
-
-        var midday = schedule.GetEntryAtTime(new TimeSpan(12, 0, 0));
-        Assert.Equal(ActionType.Work, midday.Action);
-
-        var night = schedule.GetEntryAtTime(new TimeSpan(3, 0, 0));
-        Assert.Equal(ActionType.Sleep, night.Action);
-    }
-
-    // --- BuildFromTasks tests ---
-
     private static List<SimTask> CreateOfficeWorkerTasks(Address home, Address work)
     {
         return new List<SimTask>
@@ -146,6 +67,37 @@ public class ScheduleBuilderTests
             totalHours += duration;
         }
         Assert.Equal(24.0, totalHours, precision: 1);
+    }
+
+    [Fact]
+    public void BuildFromTasks_TravelEntriesHaveAddressIds()
+    {
+        var (home, work) = CreateAddresses();
+        var tasks = CreateOfficeWorkerTasks(home, work);
+        var addresses = new Dictionary<int, Address> { { home.Id, home }, { work.Id, work } };
+        var schedule = ScheduleBuilder.BuildFromTasks(tasks, addresses, DefaultConfig);
+        var travelEntries = schedule.Entries.Where(e => e.Action == ActionType.TravelByCar).ToList();
+        Assert.True(travelEntries.Count >= 2);
+        foreach (var travel in travelEntries)
+        {
+            Assert.NotNull(travel.FromAddressId);
+            Assert.NotNull(travel.TargetAddressId);
+        }
+    }
+
+    [Fact]
+    public void BuildFromTasks_GetEntryAtTime_ReturnsCorrectEntry()
+    {
+        var (home, work) = CreateAddresses();
+        var tasks = CreateOfficeWorkerTasks(home, work);
+        var addresses = new Dictionary<int, Address> { { home.Id, home }, { work.Id, work } };
+        var schedule = ScheduleBuilder.BuildFromTasks(tasks, addresses, DefaultConfig);
+
+        var midday = schedule.GetEntryAtTime(new TimeSpan(12, 0, 0));
+        Assert.Equal(ActionType.Work, midday.Action);
+
+        var night = schedule.GetEntryAtTime(new TimeSpan(3, 0, 0));
+        Assert.Equal(ActionType.Sleep, night.Action);
     }
 
     [Fact]

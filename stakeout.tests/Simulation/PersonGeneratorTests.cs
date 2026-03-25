@@ -3,6 +3,7 @@ using System.Linq;
 using Stakeout.Simulation;
 using Stakeout.Simulation.Data;
 using Stakeout.Simulation.Entities;
+using Stakeout.Simulation.Objectives;
 using Xunit;
 
 namespace Stakeout.Tests.Simulation;
@@ -28,7 +29,7 @@ public class PersonGeneratorTests
     public void GeneratePerson_ReturnsPersonWithValidId()
     {
         var state = CreateState();
-        var (person, _) = CreateGenerator().GeneratePerson(state);
+        var person = CreateGenerator().GeneratePerson(state);
         Assert.True(person.Id > 0);
     }
 
@@ -36,7 +37,7 @@ public class PersonGeneratorTests
     public void GeneratePerson_AddsPersonToState()
     {
         var state = CreateState();
-        var (person, _) = CreateGenerator().GeneratePerson(state);
+        var person = CreateGenerator().GeneratePerson(state);
         Assert.Contains(person.Id, state.People.Keys);
     }
 
@@ -44,7 +45,7 @@ public class PersonGeneratorTests
     public void GeneratePerson_NameComesFromNameDataPools()
     {
         var state = CreateState();
-        var (person, _) = CreateGenerator().GeneratePerson(state);
+        var person = CreateGenerator().GeneratePerson(state);
         Assert.Contains(person.FirstName, NameData.FirstNames);
         Assert.Contains(person.LastName, NameData.LastNames);
     }
@@ -53,7 +54,7 @@ public class PersonGeneratorTests
     public void GeneratePerson_CreatesHomeAddress()
     {
         var state = CreateState();
-        var (person, _) = CreateGenerator().GeneratePerson(state);
+        var person = CreateGenerator().GeneratePerson(state);
         Assert.True(state.Addresses.ContainsKey(person.HomeAddressId));
         Assert.Equal(AddressCategory.Residential, state.Addresses[person.HomeAddressId].Category);
     }
@@ -62,7 +63,7 @@ public class PersonGeneratorTests
     public void GeneratePerson_CreatesJobWithMatchingAddress()
     {
         var state = CreateState();
-        var (person, _) = CreateGenerator().GeneratePerson(state);
+        var person = CreateGenerator().GeneratePerson(state);
         Assert.True(state.Jobs.ContainsKey(person.JobId));
         var job = state.Jobs[person.JobId];
         Assert.True(state.Addresses.ContainsKey(job.WorkAddressId));
@@ -73,7 +74,8 @@ public class PersonGeneratorTests
     public void GeneratePerson_ReturnsDailySchedule()
     {
         var state = CreateState();
-        var (_, schedule) = CreateGenerator().GeneratePerson(state);
+        var person = CreateGenerator().GeneratePerson(state);
+        var schedule = person.Schedule;
         Assert.NotNull(schedule);
         Assert.True(schedule.Entries.Count > 0);
     }
@@ -82,7 +84,7 @@ public class PersonGeneratorTests
     public void GeneratePerson_SetsInitialActivity()
     {
         var state = CreateState();
-        var (person, _) = CreateGenerator().GeneratePerson(state);
+        var person = CreateGenerator().GeneratePerson(state);
         Assert.True(Enum.IsDefined(person.CurrentAction));
     }
 
@@ -90,7 +92,7 @@ public class PersonGeneratorTests
     public void GeneratePerson_AppendsJournalEvent()
     {
         var state = CreateState();
-        var (person, _) = CreateGenerator().GeneratePerson(state);
+        var person = CreateGenerator().GeneratePerson(state);
         Assert.True(state.Journal.GetEventsForPerson(person.Id).Count > 0);
     }
 
@@ -98,9 +100,20 @@ public class PersonGeneratorTests
     public void GeneratePerson_HasSleepSchedule()
     {
         var state = CreateState();
-        var (person, _) = CreateGenerator().GeneratePerson(state);
+        var person = CreateGenerator().GeneratePerson(state);
         var duration = (person.PreferredWakeTime - person.PreferredSleepTime).TotalHours;
         if (duration < 0) duration += 24;
         Assert.Equal(8.0, duration, precision: 1);
+    }
+
+    [Fact]
+    public void GeneratePerson_HasCoreNeedObjectives()
+    {
+        var state = CreateState();
+        var person = CreateGenerator().GeneratePerson(state);
+        Assert.Equal(3, person.Objectives.Count);
+        Assert.Contains(person.Objectives, o => o.Type == ObjectiveType.GetSleep);
+        Assert.Contains(person.Objectives, o => o.Type == ObjectiveType.MaintainJob);
+        Assert.Contains(person.Objectives, o => o.Type == ObjectiveType.DefaultIdle);
     }
 }

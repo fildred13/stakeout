@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
 using Godot;
+using Stakeout.Simulation.Crimes;
 using Stakeout.Simulation.Entities;
 using Stakeout.Simulation.Events;
+using Stakeout.Simulation.Objectives;
 using Stakeout.Simulation.Scheduling;
 
 namespace Stakeout.Simulation;
@@ -21,7 +23,8 @@ public partial class SimulationManager : Node
     private readonly LocationGenerator _locationGenerator;
     private readonly PersonBehavior _personBehavior;
 
-    private readonly Dictionary<int, DailySchedule> _schedules = new();
+    private readonly CrimeGenerator _crimeGenerator = new();
+    public CrimeGenerator CrimeGenerator => _crimeGenerator;
 
     public SimulationManager(SimulationState state)
     {
@@ -39,8 +42,7 @@ public partial class SimulationManager : Node
         for (var i = 0; i < 5; i++)
         {
             var knownAddressIds = new HashSet<int>(State.Addresses.Keys);
-            var (person, schedule) = _personGenerator.GeneratePerson(State);
-            _schedules[person.Id] = schedule;
+            var person = _personGenerator.GeneratePerson(State);
 
             foreach (var address in State.Addresses.Values)
             {
@@ -73,13 +75,31 @@ public partial class SimulationManager : Node
 
         foreach (var person in State.People.Values)
         {
-            if (_schedules.TryGetValue(person.Id, out var schedule))
+            if (!person.IsAlive) continue;
+            _personBehavior.Update(person, State);
+        }
+
+        // Check for schedule rebuilds
+        foreach (var person in State.People.Values)
+        {
+            if (person.NeedsScheduleRebuild)
             {
-                _personBehavior.Update(person, schedule, State);
+                RebuildSchedule(person);
+                person.NeedsScheduleRebuild = false;
             }
         }
 
         UpdatePlayerTravel(State);
+    }
+
+    public void RebuildSchedule(Person person)
+    {
+        var tasks = ObjectiveResolver.ResolveTasks(person.Objectives, State);
+        var addresses = new Dictionary<int, Address>();
+        foreach (var t in tasks)
+            if (t.TargetAddressId.HasValue && State.Addresses.ContainsKey(t.TargetAddressId.Value))
+                addresses[t.TargetAddressId.Value] = State.Addresses[t.TargetAddressId.Value];
+        person.Schedule = ScheduleBuilder.BuildFromTasks(tasks, addresses, _mapConfig);
     }
 
     public static void UpdatePlayerTravel(SimulationState state)

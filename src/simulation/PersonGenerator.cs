@@ -1,8 +1,10 @@
 using System;
+using System.Collections.Generic;
 using Stakeout.Simulation.Actions;
 using Stakeout.Simulation.Data;
 using Stakeout.Simulation.Entities;
 using Stakeout.Simulation.Events;
+using Stakeout.Simulation.Objectives;
 using Stakeout.Simulation.Scheduling;
 
 namespace Stakeout.Simulation;
@@ -19,7 +21,7 @@ public class PersonGenerator
         _mapConfig = mapConfig;
     }
 
-    public (Person person, DailySchedule schedule) GeneratePerson(SimulationState state)
+    public Person GeneratePerson(SimulationState state)
     {
         // 1. Pick job type and generate matching address
         var jobType = PickJobType();
@@ -37,9 +39,20 @@ public class PersonGenerator
         var commuteHours = _mapConfig.ComputeTravelTimeHours(homeAddress.Position, workAddress.Position);
         var (sleepTime, wakeTime) = SleepScheduleCalculator.Compute(job, commuteHours);
 
-        // 5. Build schedule
-        var goalSet = GoalSetBuilder.Build(job, sleepTime, wakeTime);
-        var schedule = ScheduleBuilder.Build(goalSet, homeAddress, workAddress, _mapConfig);
+        // 5. Build objectives and schedule from them
+        var objectives = new List<Objective>
+        {
+            ObjectiveResolver.CreateGetSleepObjective(sleepTime, wakeTime, homeAddress.Id),
+            ObjectiveResolver.CreateMaintainJobObjective(job.ShiftStart, job.ShiftEnd, workAddress.Id),
+            ObjectiveResolver.CreateDefaultIdleObjective(homeAddress.Id)
+        };
+
+        var tasks = ObjectiveResolver.ResolveTasks(objectives, state);
+        var addresses = new Dictionary<int, Address>();
+        foreach (var t in tasks)
+            if (t.TargetAddressId.HasValue && state.Addresses.ContainsKey(t.TargetAddressId.Value))
+                addresses[t.TargetAddressId.Value] = state.Addresses[t.TargetAddressId.Value];
+        var schedule = ScheduleBuilder.BuildFromTasks(tasks, addresses, _mapConfig);
 
         // 6. Determine initial state from schedule and current time
         var timeOfDay = state.Clock.CurrentTime.TimeOfDay;
@@ -76,7 +89,9 @@ public class PersonGenerator
             CurrentPosition = currentPosition,
             CurrentAction = initialActivity,
             PreferredSleepTime = sleepTime,
-            PreferredWakeTime = wakeTime
+            PreferredWakeTime = wakeTime,
+            Objectives = objectives,
+            Schedule = schedule
         };
         state.People[person.Id] = person;
 
@@ -89,7 +104,7 @@ public class PersonGenerator
             NewAction = initialActivity
         });
 
-        return (person, schedule);
+        return person;
     }
 
     private JobType PickJobType()
