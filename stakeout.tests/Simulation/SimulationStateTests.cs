@@ -47,6 +47,14 @@ public class SimulationStateTests
     }
 
     [Fact]
+    public void Constructor_InitializesSublocations()
+    {
+        var state = new SimulationState();
+        Assert.Empty(state.Sublocations);
+        Assert.Empty(state.SublocationConnections);
+    }
+
+    [Fact]
     public void GetEntityNamesAtAddress_NoPeople_ReturnsEmptyList()
     {
         var state = new SimulationState();
