@@ -54,6 +54,18 @@ public partial class AddressView : Control, IContentView
 
         items.Add(new Godot.Collections.Dictionary
         {
+            { "label", "Graph View" },
+            { "callback", Callable.From(ShowGraphView) }
+        });
+
+        items.Add(new Godot.Collections.Dictionary
+        {
+            { "label", "Blueprint View" },
+            { "callback", Callable.From(ShowBlueprintView) }
+        });
+
+        items.Add(new Godot.Collections.Dictionary
+        {
             { "label", "Leave" },
             { "callback", Callable.From(OnLeave) }
         });
@@ -103,6 +115,39 @@ public partial class AddressView : Control, IContentView
         });
 
         _gameShell.SetMenuItems(items);
+    }
+
+    private void ShowGraphView()
+    {
+        var player = _simulationManager.State.Player;
+        if (player == null) return;
+
+        var graphView = GD.Load<PackedScene>("res://scenes/address/GraphView.tscn").Instantiate<GraphView>();
+        RemoveSublocationViews();
+        AddChild(graphView);
+        graphView.Initialize(_simulationManager.State, player.CurrentAddressId);
+    }
+
+    private void ShowBlueprintView()
+    {
+        var player = _simulationManager.State.Player;
+        if (player == null) return;
+
+        var blueprintView = GD.Load<PackedScene>("res://scenes/address/BlueprintView.tscn").Instantiate<BlueprintView>();
+        RemoveSublocationViews();
+        AddChild(blueprintView);
+        blueprintView.Initialize(_simulationManager.State, player.CurrentAddressId);
+    }
+
+    private void RemoveSublocationViews()
+    {
+        foreach (var child in GetChildren())
+        {
+            if (child is GraphView or BlueprintView)
+            {
+                child.QueueFree();
+            }
+        }
     }
 
     private void OnLeave()
