@@ -9,6 +9,7 @@ using Stakeout.Simulation.Actions;
 using Stakeout.Simulation.Crimes;
 using Stakeout.Simulation.Entities;
 using Stakeout.Simulation.Objectives;
+using Stakeout.Simulation.Scheduling;
 
 /// <summary>
 /// Interface implemented by content views that live inside GameShell's content area.
@@ -49,6 +50,7 @@ public partial class GameShell : Control
     // Person Inspectors (multiple allowed, auto-updating)
     private readonly List<(int personId, Window window, VBoxContainer content)> _inspectorWindows = new();
     private double _inspectorRefreshTimer;
+    private readonly Dictionary<int, HashSet<int>> _inspectorExpandedGroups = new();
 
     public override void _Ready()
     {
@@ -358,6 +360,7 @@ public partial class GameShell : Control
         window.CloseRequested += () =>
         {
             _inspectorWindows.RemoveAll(w => w.window == window);
+            _inspectorExpandedGroups.Remove(personId);
             window.QueueFree();
         };
         AddChild(window);
@@ -459,28 +462,10 @@ public partial class GameShell : Control
         if (objLines.Count > 0)
             AddInspectorSection(vbox, font, "— Objectives —", objLines.ToArray());
 
-        // Schedule
+        // Schedule (collapsible tree grouped by task)
         if (person.Schedule != null)
         {
-            var schedLines = person.Schedule.Entries.Select(e =>
-            {
-                var targetStr = "";
-                if (e.TargetAddressId.HasValue)
-                {
-                    var addr = state.Addresses.GetValueOrDefault(e.TargetAddressId.Value);
-                    if (addr != null)
-                    {
-                        var street = state.Streets.GetValueOrDefault(addr.StreetId);
-                        targetStr = $" @ {addr.Number} {street?.Name ?? "Unknown"} ({addr.Type})";
-                    }
-                    else
-                    {
-                        targetStr = $" @ addr {e.TargetAddressId.Value}";
-                    }
-                }
-                return $"[{e.StartTime:hh\\:mm}-{e.EndTime:hh\\:mm}] {e.Action}{targetStr}";
-            }).ToArray();
-            AddInspectorSection(vbox, font, "— Schedule —", schedLines);
+            AddScheduleTree(vbox, font, person.Schedule, state, person.Id);
         }
 
         // Recent Events
@@ -511,6 +496,125 @@ public partial class GameShell : Control
 
         // Spacer
         vbox.AddChild(new Control { CustomMinimumSize = new Vector2(0, 10) });
+    }
+
+    private void AddScheduleTree(VBoxContainer vbox, Font font, DailySchedule schedule, SimulationState state, int personId)
+    {
+        var headerLabel = new Label { Text = "— Schedule —" };
+        headerLabel.AddThemeFontOverride("font", font);
+        headerLabel.AddThemeFontSizeOverride("font_size", 14);
+        headerLabel.AddThemeColorOverride("font_color", new Color(0.3f, 0.6f, 1.0f));
+        vbox.AddChild(headerLabel);
+
+        var groups = schedule.Groups.Count > 0 ? schedule.Groups : null;
+        if (groups == null)
+        {
+            // Fallback: show flat entries if no groups available
+            foreach (var e in schedule.Entries)
+            {
+                var label = new Label { Text = FormatScheduleEntry(e, state) };
+                label.AddThemeFontOverride("font", font);
+                label.AddThemeFontSizeOverride("font_size", 12);
+                label.AddThemeColorOverride("font_color", new Color(0.9f, 0.9f, 0.9f));
+                vbox.AddChild(label);
+            }
+        }
+        else
+        {
+            if (!_inspectorExpandedGroups.ContainsKey(personId))
+                _inspectorExpandedGroups[personId] = new HashSet<int>();
+            var expandedSet = _inspectorExpandedGroups[personId];
+
+            for (int gi = 0; gi < groups.Count; gi++)
+            {
+                var group = groups[gi];
+                var groupIndex = gi;
+                var hasChildren = group.Children.Count > 1 ||
+                    (group.Children.Count == 1 && group.Children[0].TargetSublocationId.HasValue);
+                var isExpanded = expandedSet.Contains(groupIndex);
+                var arrow = hasChildren ? (isExpanded ? "▼ " : "▶ ") : "  ";
+                var groupText = $"{arrow}[{group.StartTime:hh\\:mm}-{group.EndTime:hh\\:mm}] {group.Action}";
+                groupText += FormatAddressString(group.TargetAddressId, group.FromAddressId, state);
+
+                var groupButton = new Button
+                {
+                    Text = groupText,
+                    Flat = true,
+                    Alignment = HorizontalAlignment.Left
+                };
+                groupButton.AddThemeFontOverride("font", font);
+                groupButton.AddThemeFontSizeOverride("font_size", 12);
+                groupButton.AddThemeColorOverride("font_color", new Color(0.9f, 0.9f, 0.7f));
+
+                var childContainer = new VBoxContainer { Visible = isExpanded };
+
+                if (hasChildren)
+                {
+                    foreach (var child in group.Children)
+                    {
+                        var sublocationName = ResolveSublocationName(child.TargetSublocationId, child.TargetAddressId, state);
+                        var childText = $"    [{child.StartTime:hh\\:mm}-{child.EndTime:hh\\:mm}] {child.Action}";
+                        if (sublocationName != null)
+                            childText += $" → {sublocationName}";
+
+                        var childLabel = new Label { Text = childText };
+                        childLabel.AddThemeFontOverride("font", font);
+                        childLabel.AddThemeFontSizeOverride("font_size", 11);
+                        childLabel.AddThemeColorOverride("font_color", new Color(0.7f, 0.7f, 0.7f));
+                        childContainer.AddChild(childLabel);
+                    }
+
+                    var containerRef = childContainer;
+                    var buttonRef = groupButton;
+                    var groupRef = group;
+                    var pid = personId;
+                    var gIdx = groupIndex;
+                    groupButton.Pressed += () =>
+                    {
+                        containerRef.Visible = !containerRef.Visible;
+                        if (containerRef.Visible)
+                            _inspectorExpandedGroups[pid].Add(gIdx);
+                        else
+                            _inspectorExpandedGroups[pid].Remove(gIdx);
+                        var a = containerRef.Visible ? "▼ " : "▶ ";
+                        buttonRef.Text = $"{a}[{groupRef.StartTime:hh\\:mm}-{groupRef.EndTime:hh\\:mm}] {groupRef.Action}"
+                            + FormatAddressString(groupRef.TargetAddressId, groupRef.FromAddressId, state);
+                    };
+                }
+
+                vbox.AddChild(groupButton);
+                vbox.AddChild(childContainer);
+            }
+        }
+
+        vbox.AddChild(new Control { CustomMinimumSize = new Vector2(0, 10) });
+    }
+
+    private string FormatScheduleEntry(ScheduleEntry e, SimulationState state)
+    {
+        var text = $"[{e.StartTime:hh\\:mm}-{e.EndTime:hh\\:mm}] {e.Action}";
+        text += FormatAddressString(e.TargetAddressId, e.FromAddressId, state);
+        var sublocationName = ResolveSublocationName(e.TargetSublocationId, e.TargetAddressId, state);
+        if (sublocationName != null)
+            text += $" → {sublocationName}";
+        return text;
+    }
+
+    private string FormatAddressString(int? targetAddressId, int? fromAddressId, SimulationState state)
+    {
+        if (!targetAddressId.HasValue) return "";
+        var addr = state.Addresses.GetValueOrDefault(targetAddressId.Value);
+        if (addr == null) return $" @ addr {targetAddressId.Value}";
+        var street = state.Streets.GetValueOrDefault(addr.StreetId);
+        return $" @ {addr.Number} {street?.Name ?? "Unknown"} ({addr.Type})";
+    }
+
+    private string ResolveSublocationName(int? sublocationId, int? addressId, SimulationState state)
+    {
+        if (!sublocationId.HasValue || !addressId.HasValue) return null;
+        if (!state.Addresses.TryGetValue(addressId.Value, out var addr)) return null;
+        if (!addr.Sublocations.TryGetValue(sublocationId.Value, out var subloc)) return null;
+        return subloc.Name;
     }
 
     private void ShowAddToEvidenceBoardMenu(Vector2 pos, EvidenceEntityType entityType, int entityId)
