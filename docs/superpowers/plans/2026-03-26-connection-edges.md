@@ -527,12 +527,13 @@ public class SublocationGraph
                     ? conn.ToSublocationId
                     : conn.FromSublocationId;
 
-                if (!visited.Add(neighbor))
+                if (visited.Contains(neighbor))
                     continue;
 
                 if (context != null && !context.CanTraverse(conn))
                     continue;
 
+                visited.Add(neighbor);
                 parentNode[neighbor] = current;
                 parentEdge[neighbor] = conn;
                 queue.Enqueue(neighbor);
@@ -1385,7 +1386,7 @@ public class OfficeGenerator : ISublocationGenerator
         var subs = new Dictionary<int, Sublocation>();
         var conns = new List<SublocationConnection>();
 
-        Sublocation Make(string name, string[] tags, int floor)
+        Sublocation Make(string name, string[] tags, int? floor)
         {
             var sub = new Sublocation
             {
@@ -1414,7 +1415,7 @@ public class OfficeGenerator : ISublocationGenerator
         var road = Make("Road", new[] { "road" }, 0);
         var lobby = Make("Lobby", new[] { "entrance", "public" }, 0);
         var securityRoom = Make("Security Room", new[] { "security" }, 0);
-        var elevator = Make("Elevator", new[] { "elevator" }, 0);
+        var elevator = Make("Elevator", new[] { "elevator" }, null);
 
         Connect(road, lobby, new SublocationConnection
         {
@@ -1496,6 +1497,8 @@ For each generator test file, update the helper graphs and assertions to remove 
 2. Update sublocation count assertions (fewer nodes)
 3. Update connection count assertions if needed
 4. Update any assertions that checked for connection-point sublocations by tag
+5. **IMPORTANT:** `graph.FindPath()` now returns `List<PathStep>` instead of `List<Sublocation>`. Any test that calls `FindPath` must update: use `path[i].Location` to access the sublocation, and `path[i].Via` to access the edge. For example, change `Assert.Equal("Lobby", path[1].Name)` to `Assert.Equal("Lobby", path[1].Location.Name)`.
+6. Tests that check `FindByTag("entrance")` on the graph will now return `null` for buildings where "entrance" is a connection tag (not a sublocation tag). Update these to use `FindConnectionByTag("entrance")` or `FindEntryPoint("entrance")` as appropriate.
 
 Read each test file, update it to match the new generator output, and ensure assertions are correct. The test files are:
 - `stakeout.tests/Simulation/Sublocations/SuburbanHomeGeneratorTests.cs`
