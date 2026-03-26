@@ -1,14 +1,15 @@
 - I saw a case where a woman working at a diner went kitchen->kitchen->kitchen
 - sublocation rethink: are doors and windows considered locations? graph view at least is confusing, as is inspector. It's weird that a person has an action to exist in "front door" between road and lobby, for example. Rather, I think "via" is going to be much more elegant. Edges can be doors/windows.Can we improve the algo to minimize overlaps of edges and nodes?
+- is "decomposition" a good name for the breakdowns of tasks to subtasks?
 
 - add apartment buildings and parks to gen so we can see them. They already got created, but we forgot to add them to generation
 - inventory, locked doors/windows, and keys
 - traces: fingerprints
 - music!
 - sfx!
-- ScheduleBuilder may need some love. The short term fixes put in place seem like bandaids. We need to review and think about what safegaurds are in place to ensure that a schedule is always sequential and has no overlaps and no gaps. Need to think about when schedules are recalculated and how the "current action" at recalc time isn't changed suddenly.
+- ScheduleBuilder may need some love. The short term fixes put in place seem like bandaids. We need to review and think about what safegaurds are in place to ensure that a schedule is always sequential and has no overlaps and no gaps. Need to think about when schedules are recalculated and how the "current action" at recalc time isn't changed suddenly. Maybe at this point is a good chance to do a broad overview of the overall simulation mechanics before moving on to replay and other big things.
 - Replay a solved crime. Replay feature has a lot to think about with the Past Schedule. Maybe only save for critical characters?
-- coordinated NPC actions: first example: meet up to have an affair. Go on date, make love.
+- coordinated NPC actions: first example: meet up to have an affair. Go on date, make love. etc.
 - generating NPCs and Addresses with a past history (especially past schedule)
 - saving and loading
 - multithreading the simulation?
