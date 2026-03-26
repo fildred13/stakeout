@@ -1,10 +1,10 @@
-Let's start to flesh out the traces system just a bit, and more complex actions.
+Let's start to flesh out the traces system just a bit, along with some more complex actions and some supporting mechanics.
 
 Most Actions that People execute in the game should start to leave traces we'll zoom in on one, and then flesh out the systems around that.
 
 When a normal person enters a  location, they should leave a fingerprint on the front door. But for each other fingerprint on the front door, there should be a 25% chance to erase the fingerprint, which is increased by an additional 25% for every other fingerprint on the door. If this is generalized to all places where fingerprints are added to things, then we have a system which ensures that we don't have infinite fingerprints on surfaces. Also, no fingerprint should be left on a surface more than once.
 
-But if a killer enters a home, they may not enter via the front door. This requires that we add a system for determining entering of premises, and allowing different persons to enter different locations in different ways. For example a killer attempting to enter a suburbanHome may try to open a door to see if it is unlocked, try to pick the lock of a front door, may break the door down, may try to open a window to see if any are unlocked, may break a window, may try to go in the back door, may try to pick the backdoor lock, or may try to break down the door.
+But if a killer enters a home, they may not enter via the front door. For example a killer attempting to enter a suburbanHome may try to open a door to see if it is unlocked, try to pick the lock of a front door, may break the door down, may try to open a window to see if any are unlocked, may break a window, may try to go in the back door, may try to pick the backdoor lock, or may try to break down the door.
 
 A bartender, meanwhile, may go in the front door of a DiveBar when entering it, but may go in via the back door.
 

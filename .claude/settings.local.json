@@ -23,7 +23,10 @@
       "Bash(xxd)",
       "Bash(git mv:*)",
       "Bash(C:/Users/fildr/.claude/plugins/cache/superpowers-dev/superpowers/5.0.5/skills/brainstorming/scripts/start-server.sh --project-dir \"h:/Dropbox/sean-tower/Documents/git/stakeout\")",
-      "Bash(git rm:*)"
+      "Bash(git rm:*)",
+      "Bash(C:/Users/fildr/.claude/plugins/cache/superpowers-dev/superpowers/5.0.5/scripts/start-server.sh --project-dir \"h:/Dropbox/sean-tower/Documents/git/stakeout\")",
+      "Bash(\"C:/Users/fildr/.claude/plugins/cache/superpowers-dev/superpowers/5.0.5/skills/brainstorming/scripts/start-server.sh\" --project-dir \"h:/Dropbox/sean-tower/Documents/git/stakeout\")",
+      "Bash(dotnet msbuild:*)"
     ],
     "additionalDirectories": [
       "C:\\Users\\fildr\\.claude\\plugins\\cache\\superpowers-dev"

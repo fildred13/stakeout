@@ -1,0 +1,353 @@
+<h2>Sub-Action Routine Architectures</h2>
+<p class="subtitle">How does the AI brain decide where an NPC goes within a location? Three approaches compared.</p>
+
+<!-- OPTION A -->
+<div style="background: #1a1a2e; border: 1px solid #333; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+  <h3 style="color: #7ecfff; margin-top: 0;">A) Role-Based Templates</h3>
+  <p style="color: #888; font-size: 12px;">Explicit scripts per (AddressType, Role) pair. The template IS the routine.</p>
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+    <!-- Architecture diagram -->
+    <div>
+      <div style="color: #aa6; font-size: 11px; margin-bottom: 8px; text-transform: uppercase;">Architecture</div>
+      <svg viewBox="0 0 380 300" style="width: 100%; font-family: monospace;">
+        <!-- Template Registry -->
+        <rect x="90" y="10" width="200" height="35" rx="4" fill="#2a2a3e" stroke="#66a"/>
+        <text x="190" y="32" text-anchor="middle" fill="#aaaaff" font-size="11">SubroutineTemplateRegistry</text>
+
+        <!-- Arrow down -->
+        <line x1="190" y1="45" x2="190" y2="65" stroke="#555" marker-end="url(#arrow)"/>
+        <text x="200" y="58" fill="#777" font-size="8">lookup(Office, Employee)</text>
+
+        <!-- Template box -->
+        <rect x="50" y="65" width="280" height="130" rx="4" fill="#1e2e1e" stroke="#5a5"/>
+        <text x="65" y="85" fill="#aaffaa" font-size="10" font-weight="bold">OfficeEmployeeTemplate</text>
+        <text x="65" y="105" fill="#ccc" font-size="9">1. Enter → "Lobby"</text>
+        <text x="65" y="118" fill="#ccc" font-size="9">2. Go to → "Elevator"</text>
+        <text x="65" y="131" fill="#ccc" font-size="9">3. Go to → "Cubicle Area"</text>
+        <text x="65" y="144" fill="#ccc" font-size="9">4. After 1-3hrs → "Break Room" (50% chance)</text>
+        <text x="65" y="157" fill="#ccc" font-size="9">5. After 2-4hrs → "Restroom" (70% chance)</text>
+        <text x="65" y="170" fill="#ccc" font-size="9">6. At end → "Elevator" → "Lobby" → exit</text>
+        <text x="65" y="185" fill="#888" font-size="8" font-style="italic">Room names are hardcoded strings</text>
+
+        <!-- Arrow down -->
+        <line x1="190" y1="195" x2="190" y2="220" stroke="#555" marker-end="url(#arrow)"/>
+        <text x="200" y="212" fill="#777" font-size="8">generate schedule</text>
+
+        <!-- Output -->
+        <rect x="70" y="220" width="240" height="55" rx="4" fill="#2e2a1e" stroke="#aa6"/>
+        <text x="85" y="240" fill="#ffddaa" font-size="10" font-weight="bold">Intra-Location Schedule</text>
+        <text x="85" y="255" fill="#ccc" font-size="9">7:30 Lobby → 7:32 Elevator → 7:35 Cubicle</text>
+        <text x="85" y="268" fill="#ccc" font-size="9">9:45 Break Room → 9:55 Cubicle → ...</text>
+
+        <defs><marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#555"/></marker></defs>
+      </svg>
+    </div>
+
+    <!-- Example: AI Brain processing -->
+    <div>
+      <div style="color: #aa6; font-size: 11px; margin-bottom: 8px; text-transform: uppercase;">AI Brain Processing</div>
+      <div style="font-family: monospace; font-size: 10px; line-height: 1.7; color: #ccc; background: #111; border-radius: 4px; padding: 10px;">
+        <div style="color: #5a5;">// Dave arrives at Office, 7:30 AM</div>
+        <div>template = Registry.Get("Office", "Employee")</div>
+        <div>schedule = template.Generate(address, rng)</div>
+        <div style="color: #888;">// Template produces a fixed sequence</div>
+        <div style="color: #888;">// PersonBehavior just follows it step by step</div>
+        <br>
+        <div style="color: #a55;">// Problem: New location type "CoworkingSpace"</div>
+        <div style="color: #a55;">// Need: CoworkingEmployeeTemplate</div>
+        <div style="color: #a55;">// Need: CoworkingVisitorTemplate</div>
+        <div style="color: #a55;">// Need: CoworkingCleanerTemplate</div>
+        <div style="color: #a55;">// Each one manually authored</div>
+        <br>
+        <div style="color: #a55;">// Problem: Office doesn't have a "Break Room"</div>
+        <div style="color: #a55;">// (small office, no break room generated)</div>
+        <div style="color: #a55;">// Template step 4 → crash or skip?</div>
+        <div style="color: #a55;">// Need fallback logic per template step</div>
+        <br>
+        <div style="color: #a55;">// Problem: Killer at SuburbanHome</div>
+        <div style="color: #a55;">// Need: SuburbanHomeKillerTemplate</div>
+        <div style="color: #a55;">// But killer behavior varies wildly...</div>
+        <div style="color: #a55;">// Searching for victim? Lying in wait?</div>
+        <div style="color: #a55;">// Template per killer strategy?</div>
+      </div>
+
+      <div style="margin-top: 10px; padding: 8px; background: #1a1a1a; border-radius: 4px;">
+        <div style="color: #ffddaa; font-size: 10px;">Templates needed for 6 types × ~4 roles:</div>
+        <div style="color: #a55; font-size: 18px; font-weight: bold;">~24 templates to author</div>
+        <div style="color: #888; font-size: 9px;">Each one is a bespoke script. Grows linearly with types × roles.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- OPTION B -->
+<div style="background: #1a1a2e; border: 1px solid #333; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+  <h3 style="color: #7ecfff; margin-top: 0;">B) Goal-Driven with Room Tags</h3>
+  <p style="color: #888; font-size: 12px;">Rooms have tags. NPCs have needs. The brain finds rooms that satisfy needs.</p>
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+    <!-- Architecture diagram -->
+    <div>
+      <div style="color: #aa6; font-size: 11px; margin-bottom: 8px; text-transform: uppercase;">Architecture</div>
+      <svg viewBox="0 0 380 320" style="width: 100%; font-family: monospace;">
+        <!-- NPC Needs -->
+        <rect x="10" y="10" width="160" height="70" rx="4" fill="#2e2a1e" stroke="#aa6"/>
+        <text x="25" y="30" fill="#ffddaa" font-size="10" font-weight="bold">NPC Needs (from Action)</text>
+        <text x="25" y="48" fill="#ccc" font-size="9">primary: "work" → work_area</text>
+        <text x="25" y="61" fill="#ccc" font-size="9">periodic: food, restroom</text>
+        <text x="25" y="74" fill="#ccc" font-size="9">entry/exit: entrance</text>
+
+        <!-- Room Tags -->
+        <rect x="210" y="10" width="160" height="90" rx="4" fill="#1e2e1e" stroke="#5a5"/>
+        <text x="225" y="30" fill="#aaffaa" font-size="10" font-weight="bold">Room Tags (on sublocation)</text>
+        <text x="225" y="48" fill="#ccc" font-size="9">Cubicle Area: [work_area]</text>
+        <text x="225" y="61" fill="#ccc" font-size="9">Break Room: [food, social]</text>
+        <text x="225" y="74" fill="#ccc" font-size="9">Restroom: [restroom]</text>
+        <text x="225" y="87" fill="#ccc" font-size="9">Lobby: [entrance, public]</text>
+
+        <!-- Brain -->
+        <line x1="90" y1="80" x2="150" y2="120" stroke="#555" marker-end="url(#arrow)"/>
+        <line x1="290" y1="100" x2="230" y2="120" stroke="#555" marker-end="url(#arrow)"/>
+
+        <rect x="100" y="120" width="180" height="45" rx="4" fill="#2a2a3e" stroke="#66a"/>
+        <text x="190" y="140" text-anchor="middle" fill="#aaaaff" font-size="11" font-weight="bold">NeedResolver</text>
+        <text x="190" y="155" text-anchor="middle" fill="#888" font-size="9">match need → find tagged room → pathfind</text>
+
+        <!-- Arrow down -->
+        <line x1="190" y1="165" x2="190" y2="190" stroke="#555" marker-end="url(#arrow)"/>
+
+        <!-- Decision -->
+        <rect x="60" y="190" width="260" height="100" rx="4" fill="#111" stroke="#444"/>
+        <text x="75" y="210" fill="#ccc" font-size="9">tick(): need("work") → find [work_area] → Cubicle Area</text>
+        <text x="75" y="228" fill="#ccc" font-size="9">after 2hrs: need("food") fires → find [food] → Break Room</text>
+        <text x="75" y="246" fill="#ccc" font-size="9">after 15min: need("work") resumes → back to Cubicle</text>
+        <text x="75" y="264" fill="#ccc" font-size="9">at end: need("exit") → find [entrance] → Lobby</text>
+        <text x="75" y="282" fill="#888" font-size="8" font-style="italic">Each tick: check needs priority, resolve highest, pathfind there</text>
+      </svg>
+    </div>
+
+    <!-- Example: AI Brain processing -->
+    <div>
+      <div style="color: #aa6; font-size: 11px; margin-bottom: 8px; text-transform: uppercase;">AI Brain Processing</div>
+      <div style="font-family: monospace; font-size: 10px; line-height: 1.7; color: #ccc; background: #111; border-radius: 4px; padding: 10px;">
+        <div style="color: #5a5;">// Dave arrives at Office, 7:30 AM</div>
+        <div>needs = Action("Work").GetNeeds()</div>
+        <div style="color: #888;">// → primary: work_area, periodic: [food, restroom]</div>
+        <div>room = address.FindByTag("entrance")</div>
+        <div style="color: #888;">// → Lobby (always enter via entrance first)</div>
+        <div>moveTo(Lobby)</div>
+        <div>room = address.FindByTag("work_area")</div>
+        <div style="color: #888;">// → Cubicle Area</div>
+        <div>pathfind(Lobby → Elevator → Cubicle Area)</div>
+        <br>
+        <div style="color: #5a5;">// 9:45 AM — food need triggers</div>
+        <div>room = address.FindByTag("food")</div>
+        <div style="color: #888;">// → Break Room</div>
+        <div>pathfind(Cubicle Area → Break Room)</div>
+        <br>
+        <div style="color: #5a5;">// New location type "CoworkingSpace"?</div>
+        <div style="color: #5a5;">// Just tag its rooms! No new templates.</div>
+        <div style="color: #5a5;">// Hot Desk: [work_area]</div>
+        <div style="color: #5a5;">// Kitchen: [food, social]</div>
+        <div style="color: #5a5;">// Dave's brain works here automatically.</div>
+        <br>
+        <div style="color: #aa6;">// Edge case: small office, no break room</div>
+        <div style="color: #aa6;">// FindByTag("food") → null</div>
+        <div style="color: #aa6;">// Need goes unsatisfied. NPC stays put.</div>
+        <div style="color: #aa6;">// Realistic! Not every office has a break room.</div>
+        <br>
+        <div style="color: #aa6;">// Edge case: Killer at SuburbanHome</div>
+        <div style="color: #aa6;">// Action("KillPerson").GetNeeds()</div>
+        <div style="color: #aa6;">// → primary: find_target (find room with victim)</div>
+        <div style="color: #aa6;">// But HOW to enter? Front door? Window?</div>
+        <div style="color: #aa6;">// Needs don't capture strategy...</div>
+        <div style="color: #a55;">// "find [entrance]" gives Front Door.</div>
+        <div style="color: #a55;">// A killer wouldn't use the front door.</div>
+        <div style="color: #a55;">// Need something more than tags here?</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- OPTION C -->
+<div style="background: #1a1a2e; border: 1px solid #333; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+  <h3 style="color: #7ecfff; margin-top: 0;">C) Hybrid: Tagged Rooms + Rhythm Templates</h3>
+  <p style="color: #888; font-size: 12px;">Templates define the <em>pattern</em> of behavior. Tags resolve <em>which room</em> fulfills each step.</p>
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+    <!-- Architecture diagram -->
+    <div>
+      <div style="color: #aa6; font-size: 11px; margin-bottom: 8px; text-transform: uppercase;">Architecture</div>
+      <svg viewBox="0 0 380 340" style="width: 100%; font-family: monospace;">
+        <!-- Rhythm Template (small, abstract) -->
+        <rect x="10" y="10" width="170" height="85" rx="4" fill="#2e2a1e" stroke="#aa6"/>
+        <text x="25" y="30" fill="#ffddaa" font-size="10" font-weight="bold">Rhythm: "WorkDay"</text>
+        <text x="25" y="48" fill="#ccc" font-size="9">1. enter via [entrance]</text>
+        <text x="25" y="61" fill="#ccc" font-size="9">2. go to [work_area]</text>
+        <text x="25" y="74" fill="#ccc" font-size="9">3. every 1-3hrs: visit [food]</text>
+        <text x="25" y="87" fill="#ccc" font-size="9">4. exit via [entrance]</text>
+
+        <!-- Room Tags -->
+        <rect x="210" y="10" width="160" height="85" rx="4" fill="#1e2e1e" stroke="#5a5"/>
+        <text x="225" y="30" fill="#aaffaa" font-size="10" font-weight="bold">Room Tags</text>
+        <text x="225" y="48" fill="#ccc" font-size="9">Cubicle: [work_area]</text>
+        <text x="225" y="61" fill="#ccc" font-size="9">Break Room: [food]</text>
+        <text x="225" y="74" fill="#ccc" font-size="9">Lobby: [entrance]</text>
+        <text x="225" y="87" fill="#ccc" font-size="9">Window: [covert_entry]</text>
+
+        <!-- Both feed into resolver -->
+        <line x1="95" y1="95" x2="150" y2="125" stroke="#555" marker-end="url(#arrow)"/>
+        <line x1="290" y1="95" x2="230" y2="125" stroke="#555" marker-end="url(#arrow)"/>
+
+        <rect x="100" y="125" width="180" height="40" rx="4" fill="#2a2a3e" stroke="#66a"/>
+        <text x="190" y="145" text-anchor="middle" fill="#aaaaff" font-size="11" font-weight="bold">RhythmResolver</text>
+        <text x="190" y="158" text-anchor="middle" fill="#888" font-size="9">rhythm step + tags → concrete room</text>
+
+        <!-- Arrow to pathfinder -->
+        <line x1="190" y1="165" x2="190" y2="190" stroke="#555" marker-end="url(#arrow)"/>
+
+        <rect x="110" y="190" width="160" height="30" rx="4" fill="#2a2a3e" stroke="#66a"/>
+        <text x="190" y="210" text-anchor="middle" fill="#aaaaff" font-size="10">Pathfinder</text>
+
+        <!-- Arrow to output -->
+        <line x1="190" y1="220" x2="190" y2="245" stroke="#555" marker-end="url(#arrow)"/>
+
+        <!-- Concrete schedule -->
+        <rect x="50" y="245" width="280" height="80" rx="4" fill="#111" stroke="#444"/>
+        <text x="65" y="265" fill="#ccc" font-size="10" font-weight="bold">Resolved Schedule</text>
+        <text x="65" y="283" fill="#ccc" font-size="9">7:30 Lobby → 7:32 Elevator → 7:35 Cubicle Area</text>
+        <text x="65" y="296" fill="#ccc" font-size="9">9:45 Break Room → 9:55 Cubicle Area</text>
+        <text x="65" y="309" fill="#888" font-size="8" font-style="italic">Same output as A, but rooms resolved dynamically via tags</text>
+      </svg>
+
+      <!-- Key insight -->
+      <div style="margin-top: 12px; padding: 8px; background: #1e1e2e; border: 1px solid #555; border-radius: 4px;">
+        <div style="color: #aaaaff; font-size: 10px; font-weight: bold;">Key: Rhythms are reusable across location types</div>
+        <div style="color: #ccc; font-size: 9px; line-height: 1.5; margin-top: 4px;">
+          "WorkDay" rhythm works at Office, CoworkingSpace, Factory — anywhere with [work_area] + [entrance] tags.<br>
+          "Patronize" rhythm works at Diner, DiveBar, Cafe — anywhere with [service_area] + [entrance].<br>
+          "Inhabit" rhythm works at SuburbanHome, ApartmentBuilding — anywhere with [bedroom] + [kitchen] + [living].
+        </div>
+      </div>
+    </div>
+
+    <!-- Example: AI Brain processing -->
+    <div>
+      <div style="color: #aa6; font-size: 11px; margin-bottom: 8px; text-transform: uppercase;">AI Brain Processing</div>
+      <div style="font-family: monospace; font-size: 10px; line-height: 1.7; color: #ccc; background: #111; border-radius: 4px; padding: 10px;">
+        <div style="color: #5a5;">// Dave arrives at Office, 7:30 AM</div>
+        <div>rhythm = Rhythms.Get("WorkDay")</div>
+        <div style="color: #888;">// Same rhythm for any workplace</div>
+        <div>step1 = rhythm.Next() → "enter via [entrance]"</div>
+        <div>room = address.FindByTag("entrance") → Lobby</div>
+        <div>path = pathfind(Road → Lobby)</div>
+        <div>moveTo(Lobby)</div>
+        <br>
+        <div>step2 = rhythm.Next() → "go to [work_area]"</div>
+        <div>room = address.FindByTag("work_area")</div>
+        <div style="color: #888;">// → Cubicle Area</div>
+        <div>path = pathfind(Lobby → Elevator → Cubicle)</div>
+        <div style="color: #888;">// Pathfinder discovers intermediate rooms!</div>
+        <div>moveTo(Elevator) → moveTo(Cubicle Area)</div>
+        <br>
+        <div style="color: #5a5;">// 9:45 AM — rhythm fires periodic [food]</div>
+        <div>room = address.FindByTag("food") → Break Room</div>
+        <div>pathfind(Cubicle → Break Room) → direct</div>
+        <br>
+        <div style="color: #5a5;">// New location "CoworkingSpace"?</div>
+        <div style="color: #5a5;">// Tag rooms, reuse "WorkDay" rhythm. Done.</div>
+        <br>
+        <div style="color: #5a5;">// Small office, no break room?</div>
+        <div style="color: #5a5;">// FindByTag("food") → null</div>
+        <div style="color: #5a5;">// Rhythm skips step. Realistic.</div>
+        <br>
+        <div style="color: #5a5;">// KILLER at SuburbanHome:</div>
+        <div style="color: #5a5;">// Uses rhythm "Intrude", not "WorkDay"</div>
+        <div>rhythm = Rhythms.Get("Intrude")</div>
+        <div>step1 → "enter via [covert_entry]"</div>
+        <div>room = address.FindByTag("covert_entry")</div>
+        <div style="color: #888;">// → Back Window, Back Door, etc.</div>
+        <div>step2 → "find [occupied_by: target]"</div>
+        <div style="color: #888;">// → Bedroom (victim is sleeping)</div>
+        <div>step3 → "execute action in current room"</div>
+        <div style="color: #888;">// Traces: fingerprints on window, in hallway,</div>
+        <div style="color: #888;">// on bedroom door — all from pathfinding</div>
+        <br>
+        <div style="color: #5a5;">// Bartender at DiveBar?</div>
+        <div style="color: #5a5;">// Uses rhythm "StaffShift"</div>
+        <div>step1 → "enter via [staff_entry]" → Back Door</div>
+        <div>step2 → "go to [work_area]" → Bar Area</div>
+        <div style="color: #888;">// Different entry than patron, same tags</div>
+      </div>
+
+      <div style="margin-top: 10px; padding: 8px; background: #1a1a1a; border-radius: 4px;">
+        <div style="color: #ffddaa; font-size: 10px;">Rhythms needed for all behaviors:</div>
+        <div style="color: #5a5; font-size: 18px; font-weight: bold;">~6-8 rhythms total</div>
+        <div style="color: #888; font-size: 9px; line-height: 1.4;">
+          WorkDay, Patronize, Inhabit, StaffShift, Intrude, Socialize, Sleep, Visit<br>
+          Each works across ALL location types via tags. Grows with behaviors, not locations.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Summary comparison -->
+<div style="background: #1a1a2e; border: 1px solid #444; border-radius: 8px; padding: 20px;">
+  <h3 style="color: #ffddaa; margin-top: 0;">Comparison Summary</h3>
+  <table style="width: 100%; border-collapse: collapse; font-size: 11px; color: #ccc;">
+    <thead>
+      <tr style="border-bottom: 1px solid #444;">
+        <th style="text-align: left; padding: 8px; color: #888;"></th>
+        <th style="text-align: center; padding: 8px; color: #aaaaff;">A) Role Templates</th>
+        <th style="text-align: center; padding: 8px; color: #aaaaff;">B) Tag-Driven</th>
+        <th style="text-align: center; padding: 8px; color: #aaffaa;">C) Hybrid</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid #333;">
+        <td style="padding: 8px; color: #aa6;">Scales with new location types</td>
+        <td style="padding: 8px; text-align: center; color: #a55;">Poorly — new templates per type × role</td>
+        <td style="padding: 8px; text-align: center; color: #5a5;">Well — just tag rooms</td>
+        <td style="padding: 8px; text-align: center; color: #5a5;">Well — just tag rooms</td>
+      </tr>
+      <tr style="border-bottom: 1px solid #333;">
+        <td style="padding: 8px; color: #aa6;">Handles missing rooms</td>
+        <td style="padding: 8px; text-align: center; color: #a55;">Crash or manual fallback</td>
+        <td style="padding: 8px; text-align: center; color: #5a5;">Graceful — need unsatisfied</td>
+        <td style="padding: 8px; text-align: center; color: #5a5;">Graceful — step skipped</td>
+      </tr>
+      <tr style="border-bottom: 1px solid #333;">
+        <td style="padding: 8px; color: #aa6;">Behavioral variety</td>
+        <td style="padding: 8px; text-align: center; color: #5a5;">High — fully scripted</td>
+        <td style="padding: 8px; text-align: center; color: #aa6;">Medium — needs are generic</td>
+        <td style="padding: 8px; text-align: center; color: #5a5;">High — rhythm adds personality</td>
+      </tr>
+      <tr style="border-bottom: 1px solid #333;">
+        <td style="padding: 8px; color: #aa6;">Killer/special behavior</td>
+        <td style="padding: 8px; text-align: center; color: #aa6;">Bespoke template per strategy</td>
+        <td style="padding: 8px; text-align: center; color: #a55;">Hard — needs don't capture strategy</td>
+        <td style="padding: 8px; text-align: center; color: #5a5;">"Intrude" rhythm + [covert_entry] tag</td>
+      </tr>
+      <tr style="border-bottom: 1px solid #333;">
+        <td style="padding: 8px; color: #aa6;">Intermediate room traces</td>
+        <td style="padding: 8px; text-align: center; color: #a55;">Only if scripted per step</td>
+        <td style="padding: 8px; text-align: center; color: #5a5;">Via pathfinding</td>
+        <td style="padding: 8px; text-align: center; color: #5a5;">Via pathfinding</td>
+      </tr>
+      <tr style="border-bottom: 1px solid #333;">
+        <td style="padding: 8px; color: #aa6;">Things to author</td>
+        <td style="padding: 8px; text-align: center; color: #a55;">~24 templates (types × roles)</td>
+        <td style="padding: 8px; text-align: center; color: #5a5;">Tag vocabulary + need definitions</td>
+        <td style="padding: 8px; text-align: center; color: #5a5;">~6-8 rhythms + tag vocabulary</td>
+      </tr>
+      <tr>
+        <td style="padding: 8px; color: #aa6;">Pathfinding built in</td>
+        <td style="padding: 8px; text-align: center; color: #a55;">No — rooms listed explicitly</td>
+        <td style="padding: 8px; text-align: center; color: #5a5;">Yes — find room, pathfind to it</td>
+        <td style="padding: 8px; text-align: center; color: #5a5;">Yes — find room, pathfind to it</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
