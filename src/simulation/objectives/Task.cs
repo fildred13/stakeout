@@ -14,5 +14,6 @@ public class SimTask
     public TimeSpan WindowStart { get; set; }
     public TimeSpan WindowEnd { get; set; }
     public int? TargetAddressId { get; set; }
+    public int? TargetSublocationId { get; set; }
     public Dictionary<string, object> ActionData { get; set; }
 }

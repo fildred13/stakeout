@@ -10,6 +10,41 @@ public static class ScheduleBuilder
 {
     // --- Task-based API ---
 
+    public static DailySchedule BuildFromTasks(List<SimTask> tasks, SimulationState state, MapConfig config)
+    {
+        // Step 1: Build the address-level schedule using existing logic
+        var baseSchedule = BuildFromTasks(tasks, state.Addresses, config);
+
+        // Step 2: Expand non-travel entries with sublocation detail
+        var expandedEntries = new List<ScheduleEntry>();
+        var rng = new Random(42); // seeded for determinism
+
+        foreach (var entry in baseSchedule.Entries)
+        {
+            if (entry.Action == ActionType.TravelByCar)
+            {
+                expandedEntries.Add(entry);
+                continue;
+            }
+
+            // Create a temporary SimTask for this entry to pass to TaskResolver
+            var tempTask = new SimTask
+            {
+                ActionType = entry.Action,
+                TargetAddressId = entry.TargetAddressId,
+                WindowStart = entry.StartTime,
+                WindowEnd = entry.EndTime
+            };
+
+            var sublocationEntries = TaskResolver.Resolve(tempTask, state, rng);
+            expandedEntries.AddRange(sublocationEntries);
+        }
+
+        var schedule = new DailySchedule();
+        schedule.Entries.AddRange(expandedEntries);
+        return schedule;
+    }
+
     public static DailySchedule BuildFromTasks(List<SimTask> tasks, Dictionary<int, Address> addresses, MapConfig config)
     {
         // Step 1: For each minute of the day, determine the winning task

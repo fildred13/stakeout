@@ -6,6 +6,7 @@ using Stakeout.Simulation.Entities;
 using Stakeout.Simulation.Events;
 using Stakeout.Simulation.Objectives;
 using Stakeout.Simulation.Scheduling;
+using Stakeout.Simulation.Sublocations;
 
 namespace Stakeout.Simulation;
 
@@ -36,6 +37,7 @@ public partial class SimulationManager : Node
 
     public override void _Ready()
     {
+        SublocationGeneratorRegistry.RegisterAll();
         _locationGenerator.GenerateCityScaffolding(State);
 
         // Generate 5 people
@@ -95,11 +97,7 @@ public partial class SimulationManager : Node
     public void RebuildSchedule(Person person)
     {
         var tasks = ObjectiveResolver.ResolveTasks(person.Objectives, State);
-        var addresses = new Dictionary<int, Address>();
-        foreach (var t in tasks)
-            if (t.TargetAddressId.HasValue && State.Addresses.ContainsKey(t.TargetAddressId.Value))
-                addresses[t.TargetAddressId.Value] = State.Addresses[t.TargetAddressId.Value];
-        person.Schedule = ScheduleBuilder.BuildFromTasks(tasks, addresses, _mapConfig);
+        person.Schedule = ScheduleBuilder.BuildFromTasks(tasks, State, _mapConfig);
     }
 
     public static void UpdatePlayerTravel(SimulationState state)

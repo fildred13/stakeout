@@ -20,6 +20,8 @@ public class SimulationState
     public EventJournal Journal { get; } = new();
     public Dictionary<int, Crime> Crimes { get; } = new();
     public Dictionary<int, Trace> Traces { get; } = new();
+    public Dictionary<int, Sublocation> Sublocations { get; } = new();
+    public List<SublocationConnection> SublocationConnections { get; } = new();
 
     private int _nextEntityId = 1;
 

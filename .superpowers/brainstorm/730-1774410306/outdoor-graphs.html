@@ -1,0 +1,275 @@
+<h2>Outdoor Space Connection Graphs</h2>
+<p class="subtitle">Does the "zones connected by passages" model work for outdoor locations? Each box is a sublocation, each line is a connection with its access type.</p>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 20px;">
+
+  <!-- CITY PARK -->
+  <div style="background: #1a1a2e; border: 1px solid #333; border-radius: 8px; padding: 20px;">
+    <h3 style="color: #7ecfff; margin-top: 0;">City Park</h3>
+    <svg viewBox="0 0 400 350" style="width: 100%; font-family: monospace;">
+      <!-- Road -->
+      <rect x="140" y="5" width="120" height="32" rx="4" fill="#2a4a2a" stroke="#5a5"/>
+      <text x="200" y="26" text-anchor="middle" fill="#aaffaa" font-size="12">Road</text>
+
+      <!-- Connections from Road -->
+      <line x1="170" y1="37" x2="80" y2="75" stroke="#555" stroke-dasharray="4"/>
+      <line x1="200" y1="37" x2="200" y2="75" stroke="#555" stroke-dasharray="4"/>
+      <line x1="230" y1="37" x2="320" y2="75" stroke="#555" stroke-dasharray="4"/>
+
+      <!-- Parking Lot -->
+      <rect x="20" y="75" width="120" height="32" rx="4" fill="#2a2a3e" stroke="#66a"/>
+      <text x="80" y="96" text-anchor="middle" fill="#aaaaff" font-size="11">Parking Lot</text>
+
+      <!-- Main Entrance Path -->
+      <rect x="140" y="75" width="120" height="32" rx="4" fill="#2a2a3e" stroke="#66a"/>
+      <text x="200" y="96" text-anchor="middle" fill="#aaaaff" font-size="11">Main Entrance</text>
+
+      <!-- Side Entrance -->
+      <rect x="270" y="75" width="110" height="32" rx="4" fill="#2a2a3e" stroke="#66a"/>
+      <text x="325" y="96" text-anchor="middle" fill="#aaaaff" font-size="11">Side Gate</text>
+
+      <!-- Connection labels -->
+      <text x="115" y="60" text-anchor="middle" fill="#777" font-size="8" font-style="italic">open</text>
+      <text x="210" y="60" text-anchor="middle" fill="#777" font-size="8" font-style="italic">path</text>
+      <text x="290" y="60" text-anchor="middle" fill="#777" font-size="8" font-style="italic">gate</text>
+
+      <!-- From parking/entrance to inner areas -->
+      <line x1="80" y1="107" x2="80" y2="155" stroke="#555" stroke-dasharray="4"/>
+      <line x1="200" y1="107" x2="140" y2="155" stroke="#555" stroke-dasharray="4"/>
+      <line x1="200" y1="107" x2="270" y2="155" stroke="#555" stroke-dasharray="4"/>
+      <line x1="325" y1="107" x2="320" y2="155" stroke="#555" stroke-dasharray="4"/>
+
+      <!-- Jogging Path -->
+      <rect x="20" y="155" width="120" height="32" rx="4" fill="#2e2a1e" stroke="#aa6"/>
+      <text x="80" y="176" text-anchor="middle" fill="#ffddaa" font-size="11">Jogging Path</text>
+
+      <!-- Picnic Area -->
+      <rect x="80" y="155" width="120" height="32" rx="4" fill="#2e2a1e" stroke="#aa6"/>
+      <text x="140" y="176" text-anchor="middle" fill="#ffddaa" font-size="11">Picnic Area</text>
+
+      <!-- Playground -->
+      <rect x="210" y="155" width="110" height="32" rx="4" fill="#2e2a1e" stroke="#aa6"/>
+      <text x="265" y="176" text-anchor="middle" fill="#ffddaa" font-size="11">Playground</text>
+
+      <!-- Beach -->
+      <rect x="270" y="155" width="110" height="32" rx="4" fill="#2e2a1e" stroke="#aa6"/>
+      <text x="325" y="176" text-anchor="middle" fill="#ffddaa" font-size="11">Shore / Beach</text>
+
+      <!-- Deeper connections -->
+      <line x1="80" y1="187" x2="120" y2="230" stroke="#555" stroke-dasharray="4"/>
+      <line x1="140" y1="187" x2="120" y2="230" stroke="#555" stroke-dasharray="4"/>
+      <line x1="265" y1="187" x2="270" y2="230" stroke="#555" stroke-dasharray="4"/>
+
+      <!-- Wooded Area (central, deep) -->
+      <rect x="60" y="230" width="120" height="32" rx="4" fill="#1e2e1e" stroke="#5a5"/>
+      <text x="120" y="251" text-anchor="middle" fill="#aaffaa" font-size="11">Wooded Area</text>
+
+      <!-- Baseball Diamond -->
+      <rect x="210" y="230" width="120" height="32" rx="4" fill="#2e2a1e" stroke="#aa6"/>
+      <text x="270" y="251" text-anchor="middle" fill="#ffddaa" font-size="11">Baseball Diamond</text>
+
+      <!-- Restroom building -->
+      <line x1="140" y1="187" x2="200" y2="230" stroke="#555"/>
+      <rect x="190" y="290" width="100" height="32" rx="4" fill="#2a2a3e" stroke="#a66"/>
+      <text x="240" y="311" text-anchor="middle" fill="#ffaaaa" font-size="11">Restrooms</text>
+      <line x1="200" y1="262" x2="220" y2="290" stroke="#555"/>
+      <text x="220" y="280" fill="#777" font-size="8" font-style="italic">door</text>
+
+      <!-- Cross-connections (open sightlines) -->
+      <line x1="180" y1="246" x2="210" y2="246" stroke="#444" stroke-dasharray="2"/>
+    </svg>
+    <p style="color: #888; font-size: 12px; margin-top: 8px;">Most connections are <em>open</em> — you walk between zones freely. Restrooms have a door. Wooded area provides concealment (line-of-sight blocked).</p>
+  </div>
+
+  <!-- PARKING GARAGE -->
+  <div style="background: #1a1a2e; border: 1px solid #333; border-radius: 8px; padding: 20px;">
+    <h3 style="color: #7ecfff; margin-top: 0;">Parking Garage (4-story)</h3>
+    <svg viewBox="0 0 400 350" style="width: 100%; font-family: monospace;">
+      <!-- Road -->
+      <rect x="140" y="5" width="120" height="32" rx="4" fill="#2a4a2a" stroke="#5a5"/>
+      <text x="200" y="26" text-anchor="middle" fill="#aaffaa" font-size="12">Road</text>
+
+      <line x1="200" y1="37" x2="200" y2="65" stroke="#555"/>
+      <text x="215" y="55" fill="#777" font-size="8" font-style="italic">ramp</text>
+
+      <!-- Level 1 -->
+      <rect x="30" y="65" width="340" height="55" rx="4" fill="none" stroke="#444" stroke-dasharray="4"/>
+      <text x="45" y="80" fill="#666" font-size="9">LEVEL 1</text>
+      <rect x="40" y="82" width="90" height="28" rx="4" fill="#2a2a3e" stroke="#66a"/>
+      <text x="85" y="101" text-anchor="middle" fill="#aaaaff" font-size="10">Entry Booth</text>
+      <rect x="150" y="82" width="100" height="28" rx="4" fill="#2e2a1e" stroke="#aa6"/>
+      <text x="200" y="101" text-anchor="middle" fill="#ffddaa" font-size="10">L1 Parking</text>
+      <rect x="270" y="82" width="90" height="28" rx="4" fill="#2a2a3e" stroke="#66a"/>
+      <text x="315" y="101" text-anchor="middle" fill="#aaaaff" font-size="10">Stairwell</text>
+
+      <line x1="130" y1="96" x2="150" y2="96" stroke="#555"/>
+      <line x1="250" y1="96" x2="270" y2="96" stroke="#555"/>
+
+      <!-- Ramp between floors -->
+      <line x1="315" y1="110" x2="315" y2="135" stroke="#555"/>
+      <text x="330" y="127" fill="#777" font-size="8" font-style="italic">stairs</text>
+      <line x1="200" y1="110" x2="200" y2="135" stroke="#555" stroke-dasharray="4"/>
+      <text x="215" y="127" fill="#777" font-size="8" font-style="italic">ramp</text>
+
+      <!-- Level 2 -->
+      <rect x="30" y="135" width="340" height="55" rx="4" fill="none" stroke="#444" stroke-dasharray="4"/>
+      <text x="45" y="150" fill="#666" font-size="9">LEVEL 2</text>
+      <rect x="150" y="152" width="100" height="28" rx="4" fill="#2e2a1e" stroke="#aa6"/>
+      <text x="200" y="171" text-anchor="middle" fill="#ffddaa" font-size="10">L2 Parking</text>
+      <rect x="270" y="152" width="90" height="28" rx="4" fill="#2a2a3e" stroke="#66a"/>
+      <text x="315" y="171" text-anchor="middle" fill="#aaaaff" font-size="10">Stairwell</text>
+      <line x1="250" y1="166" x2="270" y2="166" stroke="#555"/>
+
+      <!-- Level 3 -->
+      <line x1="315" y1="180" x2="315" y2="205" stroke="#555"/>
+      <line x1="200" y1="180" x2="200" y2="205" stroke="#555" stroke-dasharray="4"/>
+      <rect x="30" y="205" width="340" height="55" rx="4" fill="none" stroke="#444" stroke-dasharray="4"/>
+      <text x="45" y="220" fill="#666" font-size="9">LEVEL 3</text>
+      <rect x="150" y="222" width="100" height="28" rx="4" fill="#2e2a1e" stroke="#aa6"/>
+      <text x="200" y="241" text-anchor="middle" fill="#ffddaa" font-size="10">L3 Parking</text>
+      <rect x="270" y="222" width="90" height="28" rx="4" fill="#2a2a3e" stroke="#66a"/>
+      <text x="315" y="241" text-anchor="middle" fill="#aaaaff" font-size="10">Stairwell</text>
+      <line x1="250" y1="236" x2="270" y2="236" stroke="#555"/>
+
+      <!-- Rooftop -->
+      <line x1="315" y1="250" x2="315" y2="275" stroke="#555"/>
+      <line x1="200" y1="250" x2="200" y2="275" stroke="#555" stroke-dasharray="4"/>
+      <rect x="30" y="275" width="340" height="55" rx="4" fill="none" stroke="#444" stroke-dasharray="4"/>
+      <text x="45" y="290" fill="#666" font-size="9">ROOF</text>
+      <rect x="150" y="292" width="100" height="28" rx="4" fill="#2e2a1e" stroke="#aa6"/>
+      <text x="200" y="311" text-anchor="middle" fill="#ffddaa" font-size="10">Rooftop</text>
+      <rect x="270" y="292" width="90" height="28" rx="4" fill="#2a2a3e" stroke="#66a"/>
+      <text x="315" y="311" text-anchor="middle" fill="#aaaaff" font-size="10">Stairwell</text>
+      <line x1="250" y1="306" x2="270" y2="306" stroke="#555"/>
+    </svg>
+    <p style="color: #888; font-size: 12px; margin-top: 8px;">Vertical structure — stairwell is a <em>single node per floor</em> connected vertically by stairs. Ramp connects parking areas between floors. Entry booth has a gate.</p>
+  </div>
+
+  <!-- HIKING TRAILS -->
+  <div style="background: #1a1a2e; border: 1px solid #333; border-radius: 8px; padding: 20px;">
+    <h3 style="color: #7ecfff; margin-top: 0;">Hiking Trail Area</h3>
+    <svg viewBox="0 0 400 320" style="width: 100%; font-family: monospace;">
+      <!-- Road -->
+      <rect x="140" y="5" width="120" height="32" rx="4" fill="#2a4a2a" stroke="#5a5"/>
+      <text x="200" y="26" text-anchor="middle" fill="#aaffaa" font-size="12">Road</text>
+
+      <line x1="200" y1="37" x2="200" y2="65" stroke="#555" stroke-dasharray="4"/>
+
+      <!-- Trailhead -->
+      <rect x="130" y="65" width="140" height="32" rx="4" fill="#2a2a3e" stroke="#66a"/>
+      <text x="200" y="86" text-anchor="middle" fill="#aaaaff" font-size="11">Trailhead / Parking</text>
+
+      <line x1="160" y1="97" x2="100" y2="135" stroke="#555" stroke-dasharray="4"/>
+      <line x1="240" y1="97" x2="300" y2="135" stroke="#555" stroke-dasharray="4"/>
+
+      <!-- Trail Fork -->
+      <rect x="40" y="135" width="120" height="32" rx="4" fill="#2e2a1e" stroke="#aa6"/>
+      <text x="100" y="156" text-anchor="middle" fill="#ffddaa" font-size="11">Lake Trail</text>
+      <rect x="240" y="135" width="120" height="32" rx="4" fill="#2e2a1e" stroke="#aa6"/>
+      <text x="300" y="156" text-anchor="middle" fill="#ffddaa" font-size="11">Ridge Trail</text>
+
+      <!-- Lake trail branches -->
+      <line x1="80" y1="167" x2="60" y2="205" stroke="#555" stroke-dasharray="4"/>
+      <line x1="120" y1="167" x2="160" y2="205" stroke="#555" stroke-dasharray="4"/>
+
+      <rect x="10" y="205" width="100" height="32" rx="4" fill="#1e2e2e" stroke="#5aa"/>
+      <text x="60" y="226" text-anchor="middle" fill="#aaffff" font-size="11">Lakeside</text>
+      <rect x="120" y="205" width="100" height="32" rx="4" fill="#1e2e1e" stroke="#5a5"/>
+      <text x="170" y="226" text-anchor="middle" fill="#aaffaa" font-size="11">Picnic Clearing</text>
+
+      <!-- Ridge trail branches -->
+      <line x1="280" y1="167" x2="250" y2="205" stroke="#555" stroke-dasharray="4"/>
+      <line x1="320" y1="167" x2="340" y2="205" stroke="#555" stroke-dasharray="4"/>
+
+      <rect x="200" y="205" width="100" height="32" rx="4" fill="#2e2a1e" stroke="#aa6"/>
+      <text x="250" y="226" text-anchor="middle" fill="#ffddaa" font-size="11">Overlook</text>
+      <rect x="290" y="205" width="100" height="32" rx="4" fill="#1e2e1e" stroke="#5a5"/>
+      <text x="340" y="226" text-anchor="middle" fill="#aaffaa" font-size="11">Dense Woods</text>
+
+      <!-- Hidden connection -->
+      <line x1="170" y1="237" x2="200" y2="260" stroke="#a55" stroke-dasharray="2"/>
+      <line x1="250" y1="237" x2="230" y2="260" stroke="#a55" stroke-dasharray="2"/>
+      <rect x="170" y="260" width="110" height="32" rx="4" fill="#2e1e1e" stroke="#a55"/>
+      <text x="225" y="281" text-anchor="middle" fill="#ffaaaa" font-size="11">Hidden Cave</text>
+      <text x="175" y="255" fill="#a55" font-size="8" font-style="italic">hidden path</text>
+
+      <!-- Loop connection -->
+      <line x1="60" y1="237" x2="60" y2="280" stroke="#555" stroke-dasharray="4"/>
+      <line x1="60" y1="280" x2="290" y2="280" stroke="#555" stroke-dasharray="4" opacity="0.3"/>
+      <text x="175" y="295" text-anchor="middle" fill="#555" font-size="8" font-style="italic">loop trail (long walk)</text>
+    </svg>
+    <p style="color: #888; font-size: 12px; margin-top: 8px;">Graph is a tree with a loop trail. <span style="color: #ffaaaa;">Hidden cave</span> only discoverable via investigation — not visible to NPCs on normal routes. Connections have <em>travel time</em> weight (a trail segment takes minutes, not seconds).</p>
+  </div>
+
+  <!-- CAMPGROUND -->
+  <div style="background: #1a1a2e; border: 1px solid #333; border-radius: 8px; padding: 20px;">
+    <h3 style="color: #7ecfff; margin-top: 0;">Campground</h3>
+    <svg viewBox="0 0 400 320" style="width: 100%; font-family: monospace;">
+      <!-- Road -->
+      <rect x="140" y="5" width="120" height="32" rx="4" fill="#2a4a2a" stroke="#5a5"/>
+      <text x="200" y="26" text-anchor="middle" fill="#aaffaa" font-size="12">Road</text>
+
+      <line x1="200" y1="37" x2="200" y2="65" stroke="#555"/>
+
+      <!-- Entrance -->
+      <rect x="130" y="65" width="140" height="32" rx="4" fill="#2a2a3e" stroke="#66a"/>
+      <text x="200" y="86" text-anchor="middle" fill="#aaaaff" font-size="11">Camp Entrance</text>
+      <text x="200" y="55" text-anchor="middle" fill="#777" font-size="8" font-style="italic">gate</text>
+
+      <!-- Central loop road -->
+      <line x1="150" y1="97" x2="80" y2="130" stroke="#555" stroke-dasharray="4"/>
+      <line x1="200" y1="97" x2="200" y2="130" stroke="#555" stroke-dasharray="4"/>
+      <line x1="250" y1="97" x2="320" y2="130" stroke="#555" stroke-dasharray="4"/>
+
+      <!-- Facilities -->
+      <rect x="130" y="130" width="140" height="32" rx="4" fill="#2a2a3e" stroke="#66a"/>
+      <text x="200" y="151" text-anchor="middle" fill="#aaaaff" font-size="11">Camp Office / Store</text>
+
+      <!-- Campsite clusters -->
+      <rect x="20" y="130" width="100" height="32" rx="4" fill="#2e2a1e" stroke="#aa6"/>
+      <text x="70" y="151" text-anchor="middle" fill="#ffddaa" font-size="11">Sites A1-A6</text>
+
+      <rect x="280" y="130" width="100" height="32" rx="4" fill="#2e2a1e" stroke="#aa6"/>
+      <text x="330" y="151" text-anchor="middle" fill="#ffddaa" font-size="11">Sites B1-B6</text>
+
+      <!-- Deeper areas -->
+      <line x1="70" y1="162" x2="70" y2="195" stroke="#555" stroke-dasharray="4"/>
+      <line x1="200" y1="162" x2="200" y2="195" stroke="#555" stroke-dasharray="4"/>
+      <line x1="330" y1="162" x2="330" y2="195" stroke="#555" stroke-dasharray="4"/>
+
+      <rect x="20" y="195" width="100" height="32" rx="4" fill="#2e2a1e" stroke="#aa6"/>
+      <text x="70" y="216" text-anchor="middle" fill="#ffddaa" font-size="11">Sites C1-C4</text>
+
+      <rect x="130" y="195" width="140" height="32" rx="4" fill="#2a2a3e" stroke="#66a"/>
+      <text x="200" y="216" text-anchor="middle" fill="#aaaaff" font-size="11">Bathhouse</text>
+
+      <rect x="280" y="195" width="100" height="32" rx="4" fill="#1e2e1e" stroke="#5a5"/>
+      <text x="330" y="216" text-anchor="middle" fill="#aaffaa" font-size="11">Fire Ring Area</text>
+
+      <!-- Cross connections -->
+      <line x1="120" y1="211" x2="130" y2="211" stroke="#555" stroke-dasharray="4"/>
+      <line x1="270" y1="211" x2="280" y2="211" stroke="#555" stroke-dasharray="4"/>
+
+      <!-- Waterfront -->
+      <line x1="200" y1="227" x2="200" y2="260" stroke="#555" stroke-dasharray="4"/>
+      <rect x="100" y="260" width="200" height="32" rx="4" fill="#1e2e2e" stroke="#5aa"/>
+      <text x="200" y="281" text-anchor="middle" fill="#aaffff" font-size="11">Lake Waterfront / Dock</text>
+
+      <text x="200" y="305" text-anchor="middle" fill="#666" font-size="9">Note: individual campsites (A1, A2...) could be sub-sublocations</text>
+    </svg>
+    <p style="color: #888; font-size: 12px; margin-top: 8px;">Campsite clusters as single zones vs. individual sites is a depth question. Gate at entrance matters for access control (after-hours). Bathhouse has a door (indoor sublocation within an outdoor location).</p>
+  </div>
+
+</div>
+
+<div style="margin-top: 24px; background: #1a1a2e; border: 1px solid #444; border-radius: 8px; padding: 16px;">
+  <h3 style="color: #ffddaa; margin-top: 0;">Observations</h3>
+  <ul style="color: #ccc; font-size: 13px; line-height: 1.7;">
+    <li><strong>The tree-from-Road model works</strong> for all of these — even loops (hiking trail) are just extra edges on the tree</li>
+    <li><strong>Connection types vary:</strong> open passage, path/trail, door, gate, ramp, stairs, hidden path, elevator</li>
+    <li><strong>Some connections are one-directional or restricted:</strong> hidden paths only discoverable via investigation, gates that lock at night</li>
+    <li><strong>Depth varies by location type:</strong> a park is 2-3 levels deep, a hiking area can be 4+</li>
+    <li><strong>Indoor pockets within outdoor spaces:</strong> restrooms, camp office, hidden cave — same model, just a "door" connection</li>
+    <li><strong>Granularity is a design choice:</strong> "Sites A1-A6" as one zone vs. six separate sublocations</li>
+  </ul>
+</div>

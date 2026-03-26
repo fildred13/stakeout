@@ -19,4 +19,16 @@ public class AddressTypeTests
     {
         Assert.Equal(AddressCategory.Commercial, type.GetCategory());
     }
+
+    [Fact]
+    public void GetCategory_ApartmentBuilding_ReturnsResidential()
+    {
+        Assert.Equal(AddressCategory.Residential, AddressType.ApartmentBuilding.GetCategory());
+    }
+
+    [Fact]
+    public void GetCategory_Park_ReturnsPublic()
+    {
+        Assert.Equal(AddressCategory.Public, AddressType.Park.GetCategory());
+    }
 }

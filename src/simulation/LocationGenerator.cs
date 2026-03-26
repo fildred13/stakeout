@@ -2,17 +2,25 @@ using System;
 using Godot;
 using Stakeout.Simulation.Data;
 using Stakeout.Simulation.Entities;
+using Stakeout.Simulation.Sublocations;
 
 namespace Stakeout.Simulation;
 
 public class LocationGenerator
 {
+    private static bool _registryInitialized = false;
+
     private readonly Random _random = new();
     private readonly MapConfig _mapConfig;
 
     public LocationGenerator(MapConfig mapConfig)
     {
         _mapConfig = mapConfig;
+        if (!_registryInitialized)
+        {
+            SublocationGeneratorRegistry.RegisterAll();
+            _registryInitialized = true;
+        }
     }
 
     public void GenerateCityScaffolding(SimulationState state)
@@ -49,6 +57,13 @@ public class LocationGenerator
             )
         };
         state.Addresses[address.Id] = address;
+
+        var sublocationGenerator = SublocationGeneratorRegistry.Get(address.Type);
+        if (sublocationGenerator != null)
+        {
+            sublocationGenerator.Generate(address.Id, state, _random);
+        }
+
         return address;
     }
 

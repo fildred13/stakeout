@@ -16,6 +16,7 @@ public class Person
     public int HomeAddressId { get; set; }
     public int JobId { get; set; }
     public int? CurrentAddressId { get; set; }
+    public int? CurrentSublocationId { get; set; }
     public Vector2 CurrentPosition { get; set; }
     public ActionType CurrentAction { get; set; }
     public TravelInfo TravelInfo { get; set; }

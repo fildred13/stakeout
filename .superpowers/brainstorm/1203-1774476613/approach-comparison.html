@@ -1,0 +1,456 @@
+<h2>Approach 2 vs 3: Architecture Deep Dive</h2>
+<p class="subtitle">Focus on how each handles real scenarios — and where each breaks down.</p>
+
+<!-- APPROACH 2: LAYERED -->
+<div style="background: #1a1a2e; border: 1px solid #333; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
+  <h3 style="color: #7ecfff; margin-top: 0;">Approach 2: Layered Resolution</h3>
+  <p style="color: #888; font-size: 12px;">Existing pipeline stays intact. New SublocationResolver layer activates on arrival at an address.</p>
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+    <!-- Architecture -->
+    <div>
+      <div style="color: #aa6; font-size: 11px; margin-bottom: 8px; text-transform: uppercase;">System Architecture</div>
+      <svg viewBox="0 0 400 520" style="width: 100%; font-family: monospace;">
+        <defs><marker id="arr" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#555"/></marker></defs>
+
+        <!-- EXISTING LAYER (unchanged) -->
+        <rect x="10" y="5" width="380" height="210" rx="6" fill="none" stroke="#5a5" stroke-dasharray="6"/>
+        <text x="20" y="22" fill="#5a5" font-size="9" font-weight="bold">EXISTING — UNCHANGED</text>
+
+        <rect x="30" y="35" width="140" height="30" rx="4" fill="#1e2e1e" stroke="#5a5"/>
+        <text x="100" y="55" text-anchor="middle" fill="#aaffaa" font-size="10">Objectives</text>
+
+        <line x1="100" y1="65" x2="100" y2="80" stroke="#555" marker-end="url(#arr)"/>
+
+        <rect x="30" y="80" width="140" height="30" rx="4" fill="#1e2e1e" stroke="#5a5"/>
+        <text x="100" y="100" text-anchor="middle" fill="#aaffaa" font-size="10">ObjectiveResolver</text>
+
+        <line x1="100" y1="110" x2="100" y2="125" stroke="#555" marker-end="url(#arr)"/>
+
+        <rect x="30" y="125" width="140" height="30" rx="4" fill="#1e2e1e" stroke="#5a5"/>
+        <text x="100" y="145" text-anchor="middle" fill="#aaffaa" font-size="10">SimTask (address-level)</text>
+
+        <line x1="100" y1="155" x2="100" y2="170" stroke="#555" marker-end="url(#arr)"/>
+
+        <rect x="30" y="170" width="140" height="30" rx="4" fill="#1e2e1e" stroke="#5a5"/>
+        <text x="100" y="190" text-anchor="middle" fill="#aaffaa" font-size="10">ScheduleBuilder</text>
+
+        <!-- PersonBehavior (modified slightly) -->
+        <rect x="230" y="80" width="140" height="55" rx="4" fill="#2e2e1e" stroke="#aa6"/>
+        <text x="300" y="100" text-anchor="middle" fill="#ffddaa" font-size="10">PersonBehavior</text>
+        <text x="300" y="115" text-anchor="middle" fill="#888" font-size="8">address transitions</text>
+        <text x="300" y="127" text-anchor="middle" fill="#aa6" font-size="8">+ handoff to subloc layer</text>
+
+        <line x1="170" y1="185" x2="230" y2="110" stroke="#555" marker-end="url(#arr)"/>
+
+        <!-- NEW LAYER -->
+        <rect x="10" y="225" width="380" height="285" rx="6" fill="none" stroke="#66a" stroke-dasharray="6"/>
+        <text x="20" y="242" fill="#66a" font-size="9" font-weight="bold">NEW — SUBLOCATION LAYER</text>
+
+        <!-- Handoff arrow -->
+        <line x1="300" y1="135" x2="300" y2="260" stroke="#66a" stroke-width="2" marker-end="url(#arr)"/>
+        <text x="310" y="200" fill="#66a" font-size="8" font-style="italic">on arrival at address</text>
+
+        <rect x="210" y="260" width="170" height="45" rx="4" fill="#1e1e2e" stroke="#66a"/>
+        <text x="295" y="278" text-anchor="middle" fill="#aaaaff" font-size="10" font-weight="bold">SublocationResolver</text>
+        <text x="295" y="293" text-anchor="middle" fill="#888" font-size="8">Task + AddressGraph → SubTasks</text>
+
+        <!-- Inputs to resolver -->
+        <rect x="20" y="260" width="130" height="35" rx="4" fill="#1e1e2e" stroke="#555"/>
+        <text x="85" y="278" text-anchor="middle" fill="#ccc" font-size="9">Address Subloc Graph</text>
+        <text x="85" y="290" text-anchor="middle" fill="#888" font-size="8">rooms + tags + connections</text>
+        <line x1="150" y1="278" x2="210" y2="278" stroke="#555" marker-end="url(#arr)"/>
+
+        <line x1="295" y1="305" x2="295" y2="325" stroke="#555" marker-end="url(#arr)"/>
+
+        <rect x="210" y="325" width="170" height="35" rx="4" fill="#1e1e2e" stroke="#66a"/>
+        <text x="295" y="347" text-anchor="middle" fill="#aaaaff" font-size="10">Pathfinder</text>
+
+        <line x1="295" y1="360" x2="295" y2="380" stroke="#555" marker-end="url(#arr)"/>
+
+        <rect x="190" y="380" width="190" height="35" rx="4" fill="#1e1e2e" stroke="#66a"/>
+        <text x="285" y="402" text-anchor="middle" fill="#aaaaff" font-size="10">SubTask sequence</text>
+
+        <line x1="285" y1="415" x2="285" y2="435" stroke="#555" marker-end="url(#arr)"/>
+
+        <rect x="170" y="435" width="210" height="55" rx="4" fill="#1e1e2e" stroke="#66a"/>
+        <text x="275" y="455" text-anchor="middle" fill="#aaaaff" font-size="10" font-weight="bold">SublocationBehavior</text>
+        <text x="275" y="468" text-anchor="middle" fill="#888" font-size="8">moves NPC through subtasks</text>
+        <text x="275" y="480" text-anchor="middle" fill="#888" font-size="8">generates traces per movement</text>
+
+        <!-- Trace output -->
+        <rect x="20" y="450" width="120" height="30" rx="4" fill="#2e1e1e" stroke="#a66"/>
+        <text x="80" y="470" text-anchor="middle" fill="#ffaaaa" font-size="10">Traces</text>
+        <line x1="170" y1="468" x2="140" y2="468" stroke="#a66" marker-end="url(#arr)"/>
+      </svg>
+    </div>
+
+    <!-- Scenarios -->
+    <div>
+      <div style="color: #aa6; font-size: 11px; margin-bottom: 8px; text-transform: uppercase;">How It Handles Scenarios</div>
+
+      <!-- Normal day -->
+      <div style="background: #111; border-radius: 4px; padding: 10px; margin-bottom: 10px; font-family: monospace; font-size: 10px; line-height: 1.7;">
+        <div style="color: #5a5; font-weight: bold;">Dave's work day</div>
+        <div style="color: #ccc;">
+          1. Existing pipeline: Sleep→Travel→Work→Travel→Home<br>
+          2. PersonBehavior: arrive at Office<br>
+          3. <span style="color: #aaaaff;">→ handoff to SublocationResolver</span><br>
+          4. Resolver: Work task + Office graph + tags<br>
+          5. Produces: Lobby→Elevator→Cubicle→BreakRoom→...<br>
+          6. SublocationBehavior: execute subtasks, leave traces
+        </div>
+        <div style="color: #5a5; margin-top: 4px;">✓ Works well. Clean handoff.</div>
+      </div>
+
+      <!-- Killer -->
+      <div style="background: #111; border-radius: 4px; padding: 10px; margin-bottom: 10px; font-family: monospace; font-size: 10px; line-height: 1.7;">
+        <div style="color: #5a5; font-weight: bold;">Killer breaks into home</div>
+        <div style="color: #ccc;">
+          1. Existing pipeline: KillPerson task → victim's address<br>
+          2. PersonBehavior: arrive at victim's home<br>
+          3. <span style="color: #aaaaff;">→ handoff to SublocationResolver</span><br>
+          4. Resolver: KillPerson task → "Intrude" behavior<br>
+          5. Find [covert_entry] → Back Window<br>
+          6. Find room with victim → Bedroom<br>
+          7. Pathfind: Window→Hallway→Bedroom<br>
+          8. Execute kill action in Bedroom
+        </div>
+        <div style="color: #5a5; margin-top: 4px;">✓ Works. Resolver handles the strategy.</div>
+      </div>
+
+      <!-- PROBLEM: Phone call -->
+      <div style="background: #111; border-radius: 4px; padding: 10px; margin-bottom: 10px; font-family: monospace; font-size: 10px; line-height: 1.7;">
+        <div style="color: #a55; font-weight: bold;">Heist planner calls getaway driver</div>
+        <div style="color: #ccc;">
+          1. Planner's existing pipeline: has "CallPerson" task<br>
+          2. SublocationResolver: find [phone] → Kitchen<br>
+          3. Planner walks to Kitchen, starts call<br>
+          4. <span style="color: #a55;">Now need to interrupt the Driver...</span><br>
+          5. <span style="color: #a55;">Driver is at a DIFFERENT address</span><br>
+          6. <span style="color: #a55;">Driver's PersonBehavior is in the existing layer</span><br>
+          7. <span style="color: #a55;">SublocationResolver can't reach up to trigger</span><br>
+          8. <span style="color: #a55;">an interrupt at the address level</span><br>
+          9. <span style="color: #a55;">Need: SublocationBehavior → PersonBehavior</span><br>
+          10. <span style="color: #a55;">reverse communication (layer violation)</span>
+        </div>
+        <div style="color: #a55; margin-top: 4px;">⚠ Layer boundary makes cross-address interaction awkward. Sublocation events need to "reach up" through the layer.</div>
+      </div>
+
+      <!-- PROBLEM: Leave early -->
+      <div style="background: #111; border-radius: 4px; padding: 10px; margin-bottom: 10px; font-family: monospace; font-size: 10px; line-height: 1.7;">
+        <div style="color: #a55; font-weight: bold;">NPC realizes they need to leave early</div>
+        <div style="color: #ccc;">
+          1. Dave is at work (sublocation layer active)<br>
+          2. Gets a phone call: "emergency at home"<br>
+          3. <span style="color: #a55;">Sublocation layer wants to end the</span><br>
+          4. <span style="color: #a55;">Work task early and trigger travel</span><br>
+          5. <span style="color: #a55;">But travel is owned by the address layer</span><br>
+          6. <span style="color: #a55;">Sub layer must signal up: "I'm done early"</span><br>
+          7. <span style="color: #a55;">Address layer must: rebuild schedule?</span><br>
+          8. <span style="color: #a55;">Or inject an emergency travel task?</span><br>
+          9. <span style="color: #a55;">Two systems negotiating control.</span>
+        </div>
+        <div style="color: #a55; margin-top: 4px;">⚠ Upward pressure from sublocation events to address-level schedule changes is inherently awkward in a layered model.</div>
+      </div>
+
+      <!-- Summary -->
+      <div style="background: #1e2e1e; border: 1px solid #5a5; border-radius: 4px; padding: 8px; margin-top: 8px;">
+        <div style="color: #aaffaa; font-size: 10px; font-weight: bold;">Verdict</div>
+        <div style="color: #ccc; font-size: 10px; line-height: 1.5;">
+          Works great for <strong>contained activities</strong> — arrive, do stuff in rooms, leave. Struggles when sublocation-level events need to affect address-level behavior. The layer boundary becomes a wall you keep drilling holes through.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- APPROACH 3: RECURSIVE -->
+<div style="background: #1a1a2e; border: 1px solid #333; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
+  <h3 style="color: #7ecfff; margin-top: 0;">Approach 3: Recursive Tasks</h3>
+  <p style="color: #888; font-size: 12px;">One unified system. Tasks decompose into sub-tasks at any depth. Same resolution logic at every scale.</p>
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+    <!-- Architecture -->
+    <div>
+      <div style="color: #aa6; font-size: 11px; margin-bottom: 8px; text-transform: uppercase;">System Architecture</div>
+      <svg viewBox="0 0 400 520" style="width: 100%; font-family: monospace;">
+        <defs><marker id="arr2" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#555"/></marker></defs>
+
+        <!-- ONE UNIFIED SYSTEM -->
+        <rect x="10" y="5" width="380" height="505" rx="6" fill="none" stroke="#66a" stroke-dasharray="6"/>
+        <text x="20" y="22" fill="#66a" font-size="9" font-weight="bold">UNIFIED TASK SYSTEM</text>
+
+        <rect x="30" y="35" width="140" height="30" rx="4" fill="#1e1e2e" stroke="#66a"/>
+        <text x="100" y="55" text-anchor="middle" fill="#aaaaff" font-size="10">Objectives</text>
+        <text x="100" y="68" text-anchor="middle" fill="#888" font-size="7">(unchanged)</text>
+
+        <line x1="100" y1="72" x2="100" y2="90" stroke="#555" marker-end="url(#arr2)"/>
+
+        <!-- Task Resolver (replaces ObjectiveResolver + SublocationResolver) -->
+        <rect x="40" y="90" width="310" height="55" rx="4" fill="#1e1e2e" stroke="#66a"/>
+        <text x="195" y="110" text-anchor="middle" fill="#aaaaff" font-size="11" font-weight="bold">TaskResolver</text>
+        <text x="195" y="125" text-anchor="middle" fill="#888" font-size="8">resolves ANY task into sub-tasks, regardless of scale</text>
+        <text x="195" y="137" text-anchor="middle" fill="#888" font-size="8">uses tags for discovery, fixed IDs for known targets</text>
+
+        <line x1="195" y1="145" x2="195" y2="165" stroke="#555" marker-end="url(#arr2)"/>
+
+        <!-- Task tree visualization -->
+        <rect x="25" y="165" width="350" height="200" rx="4" fill="#111" stroke="#444"/>
+        <text x="40" y="183" fill="#aa6" font-size="9" font-weight="bold">TASK TREE (Dave's work day)</text>
+
+        <!-- Root -->
+        <rect x="130" y="192" width="140" height="22" rx="3" fill="#2a2a3e" stroke="#66a"/>
+        <text x="200" y="207" text-anchor="middle" fill="#aaaaff" font-size="9">Work at Office (P:20)</text>
+
+        <!-- Level 1 decomposition -->
+        <line x1="160" y1="214" x2="70" y2="232" stroke="#555"/>
+        <line x1="200" y1="214" x2="200" y2="232" stroke="#555"/>
+        <line x1="240" y1="214" x2="330" y2="232" stroke="#555"/>
+
+        <rect x="25" y="232" width="95" height="22" rx="3" fill="#1e2e1e" stroke="#5a5"/>
+        <text x="72" y="247" text-anchor="middle" fill="#aaffaa" font-size="8">Enter [entrance]</text>
+
+        <rect x="145" y="232" width="110" height="22" rx="3" fill="#1e2e1e" stroke="#5a5"/>
+        <text x="200" y="247" text-anchor="middle" fill="#aaffaa" font-size="8">Goto [work_area]</text>
+
+        <rect x="280" y="232" width="95" height="22" rx="3" fill="#1e2e1e" stroke="#5a5"/>
+        <text x="327" y="247" text-anchor="middle" fill="#aaffaa" font-size="8">Exit [entrance]</text>
+
+        <!-- Level 2 decomposition (pathfinding) -->
+        <line x1="200" y1="254" x2="120" y2="275" stroke="#555"/>
+        <line x1="200" y1="254" x2="200" y2="275" stroke="#555"/>
+        <line x1="200" y1="254" x2="280" y2="275" stroke="#555"/>
+
+        <rect x="65" y="275" width="80" height="20" rx="3" fill="#2e2a1e" stroke="#aa6"/>
+        <text x="105" y="289" text-anchor="middle" fill="#ffddaa" font-size="7">Move→Lobby</text>
+
+        <rect x="160" y="275" width="80" height="20" rx="3" fill="#2e2a1e" stroke="#aa6"/>
+        <text x="200" y="289" text-anchor="middle" fill="#ffddaa" font-size="7">Move→Elevator</text>
+
+        <rect x="255" y="275" width="80" height="20" rx="3" fill="#2e2a1e" stroke="#aa6"/>
+        <text x="295" y="289" text-anchor="middle" fill="#ffddaa" font-size="7">Move→Cubicle</text>
+
+        <!-- Periodic sub-tasks -->
+        <rect x="65" y="310" width="110" height="20" rx="3" fill="#2e1e2e" stroke="#a6a" stroke-dasharray="3"/>
+        <text x="120" y="324" text-anchor="middle" fill="#ffaaff" font-size="7">Periodic: [food] P:15</text>
+
+        <rect x="195" y="310" width="120" height="20" rx="3" fill="#2e1e2e" stroke="#a6a" stroke-dasharray="3"/>
+        <text x="255" y="324" text-anchor="middle" fill="#ffaaff" font-size="7">Periodic: [restroom] P:25</text>
+
+        <text x="40" y="350" fill="#888" font-size="8" font-style="italic">Periodic sub-tasks preempt by priority — same mechanism as address-level scheduling</text>
+
+        <!-- Behavior engine -->
+        <line x1="195" y1="365" x2="195" y2="385" stroke="#555" marker-end="url(#arr2)"/>
+
+        <rect x="80" y="385" width="240" height="50" rx="4" fill="#1e1e2e" stroke="#66a"/>
+        <text x="200" y="405" text-anchor="middle" fill="#aaaaff" font-size="11" font-weight="bold">TaskExecutor</text>
+        <text x="200" y="418" text-anchor="middle" fill="#888" font-size="8">walks the task tree depth-first</text>
+        <text x="200" y="428" text-anchor="middle" fill="#888" font-size="8">handles interrupts at any level by priority</text>
+
+        <!-- Outputs -->
+        <line x1="150" y1="435" x2="80" y2="460" stroke="#555" marker-end="url(#arr2)"/>
+        <line x1="200" y1="435" x2="200" y2="460" stroke="#555" marker-end="url(#arr2)"/>
+        <line x1="250" y1="435" x2="320" y2="460" stroke="#555" marker-end="url(#arr2)"/>
+
+        <rect x="30" y="460" width="90" height="25" rx="4" fill="#2e1e1e" stroke="#a66"/>
+        <text x="75" y="477" text-anchor="middle" fill="#ffaaaa" font-size="9">Traces</text>
+
+        <rect x="155" y="460" width="90" height="25" rx="4" fill="#1e2e1e" stroke="#5a5"/>
+        <text x="200" y="477" text-anchor="middle" fill="#aaffaa" font-size="9">Movement</text>
+
+        <rect x="280" y="460" width="90" height="25" rx="4" fill="#2e2e1e" stroke="#aa6"/>
+        <text x="325" y="477" text-anchor="middle" fill="#ffddaa" font-size="9">Events</text>
+      </svg>
+    </div>
+
+    <!-- Scenarios -->
+    <div>
+      <div style="color: #aa6; font-size: 11px; margin-bottom: 8px; text-transform: uppercase;">How It Handles Scenarios</div>
+
+      <!-- Normal day -->
+      <div style="background: #111; border-radius: 4px; padding: 10px; margin-bottom: 10px; font-family: monospace; font-size: 10px; line-height: 1.7;">
+        <div style="color: #5a5; font-weight: bold;">Dave's work day</div>
+        <div style="color: #ccc;">
+          1. Objective "MaintainJob" → Work task (P:20)<br>
+          2. TaskResolver: Work task decomposes into:<br>
+          &nbsp;&nbsp; Enter[entrance] → Goto[work_area] → Exit[entrance]<br>
+          3. Goto[work_area] decomposes via pathfinding:<br>
+          &nbsp;&nbsp; Move→Lobby → Move→Elevator → Move→Cubicle<br>
+          4. Periodic sub-tasks [food] and [restroom]<br>
+          &nbsp;&nbsp; preempt by priority when timers fire<br>
+          5. TaskExecutor walks the tree, traces follow
+        </div>
+        <div style="color: #5a5; margin-top: 4px;">✓ Same result as Approach 2, one system.</div>
+      </div>
+
+      <!-- Killer -->
+      <div style="background: #111; border-radius: 4px; padding: 10px; margin-bottom: 10px; font-family: monospace; font-size: 10px; line-height: 1.7;">
+        <div style="color: #5a5; font-weight: bold;">Killer breaks into home</div>
+        <div style="color: #ccc;">
+          1. Objective "CommitMurder" → KillPerson task (P:40)<br>
+          2. TaskResolver decomposes with "Intrude" behavior:<br>
+          &nbsp;&nbsp; Enter[covert_entry] → Find[victim] → Execute<br>
+          3. Enter[covert_entry] → Back Window<br>
+          4. Find[victim] → Bedroom (person query, not tag)<br>
+          5. Pathfind: Window→Hallway→Bedroom<br>
+          6. Execute kill action
+        </div>
+        <div style="color: #5a5; margin-top: 4px;">✓ Same mechanism. "Intrude" is just a decomposition strategy.</div>
+      </div>
+
+      <!-- Phone call — THE KEY DIFFERENCE -->
+      <div style="background: #111; border-radius: 4px; padding: 10px; margin-bottom: 10px; font-family: monospace; font-size: 10px; line-height: 1.7;">
+        <div style="color: #5a5; font-weight: bold;">Heist planner calls getaway driver</div>
+        <div style="color: #ccc;">
+          1. Planner's task tree: CallPerson(Driver) at P:35<br>
+          2. Decomposes: Goto[phone] → MakeCall<br>
+          3. Planner walks to Kitchen phone<br>
+          4. MakeCall executes → <span style="color: #5a5;">injects interrupt</span><br>
+          5. <span style="color: #5a5;">Driver gets: AnswerPhone task at P:30</span><br>
+          6. <span style="color: #5a5;">Same system! P:30 > Driver's current Sleep P:20</span><br>
+          7. <span style="color: #5a5;">Driver's TaskExecutor preempts Sleep</span><br>
+          8. <span style="color: #5a5;">Decomposes: Goto[phone] → AnswerCall</span><br>
+          9. <span style="color: #5a5;">Driver walks Bedroom→Kitchen, picks up</span><br>
+          10. <span style="color: #5a5;">Call ends → P:30 task done → Sleep resumes</span><br>
+          11. <span style="color: #5a5;">Driver walks Kitchen→Bedroom</span>
+        </div>
+        <div style="color: #5a5; margin-top: 4px;">✓ No layer violation. Interrupts are just high-priority tasks injected into any NPC's tree. Same mechanism at every level.</div>
+      </div>
+
+      <!-- Leave early -->
+      <div style="background: #111; border-radius: 4px; padding: 10px; margin-bottom: 10px; font-family: monospace; font-size: 10px; line-height: 1.7;">
+        <div style="color: #5a5; font-weight: bold;">NPC leaves work early</div>
+        <div style="color: #ccc;">
+          1. Dave at work, phone rings (interrupt P:35)<br>
+          2. AnswerPhone → learns of emergency<br>
+          3. <span style="color: #5a5;">New task: GoHome(emergency) at P:38</span><br>
+          4. <span style="color: #5a5;">P:38 > Work P:20 → preempts entire work tree</span><br>
+          5. <span style="color: #5a5;">Decomposes: Exit[entrance] → Travel → Home</span><br>
+          6. <span style="color: #5a5;">No schedule rebuild needed.</span><br>
+          7. <span style="color: #5a5;">Priority just wins. Same as how Sleep</span><br>
+          8. <span style="color: #5a5;">beats Idle in the existing system.</span>
+        </div>
+        <div style="color: #5a5; margin-top: 4px;">✓ Priority-based preemption works at every scale. No "layers negotiating control."</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- RISKS COMPARISON -->
+<div style="background: #1a1a2e; border: 1px solid #444; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
+  <h3 style="color: #ffaaaa; margin-top: 0;">Concrete Risks: Where Each Approach Breaks Down</h3>
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+    <!-- Approach 2 risks -->
+    <div>
+      <h4 style="color: #7ecfff;">Approach 2 Risks</h4>
+
+      <div style="background: #111; border-left: 3px solid #a55; padding: 10px; margin-bottom: 10px; font-size: 11px;">
+        <div style="color: #ffaaaa; font-weight: bold;">Layer boundary becomes porous</div>
+        <div style="color: #ccc; line-height: 1.6; margin-top: 4px;">
+          Every cross-address interaction (phone calls, NPCs reacting to events at other locations, emergencies) requires drilling through the layer boundary. Over time you accumulate callbacks, events, and upward signals until the "clean separation" is mostly ceremony — two systems tightly coupled through a growing API surface.
+        </div>
+        <div style="color: #aa6; margin-top: 6px; font-size: 10px;">Likelihood: <strong>High</strong> — your game design inherently needs cross-scale interactions.</div>
+      </div>
+
+      <div style="background: #111; border-left: 3px solid #a55; padding: 10px; margin-bottom: 10px; font-size: 11px;">
+        <div style="color: #ffaaaa; font-weight: bold;">Two scheduling systems to maintain</div>
+        <div style="color: #ccc; line-height: 1.6; margin-top: 4px;">
+          ScheduleBuilder handles address-level time slots. SublocationResolver handles room-level sequencing within those slots. Bugs where they disagree (sublocation sequence takes longer than the address-level time slot allows) are subtle and hard to reproduce.
+        </div>
+        <div style="color: #aa6; margin-top: 6px; font-size: 10px;">Likelihood: <strong>Medium</strong> — timing edge cases at the boundary.</div>
+      </div>
+
+      <div style="background: #111; border-left: 3px solid #aa6; padding: 10px; margin-bottom: 10px; font-size: 11px;">
+        <div style="color: #ffddaa; font-weight: bold;">Migration tax later</div>
+        <div style="color: #ccc; line-height: 1.6; margin-top: 4px;">
+          If you eventually want recursive tasks (and the scenarios above suggest you will), the layered system becomes throwaway scaffolding. The SublocationResolver, SublocationBehavior, and the handoff protocol all get replaced.
+        </div>
+        <div style="color: #aa6; margin-top: 6px; font-size: 10px;">Likelihood: <strong>Medium-High</strong> — depends on how far you push NPC interactions.</div>
+      </div>
+    </div>
+
+    <!-- Approach 3 risks -->
+    <div>
+      <h4 style="color: #7ecfff;">Approach 3 Risks</h4>
+
+      <div style="background: #111; border-left: 3px solid #a55; padding: 10px; margin-bottom: 10px; font-size: 11px;">
+        <div style="color: #ffaaaa; font-weight: bold;">Refactor scope</div>
+        <div style="color: #ccc; line-height: 1.6; margin-top: 4px;">
+          ObjectiveResolver, ScheduleBuilder, PersonBehavior, and SimTask all change significantly. The current ScheduleBuilder's minute-by-minute priority resolution is clever but flat — it assumes tasks don't nest. Replacing it with a tree-walking executor is a meaningful rewrite, not a refactor.
+        </div>
+        <div style="color: #aa6; margin-top: 6px; font-size: 10px;">Mitigation: The existing codebase is small (~150 lines each). Rewriting is feasible, not scary.</div>
+      </div>
+
+      <div style="background: #111; border-left: 3px solid #a55; padding: 10px; margin-bottom: 10px; font-size: 11px;">
+        <div style="color: #ffaaaa; font-weight: bold;">Debugging recursive decomposition</div>
+        <div style="color: #ccc; line-height: 1.6; margin-top: 4px;">
+          "Why did the NPC walk to the bathroom at 3 AM?" requires tracing through multiple decomposition levels. The task tree can get deep, and emergent behavior from priority preemption can be surprising.
+        </div>
+        <div style="color: #aa6; margin-top: 6px; font-size: 10px;">Mitigation: Build a task tree inspector into the Person Inspector UI from day one. The tree IS the explanation — if you can see it, you can debug it.</div>
+      </div>
+
+      <div style="background: #111; border-left: 3px solid #aa6; padding: 10px; margin-bottom: 10px; font-size: 11px;">
+        <div style="color: #ffddaa; font-weight: bold;">Over-abstraction risk</div>
+        <div style="color: #ccc; line-height: 1.6; margin-top: 4px;">
+          "Everything is a task" can become "everything is a generic blob." If the TaskResolver becomes a god class that handles every decomposition strategy, you've traded one problem for another.
+        </div>
+        <div style="color: #aa6; margin-top: 6px; font-size: 10px;">Mitigation: Decomposition strategies (WorkDay, Intrude, Patronize) are separate classes/functions. TaskResolver dispatches, doesn't contain logic.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- WHAT CHANGES -->
+<div style="background: #1a1a2e; border: 1px solid #444; border-radius: 8px; padding: 20px;">
+  <h3 style="color: #ffddaa; margin-top: 0;">Approach 3: What Changes In The Existing Code</h3>
+  <p style="color: #888; font-size: 12px;">Mapping the refactor to actual files. The codebase is small enough that this is feasible.</p>
+
+  <table style="width: 100%; border-collapse: collapse; font-size: 11px; color: #ccc;">
+    <thead>
+      <tr style="border-bottom: 1px solid #444;">
+        <th style="text-align: left; padding: 8px; color: #888;">Current</th>
+        <th style="text-align: center; padding: 8px; color: #888;">Lines</th>
+        <th style="text-align: left; padding: 8px; color: #888;">What Happens</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid #333;">
+        <td style="padding: 8px; color: #aaaaff;">SimTask</td>
+        <td style="padding: 8px; text-align: center;">18</td>
+        <td style="padding: 8px;">Gains <code>ParentTaskId</code>, <code>List&lt;SimTask&gt; SubTasks</code>, <code>TargetSublocationId</code>, <code>Tags[]</code> for tag-based targeting</td>
+      </tr>
+      <tr style="border-bottom: 1px solid #333;">
+        <td style="padding: 8px; color: #aaaaff;">Objective / ObjectiveStep</td>
+        <td style="padding: 8px; text-align: center;">78</td>
+        <td style="padding: 8px;"><strong>Mostly unchanged.</strong> Steps still produce root-level SimTasks. The recursion happens below.</td>
+      </tr>
+      <tr style="border-bottom: 1px solid #333;">
+        <td style="padding: 8px; color: #aaaaff;">ObjectiveResolver</td>
+        <td style="padding: 8px; text-align: center;">153</td>
+        <td style="padding: 8px;"><strong>Mostly unchanged.</strong> Still resolves Objectives → root SimTasks. New: TaskResolver decomposes those tasks further.</td>
+      </tr>
+      <tr style="border-bottom: 1px solid #333;">
+        <td style="padding: 8px; color: #ffaaaa;">ScheduleBuilder</td>
+        <td style="padding: 8px; text-align: center;">143</td>
+        <td style="padding: 8px;"><strong>Significantly reworked.</strong> Minute-by-minute flat resolution → tree-aware scheduling. Still priority-based, but operates on a task tree, not a flat list. Travel insertion becomes a decomposition step.</td>
+      </tr>
+      <tr style="border-bottom: 1px solid #333;">
+        <td style="padding: 8px; color: #ffaaaa;">PersonBehavior</td>
+        <td style="padding: 8px; text-align: center;">262</td>
+        <td style="padding: 8px;"><strong>Replaced by TaskExecutor.</strong> Tree-walking execution replaces flat schedule following. Travel, transitions, actions all become task execution. Simpler in some ways — one code path instead of special cases.</td>
+      </tr>
+      <tr style="border-bottom: 1px solid #333;">
+        <td style="padding: 8px; color: #aaffaa;">Person entity</td>
+        <td style="padding: 8px; text-align: center;">—</td>
+        <td style="padding: 8px;">Gains <code>CurrentSublocationId</code>, <code>ActiveTaskTree</code> (replaces Schedule + CurrentAction)</td>
+      </tr>
+      <tr>
+        <td style="padding: 8px; color: #aaffaa;">New files</td>
+        <td style="padding: 8px; text-align: center;">—</td>
+        <td style="padding: 8px;"><code>TaskResolver</code>, <code>TaskExecutor</code>, <code>Pathfinder</code>, <code>DecompositionStrategies/*</code>, <code>Sublocation</code> entity, sublocation generators per address type</td>
+      </tr>
+    </tbody>
+  </table>
+</div>

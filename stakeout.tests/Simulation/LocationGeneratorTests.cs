@@ -43,4 +43,22 @@ public class LocationGeneratorTests
         Assert.InRange(address.Position.X, config.MinX, config.MaxX);
         Assert.InRange(address.Position.Y, config.MinY, config.MaxY);
     }
+
+    [Fact]
+    public void GenerateAddress_CreatesSublocationsinState()
+    {
+        var state = new SimulationState();
+        var generator = new LocationGenerator(new MapConfig());
+        generator.GenerateCityScaffolding(state);
+
+        var address = generator.GenerateAddress(state, AddressType.SuburbanHome);
+
+        var addressSublocations = new System.Collections.Generic.List<Stakeout.Simulation.Entities.Sublocation>();
+        foreach (var sub in state.Sublocations.Values)
+            if (sub.AddressId == address.Id) addressSublocations.Add(sub);
+
+        Assert.NotEmpty(addressSublocations);
+        Assert.Contains(addressSublocations, s => s.HasTag("road"));
+        Assert.Contains(addressSublocations, s => s.HasTag("entrance"));
+    }
 }

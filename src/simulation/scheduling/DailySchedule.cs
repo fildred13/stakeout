@@ -11,6 +11,7 @@ public class ScheduleEntry
     public TimeSpan EndTime { get; set; }
     public int? TargetAddressId { get; set; }
     public int? FromAddressId { get; set; }
+    public int? TargetSublocationId { get; set; }
 }
 
 public class DailySchedule

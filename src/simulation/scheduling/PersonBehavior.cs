@@ -102,6 +102,7 @@ public class PersonBehavior
             {
                 // Same location, switch activity directly
                 person.CurrentAction = entry.Action;
+                person.CurrentSublocationId = entry.TargetSublocationId;
                 LogActivityStart(person, entry.Action, state);
             }
         }
@@ -168,6 +169,7 @@ public class PersonBehavior
 
         person.CurrentAction = ActionType.TravelByCar;
         person.CurrentAddressId = null;
+        person.CurrentSublocationId = null;
 
         state.Journal.Append(new SimulationEvent
         {
@@ -202,6 +204,7 @@ public class PersonBehavior
 
         person.CurrentAction = ActionType.TravelByCar;
         person.CurrentAddressId = null;
+        person.CurrentSublocationId = null;
 
         state.Journal.Append(new SimulationEvent
         {
