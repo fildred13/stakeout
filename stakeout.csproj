@@ -6,5 +6,6 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Remove="stakeout.tests\**" />
+    <Compile Remove="stakeout.benchmarks\**" />
   </ItemGroup>
 </Project>
