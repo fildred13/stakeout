@@ -19,13 +19,9 @@ public partial class BlueprintView : Control
     {
         _state = state;
         _addressId = addressId;
-        _sublocations = state.Sublocations.Values
-            .Where(s => s.AddressId == addressId)
-            .ToList();
-        _connections = state.SublocationConnections
-            .Where(c => _sublocations.Any(s => s.Id == c.FromSublocationId) ||
-                        _sublocations.Any(s => s.Id == c.ToSublocationId))
-            .ToList();
+        var address = state.Addresses[addressId];
+        _sublocations = new List<Sublocation>(address.Sublocations.Values);
+        _connections = address.Connections;
 
         _floors = _sublocations.Select(s => s.Floor).Distinct().OrderBy(f => f).ToList();
         _currentFloor = _floors.FirstOrDefault();

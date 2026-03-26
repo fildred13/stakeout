@@ -6,7 +6,7 @@ namespace Stakeout.Simulation.Sublocations;
 
 public class OfficeGenerator : ISublocationGenerator
 {
-    public SublocationGraph Generate(int addressId, SimulationState state, Random rng)
+    public SublocationGraph Generate(Address address, SimulationState state, Random rng)
     {
         var subs = new Dictionary<int, Sublocation>();
         var conns = new List<SublocationConnection>();
@@ -16,13 +16,13 @@ public class OfficeGenerator : ISublocationGenerator
             var sub = new Sublocation
             {
                 Id = state.GenerateEntityId(),
-                AddressId = addressId,
+                AddressId = address.Id,
                 Name = name,
                 Tags = tags,
                 Floor = floor
             };
             subs[sub.Id] = sub;
-            state.Sublocations[sub.Id] = sub;
+            address.Sublocations[sub.Id] = sub;
             return sub;
         }
 
@@ -36,7 +36,7 @@ public class OfficeGenerator : ISublocationGenerator
                 IsBidirectional = true
             };
             conns.Add(conn);
-            state.SublocationConnections.Add(conn);
+            address.Connections.Add(conn);
         }
 
         // Ground floor layout

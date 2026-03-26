@@ -1,3 +1,25 @@
+# Benchmark Improvements Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** Restructure the benchmark harness into two modes — a fast frame budget test across all NPC counts, and a streaming day profile for a single NPC count — so results flow continuously and the harness never appears to hang.
+
+**Architecture:** Single-file rewrite of `stakeout.benchmarks/Program.cs`. `Main` parses an optional CLI arg for the day profile NPC count, runs frame budget for all counts (50/200/500/1000), then runs a full 24-hour day profile for one count. Shared simulation setup is extracted to a helper.
+
+**Tech Stack:** C# / .NET 8, existing simulation classes (SimulationState, GameClock, PersonBehavior, etc.)
+
+**Spec:** `docs/superpowers/specs/2026-03-25-benchmark-improvements-design.md`
+
+---
+
+### Task 1: Rewrite Program.cs
+
+**Files:**
+- Modify: `stakeout.benchmarks/Program.cs`
+
+- [ ] **Step 1: Replace the entire file with the two-mode benchmark**
+
+```csharp
 using System;
 using System.Diagnostics;
 using Stakeout.Simulation;
@@ -20,7 +42,7 @@ class Program
         }
 
         // Mode 1: Frame Budget
-        var npcCounts = new[] { 50, 200, 201, 220, 230, 231, 232, 233, 234, 235, 236, 237, 238, 239, 240, 250, 275, 300, 400, 500, 1000 };
+        var npcCounts = new[] { 50, 200, 500, 1000 };
         Console.WriteLine("Frame Budget (5 game-minutes, 1s tick delta)");
         Console.WriteLine(new string('-', 60));
         Console.WriteLine($"{"NPCs",-8} {"Avg ms/tick",-14} {"Max ms/tick",-14} {"Ticks/sec",-12} {"Memory MB",-10}");
@@ -157,3 +179,26 @@ class Program
         Console.WriteLine($"{"Total",-8} {totalAvgMs,-14:F4} {totalMaxMs,-14:F4} {totalEvents,-12} {totalMemMb,-10:F1}");
     }
 }
+```
+
+- [ ] **Step 2: Build to verify it compiles**
+
+Run: `dotnet build stakeout.benchmarks/ -c Release`
+Expected: Build succeeded with 0 errors.
+
+- [ ] **Step 3: Run with default args to verify frame budget completes quickly**
+
+Run: `dotnet run --project stakeout.benchmarks/ -c Release`
+Expected: Frame budget table prints all 4 rows within a few seconds. Day profile rows start streaming at 200 NPCs.
+
+- [ ] **Step 4: Verify CLI arg override works**
+
+Run: `dotnet run --project stakeout.benchmarks/ -c Release -- 50`
+Expected: Day profile header shows "50 NPCs". Completes quickly.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add stakeout.benchmarks/Program.cs
+git commit -m "feat: split benchmark into frame budget + streaming day profile"
+```

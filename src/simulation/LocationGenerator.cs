@@ -61,7 +61,7 @@ public class LocationGenerator
         var sublocationGenerator = SublocationGeneratorRegistry.Get(address.Type);
         if (sublocationGenerator != null)
         {
-            sublocationGenerator.Generate(address.Id, state, _random);
+            sublocationGenerator.Generate(address, state, _random);
         }
 
         return address;

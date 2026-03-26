@@ -5,5 +5,5 @@ namespace Stakeout.Simulation.Sublocations;
 
 public interface ISublocationGenerator
 {
-    SublocationGraph Generate(int addressId, SimulationState state, Random rng);
+    SublocationGraph Generate(Address address, SimulationState state, Random rng);
 }

@@ -1,7 +1,6 @@
 // src/simulation/scheduling/TaskResolver.cs
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using Stakeout.Simulation.Actions;
 using Stakeout.Simulation.Entities;
 using Stakeout.Simulation.Objectives;
@@ -34,17 +33,12 @@ public static class TaskResolver
 
     private static SublocationGraph BuildGraphForAddress(int addressId, SimulationState state)
     {
-        var subs = state.Sublocations.Values
-            .Where(s => s.AddressId == addressId)
-            .ToDictionary(s => s.Id);
+        if (!state.Addresses.TryGetValue(addressId, out var address))
+            return null;
 
-        if (subs.Count == 0) return null;
+        if (address.Sublocations.Count == 0) return null;
 
-        var conns = state.SublocationConnections
-            .Where(c => subs.ContainsKey(c.FromSublocationId) || subs.ContainsKey(c.ToSublocationId))
-            .ToList();
-
-        return new SublocationGraph(subs, conns);
+        return new SublocationGraph(address.Sublocations, address.Connections);
     }
 
     private static IDecompositionStrategy GetStrategy(SimTask task)

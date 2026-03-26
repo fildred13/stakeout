@@ -47,11 +47,13 @@ public class SimulationStateTests
     }
 
     [Fact]
-    public void Constructor_InitializesSublocations()
+    public void Constructor_InitializesAddressSublocations()
     {
         var state = new SimulationState();
-        Assert.Empty(state.Sublocations);
-        Assert.Empty(state.SublocationConnections);
+        var address = new Address { Id = state.GenerateEntityId() };
+        state.Addresses[address.Id] = address;
+        Assert.Empty(address.Sublocations);
+        Assert.Empty(address.Connections);
     }
 
     [Fact]

@@ -13,8 +13,10 @@ public class OfficeGeneratorTests
     private SublocationGraph Generate(int seed = 42)
     {
         var state = new SimulationState();
+        var address = new Address { Id = 1, Type = AddressType.Office };
+        state.Addresses[1] = address;
         var gen = new OfficeGenerator();
-        return gen.Generate(addressId: 1, state, new Random(seed));
+        return gen.Generate(address, state, new Random(seed));
     }
 
     [Fact]
@@ -62,11 +64,13 @@ public class OfficeGeneratorTests
     public void Generate_HasElevatorOrStairsConnections()
     {
         var state = new SimulationState();
+        var address = new Address { Id = 1, Type = AddressType.Office };
+        state.Addresses[1] = address;
         var gen = new OfficeGenerator();
-        gen.Generate(addressId: 1, state, new Random(42));
+        gen.Generate(address, state, new Random(42));
 
-        bool hasElevator = state.SublocationConnections.Any(c => c.Type == ConnectionType.Elevator);
-        bool hasStairs = state.SublocationConnections.Any(c => c.Type == ConnectionType.Stairs);
+        bool hasElevator = address.Connections.Any(c => c.Type == ConnectionType.Elevator);
+        bool hasStairs = address.Connections.Any(c => c.Type == ConnectionType.Stairs);
         Assert.True(hasElevator || hasStairs);
     }
 

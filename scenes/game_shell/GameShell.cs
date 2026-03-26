@@ -414,7 +414,7 @@ public partial class GameShell : Control
             var street = addr != null ? state.Streets.GetValueOrDefault(addr.StreetId) : null;
             var locationText = $"At: {addr?.Number} {street?.Name ?? "Unknown"} ({addr?.Type})";
             if (person.CurrentSublocationId.HasValue &&
-                state.Sublocations.TryGetValue(person.CurrentSublocationId.Value, out var subloc))
+                addr != null && addr.Sublocations.TryGetValue(person.CurrentSublocationId.Value, out var subloc))
             {
                 locationText += $" → {subloc.Name}";
             }

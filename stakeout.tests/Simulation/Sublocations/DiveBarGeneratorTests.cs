@@ -11,8 +11,10 @@ public class DiveBarGeneratorTests
     private SublocationGraph Generate(int seed = 42)
     {
         var state = new SimulationState();
+        var address = new Address { Id = 1, Type = AddressType.DiveBar };
+        state.Addresses[1] = address;
         var gen = new DiveBarGenerator();
-        return gen.Generate(addressId: 1, state, new Random(seed));
+        return gen.Generate(address, state, new Random(seed));
     }
 
     [Fact]

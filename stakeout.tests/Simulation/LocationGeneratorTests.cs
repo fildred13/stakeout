@@ -53,12 +53,8 @@ public class LocationGeneratorTests
 
         var address = generator.GenerateAddress(state, AddressType.SuburbanHome);
 
-        var addressSublocations = new System.Collections.Generic.List<Stakeout.Simulation.Entities.Sublocation>();
-        foreach (var sub in state.Sublocations.Values)
-            if (sub.AddressId == address.Id) addressSublocations.Add(sub);
-
-        Assert.NotEmpty(addressSublocations);
-        Assert.Contains(addressSublocations, s => s.HasTag("road"));
-        Assert.Contains(addressSublocations, s => s.HasTag("entrance"));
+        Assert.NotEmpty(address.Sublocations);
+        Assert.Contains(address.Sublocations.Values, s => s.HasTag("road"));
+        Assert.Contains(address.Sublocations.Values, s => s.HasTag("entrance"));
     }
 }
