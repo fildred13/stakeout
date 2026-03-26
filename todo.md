@@ -1,2 +1,3 @@
+- ScheduleBuilder may need some love. The short term fixes put in place seem like bandaids. We need to review and think about what safegaurds are in place to ensure that a schedule is always sequential and has no overlaps and no gaps.
 - saving and loading
 - multithreading the simulation
