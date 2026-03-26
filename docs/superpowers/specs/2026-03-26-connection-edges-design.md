@@ -62,6 +62,8 @@ Removed from current enum:
 - Elevator — now a sublocation node
 - Trail — now a sublocation node
 
+Note: ParkGenerator currently uses `ConnectionType.Trail` as an edge type between jogging paths and park areas. These become `OpenPassage` connections, since they're just outdoor paths between areas, not trails you walk on as a destination. The Trail *sublocation* (e.g., "Jogging Path") stays as a node.
+
 ### Composable modifier properties
 
 ```csharp
@@ -114,10 +116,34 @@ public class SublocationConnection
 ```
 
 Key changes from current model:
-- `Id` — connections get an ID so game events and schedule entries can reference them
+- `Id` — connections get an ID (via `state.GenerateEntityId()`) so game events and schedule entries can reference them
 - `Name` — display name for the connection ("Front Door"), since this is no longer a sublocation name
 - `Tags` — entry-point semantics move here from sublocation tags (the *door* is the entrance, not the room behind it)
 - `IsBidirectional` removed — all connections are bidirectional for now (add back if one-way connections become needed)
+
+### Where entry-point tags live
+
+Entry-point tags (`"entrance"`, `"covert_entry"`, `"staff_entry"`) move to connections in most cases, but some real-location sublocations also carry entry-point semantics. For example, the DiveBar's "Alley" is a real place (a node) with `"covert_entry"` tag — it stays as a sublocation tag because the Alley is a location someone can be in, not a connection point. Similarly, the Park's "Wooded Area" has `"covert_entry"` as a sublocation tag.
+
+Rule: if the tag describes *how you enter* (the door is the entrance), it goes on the connection. If it describes *where you are* (the alley is a covert area), it stays on the sublocation.
+
+Decomposition strategies that search for entry points must search **both** connection tags and sublocation tags:
+
+```csharp
+// Search connections first, fall back to sublocation tags
+public (SublocationConnection? conn, Sublocation target) FindEntryPoint(string tag)
+{
+    var connResult = FindConnectionByTag(tag);
+    if (connResult.HasValue)
+        return (connResult.Value.conn, connResult.Value.target);
+
+    var sub = FindByTag(tag);
+    if (sub != null)
+        return (null, sub);
+
+    return (null, null);
+}
+```
 
 ### ScheduleEntry changes
 
@@ -185,15 +211,28 @@ Different people traverse differently — a resident has keys and knows about hi
 
 Fewer nodes (connection points removed) means BFS is cheaper. The per-edge CanTraverse check is a few null checks — negligible.
 
+### SublocationGraph internal changes
+
+The current `SublocationGraph` stores only `_sublocations` and `_adjacency` (`Dictionary<int, List<int>>`), discarding connection metadata. The new model must store actual `SublocationConnection` objects so that edge properties (lock state, tags, etc.) are queryable. The adjacency structure changes to `Dictionary<int, List<SublocationConnection>>`.
+
 ### New SublocationGraph query methods
 
 ```csharp
 // Find a connection by tag, return the connection + the interior node it leads to
+// "Interior" = the ToSublocationId side (the node deeper into the building)
 public (SublocationConnection conn, Sublocation target)? FindConnectionByTag(string tag)
+
+// Find all connections with a given tag
+public List<(SublocationConnection conn, Sublocation target)> FindAllConnectionsByTag(string tag)
+
+// Unified entry-point search: checks connection tags first, then sublocation tags
+public (SublocationConnection? conn, Sublocation target) FindEntryPoint(string tag)
 
 // Get the connection between two adjacent nodes (for "via" display)
 public SublocationConnection? GetConnectionBetween(int fromId, int toId)
 ```
+
+`FindConnectionByTag` convention: "target" is the `ToSublocationId` side of the connection — the interior node. For example, for a front door connecting FrontYard→Hallway, the target is Hallway (the room you enter when you go through the door).
 
 ## Schedule Display
 
@@ -278,12 +317,17 @@ Connect(hallway, upstairsHallway, new SublocationConnection
 
 ### Decomposition strategy changes
 
-Strategies that query entry-point sublocations by tag switch to querying connections by tag:
+Strategies that currently schedule time "at" connection-point sublocations (entrance, stairs, etc.) need to schedule time at the real room instead.
 
-- `graph.FindByTag("entrance")` becomes `graph.FindConnectionByTag("entrance")` which returns the connection and its adjacent real sublocation
-- `graph.FindByTag("covert_entry")` same pattern
-- IntrudeDecomposition paths are shorter since door/stairs nodes are gone
-- All path results are real locations; "via" info comes from PathStep.Via
+**What each strategy needs:**
+
+- **InhabitDecomposition** — currently uses `graph.FindByTag("entrance")` to get a room for the morning departure / evening arrival routine. Under the new model, use `graph.FindEntryPoint("entrance")` which returns the interior sublocation (e.g., Hallway). The person spends arrival/departure time in the hallway, not "in" the door.
+- **WorkDayDecomposition** — same pattern. Arrival/departure stops target the interior sublocation behind the entrance connection (or the sublocation itself if it's a real node with the entrance tag, like Lobby in an office).
+- **VisitDecomposition** — same pattern for arrival/departure.
+- **PatronizeDecomposition** — same pattern for entrance.
+- **StaffShiftDecomposition** — uses `"staff_entry"` tag. Same pattern — target the interior sublocation behind the staff entry connection.
+- **IntrudeDecomposition** — uses `"covert_entry"` tag via `FindEntryPoint`, which searches connections then sublocations. Paths are shorter since door/stairs nodes are gone. All path results are real locations; "via" info comes from `PathStep.Via`.
+- **SleepDecomposition** — unaffected (just finds bedroom, sleeps there).
 
 ## Elevator Handling
 
@@ -307,6 +351,56 @@ Connect(elevator, secondFloorHallway, new SublocationConnection
 
 Elevator doors can be locked (keycard access to certain floors), handled naturally by CanTraverse in pathfinding. A person's schedule shows them entering and waiting in the elevator as a real activity.
 
+### Migration from current elevator/stairwell chains
+
+The current `ApartmentBuildingGenerator` and `OfficeGenerator` create per-floor elevator and stairwell nodes chained vertically:
+
+```
+Lobby → Elevator → Floor 1 Elevator → Floor 2 Elevator → ...
+Lobby → Stairwell → Floor 1 Stairwell → Floor 2 Stairwell → ...
+```
+
+Under the new model:
+- **Elevator** becomes a single node connected to each floor's hallway via Door edges (elevator doors). This is a topology change — one elevator node with N door connections instead of N elevator nodes in a chain.
+- **Stairwell** nodes are removed. Stairs become edges connecting floor hallways directly. Example: `Floor 1 Hallway --[Stairs]--> Floor 2 Hallway --[Stairs]--> Floor 3 Hallway`.
+
+```csharp
+// ApartmentBuildingGenerator — after
+var elevator = Make("Elevator", new[] { "elevator" }, null);
+Connect(lobby, elevator, new SublocationConnection
+{
+    Type = ConnectionType.Door,
+    Name = "Elevator Doors (Lobby)",
+});
+
+for (int n = 1; n <= floorCount; n++)
+{
+    var hallway = Make($"Floor {n} Hallway", new[] { "hallway" }, n);
+    Connect(elevator, hallway, new SublocationConnection
+    {
+        Type = ConnectionType.Door,
+        Name = $"Elevator Doors (Floor {n})",
+    });
+    if (n > 1)
+    {
+        Connect(prevHallway, hallway, new SublocationConnection
+        {
+            Type = ConnectionType.Stairs,
+            Name = $"Stairs (Floor {n-1} to {n})",
+        });
+    }
+    else
+    {
+        Connect(lobby, hallway, new SublocationConnection
+        {
+            Type = ConnectionType.Stairs,
+            Name = "Stairs (Lobby to Floor 1)",
+        });
+    }
+    prevHallway = hallway;
+}
+```
+
 ## Files Affected
 
 | Area | Files |
@@ -314,6 +408,7 @@ Elevator doors can be locked (keycard access to certain floors), handled natural
 | Data model | `Sublocation.cs`, `SublocationConnection.cs` (new property classes), `Address.cs` |
 | Graph | `SublocationGraph.cs` (new PathStep, TraversalContext, FindConnectionByTag, edge-aware BFS) |
 | Schedule | `DailySchedule.cs` (ViaConnectionId on ScheduleEntry) |
-| Generators | `SuburbanHomeGenerator.cs`, `DinerGenerator.cs`, `DiveBarGenerator.cs`, `ParkGenerator.cs`, `LocationGenerator.cs` |
-| Decomposition | `TaskResolver.cs`, `IntrudeDecomposition.cs`, `WorkDayDecomposition.cs`, `VisitDecomposition.cs`, `PatronizeDecomposition.cs`, `StaffShiftDecomposition.cs`, `InhabitDecomposition.cs` |
-| Display | `GameShell.cs` (schedule formatting), `GraphView.cs` (edge labels), `BlueprintView.cs` (connection labels) |
+| Generators | `SuburbanHomeGenerator.cs`, `DinerGenerator.cs`, `DiveBarGenerator.cs`, `ParkGenerator.cs`, `ApartmentBuildingGenerator.cs`, `OfficeGenerator.cs`, `LocationGenerator.cs` |
+| Decomposition | `TaskResolver.cs`, `IntrudeDecomposition.cs`, `WorkDayDecomposition.cs`, `VisitDecomposition.cs`, `PatronizeDecomposition.cs`, `StaffShiftDecomposition.cs`, `InhabitDecomposition.cs`, `SleepDecomposition.cs` (unaffected but verify) |
+| Display | `GameShell.cs` (schedule formatting), `GraphView.cs` (edge labels, remove IsBidirectional check), `BlueprintView.cs` (connection labels) |
+| Behavior | `PersonBehavior.cs` (road is still the default arrival sublocation when a person arrives at an address) |
