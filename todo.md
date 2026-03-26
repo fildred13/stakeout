@@ -1,3 +1,13 @@
-- ScheduleBuilder may need some love. The short term fixes put in place seem like bandaids. We need to review and think about what safegaurds are in place to ensure that a schedule is always sequential and has no overlaps and no gaps.
+- sublocation stuff still has some glaring issues. I notice the sleep task is randomly moving around throughout the house throughout the night, for example. All tasks do it. Need to reel it in. Also, "inner layer" is too simple Work -> Front Door while it's the middle of the workday ... why? That's a movement that was scheduled but then where is the action taken in the new sublocation? Also, the sublocation movement has all kinds of overlaps and is non-sequential.
+
+- sublocation rethink: are doors and windows considered locations? graph view at least is confusing. Edges can be doors/windows.
+- inventory, locked doors/windows, and keys
+- traces: fingerprints
+- music!
+- sfx!
+- ScheduleBuilder may need some love. The short term fixes put in place seem like bandaids. We need to review and think about what safegaurds are in place to ensure that a schedule is always sequential and has no overlaps and no gaps. Need to think about when schedules are recalculated and how the "current action" at recalc time isn't changed suddenly.
+- Replay a solved crime. Replay feature has a lot to think about with the Past Schedule. Maybe only save for critical characters?
+- coordinated NPC actions: first example: meet up to have an affair. Go on date, make love.
+- generating NPCs and Addresses with a past history (especially past schedule)
 - saving and loading
-- multithreading the simulation
+- multithreading the simulation?
