@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using Stakeout.Simulation.Actions;
 using Stakeout.Simulation.Entities;
 using Stakeout.Simulation.Objectives;
@@ -9,6 +8,10 @@ namespace Stakeout.Simulation.Scheduling.Decomposition;
 
 public class PatronizeDecomposition : IDecompositionStrategy
 {
+    private const int ArrivalMinutes = 5;
+    private const int DepartureMinutes = 5;
+    private const int RestroomMinutes = 10;
+
     public List<ScheduleEntry> Decompose(SimTask task, SublocationGraph graph,
         TimeSpan startTime, TimeSpan endTime, Random rng)
     {
@@ -18,62 +21,85 @@ public class PatronizeDecomposition : IDecompositionStrategy
 
         var serviceArea = graph.FindByTag("service_area") ?? graph.FindByTag("social");
 
-        var sublocationSequence = new List<Sublocation>();
-
         if (serviceArea == null)
         {
-            // Graceful fallback: stay at entrance
-            sublocationSequence.Add(entrance);
-        }
-        else
-        {
-            // Enter: entrance → service/social area (via path)
-            var arrivalPath = graph.FindPath(entrance.Id, serviceArea.Id);
-            sublocationSequence.AddRange(arrivalPath);
-
-            // 30% chance to visit restroom
-            if (rng.NextDouble() < 0.3)
+            return new List<ScheduleEntry>
             {
-                var restroom = graph.FindByTag("restroom");
-                if (restroom != null)
+                new ScheduleEntry
                 {
-                    var toRestroom = graph.FindPath(serviceArea.Id, restroom.Id);
-                    sublocationSequence.AddRange(toRestroom.Skip(1));
-                    var backToService = graph.FindPath(restroom.Id, serviceArea.Id);
-                    sublocationSequence.AddRange(backToService.Skip(1));
+                    Action = ActionType.Idle,
+                    StartTime = startTime,
+                    EndTime = endTime,
+                    TargetAddressId = task.TargetAddressId,
+                    TargetSublocationId = entrance.Id
                 }
-            }
-
-            // Exit: service/social area → entrance (via path)
-            var departurePath = graph.FindPath(serviceArea.Id, entrance.Id);
-            sublocationSequence.AddRange(departurePath.Skip(1));
+            };
         }
 
-        return AssignTimes(sublocationSequence, task.TargetAddressId, startTime, endTime);
+        // Build meaningful stops: entrance → service area → optional restroom → entrance
+        var stops = new List<(Sublocation sub, StopKind kind)>();
+
+        stops.Add((entrance, StopKind.Transit));
+        stops.Add((serviceArea, StopKind.Main));
+
+        if (rng.NextDouble() < 0.3)
+        {
+            var restroom = graph.FindByTag("restroom");
+            if (restroom != null)
+            {
+                stops.Add((restroom, StopKind.Transit));
+                stops.Add((serviceArea, StopKind.Main));
+            }
+        }
+
+        stops.Add((entrance, StopKind.Transit));
+
+        return AllocateTimes(stops, task.TargetAddressId, startTime, endTime);
     }
 
-    private List<ScheduleEntry> AssignTimes(List<Sublocation> sublocations, int? addressId,
-        TimeSpan startTime, TimeSpan endTime)
-    {
-        if (sublocations.Count == 0)
-            return new List<ScheduleEntry>();
+    private enum StopKind { Transit, Main }
 
+    private List<ScheduleEntry> AllocateTimes(
+        List<(Sublocation sub, StopKind kind)> stops,
+        int? addressId, TimeSpan startTime, TimeSpan endTime)
+    {
         var totalDuration = endTime - startTime;
-        var slotDuration = TimeSpan.FromTicks(totalDuration.Ticks / sublocations.Count);
+        if (totalDuration <= TimeSpan.Zero)
+            totalDuration += TimeSpan.FromHours(24);
+
+        int transitMinutes = 0;
+        int mainCount = 0;
+        foreach (var (_, kind) in stops)
+        {
+            if (kind == StopKind.Transit) transitMinutes += ArrivalMinutes;
+            else mainCount++;
+        }
+
+        var transitDuration = TimeSpan.FromMinutes(Math.Min(transitMinutes, totalDuration.TotalMinutes));
+        var mainDuration = totalDuration - transitDuration;
+        var mainSlot = mainCount > 0
+            ? TimeSpan.FromTicks(mainDuration.Ticks / mainCount)
+            : TimeSpan.Zero;
 
         var entries = new List<ScheduleEntry>();
         var current = startTime;
 
-        for (int i = 0; i < sublocations.Count; i++)
+        for (int i = 0; i < stops.Count; i++)
         {
-            var slotEnd = (i == sublocations.Count - 1) ? endTime : current + slotDuration;
+            var (sub, kind) = stops[i];
+            var duration = kind == StopKind.Transit
+                ? TimeSpan.FromMinutes(ArrivalMinutes)
+                : mainSlot;
+
+            var slotEnd = (i == stops.Count - 1) ? endTime : current + duration;
+
             entries.Add(new ScheduleEntry
             {
                 Action = ActionType.Idle,
                 StartTime = current,
                 EndTime = slotEnd,
                 TargetAddressId = addressId,
-                TargetSublocationId = sublocations[i].Id
+                TargetSublocationId = sub.Id
             });
             current = slotEnd;
         }

@@ -13,7 +13,7 @@ public static class TaskResolver
     private static readonly Dictionary<ActionType, IDecompositionStrategy> _strategies = new()
     {
         { ActionType.Work, new WorkDayDecomposition() },
-        { ActionType.Sleep, new InhabitDecomposition() },
+        { ActionType.Sleep, new SleepDecomposition() },
         { ActionType.Idle, new InhabitDecomposition() },
         { ActionType.KillPerson, new IntrudeDecomposition() },
     };

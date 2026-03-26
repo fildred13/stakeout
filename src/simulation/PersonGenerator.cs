@@ -84,6 +84,7 @@ public class PersonGenerator
             CurrentAddressId = currentAddressId,
             CurrentPosition = currentPosition,
             CurrentAction = initialActivity,
+            CurrentSublocationId = currentEntry.TargetSublocationId,
             PreferredSleepTime = sleepTime,
             PreferredWakeTime = wakeTime,
             Objectives = objectives,

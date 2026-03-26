@@ -1,6 +1,7 @@
-- sublocation stuff still has some glaring issues. I notice the sleep task is randomly moving around throughout the house throughout the night, for example. All tasks do it. Need to reel it in. Also, "inner layer" is too simple Work -> Front Door while it's the middle of the workday ... why? That's a movement that was scheduled but then where is the action taken in the new sublocation? Also, the sublocation movement has all kinds of overlaps and is non-sequential.
+- I saw a case where a woman working at a diner went kitchen->kitchen->kitchen
+- sublocation rethink: are doors and windows considered locations? graph view at least is confusing, as is inspector. It's weird that a person has an action to exist in "front door" between road and lobby, for example. Rather, I think "via" is going to be much more elegant. Edges can be doors/windows.Can we improve the algo to minimize overlaps of edges and nodes?
 
-- sublocation rethink: are doors and windows considered locations? graph view at least is confusing. Edges can be doors/windows.
+- add apartment buildings and parks to gen so we can see them. They already got created, but we forgot to add them to generation
 - inventory, locked doors/windows, and keys
 - traces: fingerprints
 - music!
