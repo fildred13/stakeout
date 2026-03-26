@@ -13,14 +13,14 @@ class Program
     {
         SublocationGeneratorRegistry.RegisterAll();
 
-        var dayProfileNpcCount = 200;
+        var dayProfileNpcCount = 1000;
         if (args.Length > 0 && int.TryParse(args[0], out var parsed) && parsed > 0)
         {
             dayProfileNpcCount = parsed;
         }
 
         // Mode 1: Frame Budget
-        var npcCounts = new[] { 50, 200, 201, 220, 230, 231, 232, 233, 234, 235, 236, 237, 238, 239, 240, 250, 275, 300, 400, 500, 1000 };
+        var npcCounts = new[] { 50, 200, 300, 500, 1000, 5000 };
         Console.WriteLine("Frame Budget (5 game-minutes, 1s tick delta)");
         Console.WriteLine(new string('-', 60));
         Console.WriteLine($"{"NPCs",-8} {"Avg ms/tick",-14} {"Max ms/tick",-14} {"Ticks/sec",-12} {"Memory MB",-10}");
@@ -29,12 +29,15 @@ class Program
         foreach (var count in npcCounts)
         {
             RunFrameBudget(count);
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            GC.Collect();
         }
 
         Console.WriteLine();
 
         // Mode 2: Day Profile
-        RunDayProfile(dayProfileNpcCount, 24);
+        RunDayProfile(dayProfileNpcCount, 500);
     }
 
     static (SimulationState state, PersonBehavior behavior) CreateSimulation(int npcCount, DateTime? clockStart = null)
@@ -48,10 +51,14 @@ class Program
 
         locationGenerator.GenerateCityScaffolding(state);
 
+        Console.Error.Write($"  Generating {npcCount} NPCs...");
+        Console.Error.Flush();
         for (int i = 0; i < npcCount; i++)
         {
             personGenerator.GeneratePerson(state);
         }
+        Console.Error.WriteLine(" done");
+        Console.Error.Flush();
 
         return (state, behavior);
     }
@@ -68,6 +75,8 @@ class Program
         var totalTicks = 300; // 5 game-minutes
 
         var memBefore = GC.GetTotalMemory(true);
+        Console.Error.Write($"  Ticking {npcCount} NPCs: ");
+        Console.Error.Flush();
 
         for (int s = 0; s < totalTicks; s++)
         {
@@ -87,12 +96,16 @@ class Program
             tickCount++;
         }
 
+        Console.Error.WriteLine("done");
+        Console.Error.Flush();
+
         var memAfter = GC.GetTotalMemory(false);
         var memMb = (memAfter - memBefore) / (1024.0 * 1024.0);
         var avgMs = totalMs / tickCount;
         var ticksPerSec = avgMs > 0 ? 1000.0 / avgMs : 0;
 
         Console.WriteLine($"{npcCount,-8} {avgMs,-14:F4} {maxMs,-14:F4} {ticksPerSec,-12:F0} {memMb,-10:F1}");
+        Console.Out.Flush();
     }
 
     static void RunDayProfile(int npcCount, int simHours)
