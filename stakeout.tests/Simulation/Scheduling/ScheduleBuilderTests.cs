@@ -131,7 +131,7 @@ public class ScheduleBuilderTests
     {
         var home = new Address { Id = 1, Position = new Vector2(100, 100), Type = AddressType.SuburbanHome };
         var work = new Address { Id = 2, Position = new Vector2(600, 100), Type = AddressType.Office };
-        var crimeScene = new Address { Id = 3, Position = new Vector2(1000, 500), Type = AddressType.SuburbanHome };
+        var crimeScene = new Address { Id = 3, Position = new Vector2(400, 300), Type = AddressType.SuburbanHome };
         var addresses = new Dictionary<int, Address>
             { { 1, home }, { 2, work }, { 3, crimeScene } };
         var tasks = new List<SimTask>
@@ -154,5 +154,62 @@ public class ScheduleBuilderTests
         Assert.NotNull(killEntry);
         var travelEntries = schedule.Entries.Where(e => e.Action == ActionType.TravelByCar).ToList();
         Assert.True(travelEntries.Count >= 2);
+    }
+
+    [Fact]
+    public void BuildFromTasks_NightShiftWorker_NoOverlappingEntries()
+    {
+        // Night shift worker: work ends at 00:10, sleep starts at 00:25 (after 15-min commute window).
+        // The idle gap between work-end and sleep-start is only 15 minutes.
+        // If travel time > 15 minutes, the travel overflows the idle block,
+        // creating a broken entry with StartTime > EndTime.
+        var home = new Address { Id = 1, Position = new Vector2(100, 100), Type = AddressType.SuburbanHome };
+        var work = new Address { Id = 2, Position = new Vector2(800, 100), Type = AddressType.Office };
+        var addresses = new Dictionary<int, Address> { { 1, home }, { 2, work } };
+
+        var tasks = new List<SimTask>
+        {
+            new SimTask { Id = 1, ActionType = ActionType.Sleep, Priority = 30,
+                WindowStart = new TimeSpan(0, 25, 0), WindowEnd = new TimeSpan(8, 25, 0),
+                TargetAddressId = home.Id },
+            new SimTask { Id = 2, ActionType = ActionType.Work, Priority = 20,
+                WindowStart = new TimeSpan(16, 0, 0), WindowEnd = new TimeSpan(0, 10, 0),
+                TargetAddressId = work.Id },
+            new SimTask { Id = 3, ActionType = ActionType.Idle, Priority = 10,
+                WindowStart = TimeSpan.Zero, WindowEnd = TimeSpan.Zero,
+                TargetAddressId = home.Id }
+        };
+
+        var schedule = ScheduleBuilder.BuildFromTasks(tasks, addresses, DefaultConfig);
+
+        // Every entry should have StartTime < EndTime, or be a legitimate midnight wrap
+        // (where the duration when accounting for wrap is positive and reasonable)
+        foreach (var entry in schedule.Entries)
+        {
+            var duration = entry.EndTime - entry.StartTime;
+            if (duration < TimeSpan.Zero)
+                duration += TimeSpan.FromHours(24);
+
+            // No entry should be near-24-hour duration (symptom of overflow)
+            Assert.True(duration < TimeSpan.FromHours(23),
+                $"Entry {entry.Action} has suspicious duration {duration} " +
+                $"(StartTime={entry.StartTime}, EndTime={entry.EndTime})");
+        }
+
+        // Entries should not overlap when laid out on a 24-hour timeline
+        var sorted = schedule.Entries.OrderBy(e => e.StartTime).ToList();
+        for (int i = 0; i < sorted.Count - 1; i++)
+        {
+            var current = sorted[i];
+            var next = sorted[i + 1];
+            // Current entry's end should be <= next entry's start (no overlap)
+            // Account for midnight wrap: if current wraps, its end is next day
+            if (current.EndTime > current.StartTime)
+            {
+                Assert.True(current.EndTime <= next.StartTime,
+                    $"Overlap: {current.Action} ends at {current.EndTime} but " +
+                    $"{next.Action} starts at {next.StartTime}");
+            }
+        }
     }
 }

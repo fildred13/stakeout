@@ -9,104 +9,122 @@ namespace Stakeout.Simulation.Scheduling.Decomposition;
 
 public class StaffShiftDecomposition : IDecompositionStrategy
 {
+    private const int ArrivalMinutes = 5;
+    private const int DepartureMinutes = 5;
+    private const int BreakMinutes = 15;
+
     public List<ScheduleEntry> Decompose(SimTask task, SublocationGraph graph,
         TimeSpan startTime, TimeSpan endTime, Random rng)
     {
         // Use staff_entry if available, fall back to entrance
         var staffEntry = graph.FindByTag("staff_entry") ?? graph.FindByTag("entrance");
-        var workArea = graph.FindByTag("work_area");
-
-        var sublocationSequence = new List<Sublocation>();
-
         if (staffEntry == null)
             return new List<ScheduleEntry>();
 
-        // No work area: stay at staff entry the whole shift
+        var workArea = graph.FindByTag("work_area");
         if (workArea == null)
         {
-            sublocationSequence.Add(staffEntry);
-        }
-        else
-        {
-            // Arrival: staff entry → work area (via path)
-            var arrivalPath = graph.FindPath(staffEntry.Id, workArea.Id);
-            sublocationSequence.AddRange(arrivalPath);
-
-            // Periodic breaks (same logic as WorkDay: 50% food, 70% restroom, 1-3 breaks)
-            sublocationSequence.AddRange(BuildBreakSequence(workArea, graph, rng));
-
-            // Departure: work area → staff entry (via path)
-            var departurePath = graph.FindPath(workArea.Id, staffEntry.Id);
-            sublocationSequence.AddRange(departurePath.Skip(1));
+            return new List<ScheduleEntry>
+            {
+                new ScheduleEntry
+                {
+                    Action = ActionType.Work,
+                    StartTime = startTime,
+                    EndTime = endTime,
+                    TargetAddressId = task.TargetAddressId,
+                    TargetSublocationId = staffEntry.Id
+                }
+            };
         }
 
-        return AssignTimes(sublocationSequence, task.TargetAddressId, startTime, endTime);
-    }
+        // Build sequence of meaningful stops (no pathfinding intermediates)
+        var stops = new List<(Sublocation sub, StopKind kind)>();
 
-    private List<Sublocation> BuildBreakSequence(Sublocation workArea, SublocationGraph graph, Random rng)
-    {
-        var sequence = new List<Sublocation>();
+        stops.Add((staffEntry, StopKind.Arrival));
+        stops.Add((workArea, StopKind.Work));
+
         int breakCount = rng.Next(1, 4);
-
         for (int i = 0; i < breakCount; i++)
         {
-            sequence.Add(workArea);
-
-            // 50% chance to visit food area
             if (rng.NextDouble() < 0.5)
             {
                 var food = graph.FindByTag("food");
                 if (food != null)
                 {
-                    var toFood = graph.FindPath(workArea.Id, food.Id);
-                    sequence.AddRange(toFood.Skip(1));
-                    var backToWork = graph.FindPath(food.Id, workArea.Id);
-                    sequence.AddRange(backToWork.Skip(1));
+                    stops.Add((food, StopKind.Break));
+                    stops.Add((workArea, StopKind.Work));
                 }
             }
 
-            // 70% chance to visit restroom
             if (rng.NextDouble() < 0.7)
             {
                 var restroom = graph.FindByTag("restroom");
                 if (restroom != null)
                 {
-                    var toRestroom = graph.FindPath(workArea.Id, restroom.Id);
-                    sequence.AddRange(toRestroom.Skip(1));
-                    var backToWork = graph.FindPath(restroom.Id, workArea.Id);
-                    sequence.AddRange(backToWork.Skip(1));
+                    stops.Add((restroom, StopKind.Break));
+                    stops.Add((workArea, StopKind.Work));
                 }
             }
         }
 
-        // Final work stint after last break
-        sequence.Add(workArea);
+        stops.Add((staffEntry, StopKind.Departure));
 
-        return sequence;
+        return AllocateTimes(stops, task.TargetAddressId, startTime, endTime);
     }
 
-    private List<ScheduleEntry> AssignTimes(List<Sublocation> sublocations, int? addressId,
-        TimeSpan startTime, TimeSpan endTime)
-    {
-        if (sublocations.Count == 0)
-            return new List<ScheduleEntry>();
+    private enum StopKind { Arrival, Departure, Break, Work }
 
+    private List<ScheduleEntry> AllocateTimes(
+        List<(Sublocation sub, StopKind kind)> stops,
+        int? addressId, TimeSpan startTime, TimeSpan endTime)
+    {
         var totalDuration = endTime - startTime;
-        var slotDuration = TimeSpan.FromTicks(totalDuration.Ticks / sublocations.Count);
+        if (totalDuration <= TimeSpan.Zero)
+            totalDuration += TimeSpan.FromHours(24);
+
+        int fixedMinutes = 0;
+        int workCount = 0;
+        foreach (var (_, kind) in stops)
+        {
+            switch (kind)
+            {
+                case StopKind.Arrival: fixedMinutes += ArrivalMinutes; break;
+                case StopKind.Departure: fixedMinutes += DepartureMinutes; break;
+                case StopKind.Break: fixedMinutes += BreakMinutes; break;
+                case StopKind.Work: workCount++; break;
+            }
+        }
+
+        var fixedDuration = TimeSpan.FromMinutes(Math.Min(fixedMinutes, totalDuration.TotalMinutes));
+        var workDuration = totalDuration - fixedDuration;
+        var workSlot = workCount > 0
+            ? TimeSpan.FromTicks(workDuration.Ticks / workCount)
+            : TimeSpan.Zero;
 
         var entries = new List<ScheduleEntry>();
         var current = startTime;
 
-        for (int i = 0; i < sublocations.Count; i++)
+        for (int i = 0; i < stops.Count; i++)
         {
-            var slotEnd = (i == sublocations.Count - 1) ? endTime : current + slotDuration;
+            var (sub, kind) = stops[i];
+            var duration = kind switch
+            {
+                StopKind.Arrival => TimeSpan.FromMinutes(ArrivalMinutes),
+                StopKind.Departure => TimeSpan.FromMinutes(DepartureMinutes),
+                StopKind.Break => TimeSpan.FromMinutes(BreakMinutes),
+                StopKind.Work => workSlot,
+                _ => workSlot
+            };
+
+            var slotEnd = (i == stops.Count - 1) ? endTime : current + duration;
+
             entries.Add(new ScheduleEntry
             {
                 Action = ActionType.Work,
                 StartTime = current,
                 EndTime = slotEnd,
                 TargetAddressId = addressId,
-                TargetSublocationId = sublocations[i].Id
+                TargetSublocationId = sub.Id
             });
             current = slotEnd;
         }

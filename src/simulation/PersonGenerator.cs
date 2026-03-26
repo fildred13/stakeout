@@ -48,11 +48,7 @@ public class PersonGenerator
         };
 
         var tasks = ObjectiveResolver.ResolveTasks(objectives, state);
-        var addresses = new Dictionary<int, Address>();
-        foreach (var t in tasks)
-            if (t.TargetAddressId.HasValue && state.Addresses.ContainsKey(t.TargetAddressId.Value))
-                addresses[t.TargetAddressId.Value] = state.Addresses[t.TargetAddressId.Value];
-        var schedule = ScheduleBuilder.BuildFromTasks(tasks, addresses, _mapConfig);
+        var schedule = ScheduleBuilder.BuildFromTasks(tasks, state, _mapConfig);
 
         // 6. Determine initial state from schedule and current time
         var timeOfDay = state.Clock.CurrentTime.TimeOfDay;
@@ -88,6 +84,7 @@ public class PersonGenerator
             CurrentAddressId = currentAddressId,
             CurrentPosition = currentPosition,
             CurrentAction = initialActivity,
+            CurrentSublocationId = currentEntry.TargetSublocationId,
             PreferredSleepTime = sleepTime,
             PreferredWakeTime = wakeTime,
             Objectives = objectives,

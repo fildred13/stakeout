@@ -38,6 +38,11 @@ public class PersonBehavior
         {
             Transition(person, entry, state);
         }
+        else if (entry.TargetSublocationId != person.CurrentSublocationId)
+        {
+            // Same action, different sublocation — just move within the address
+            person.CurrentSublocationId = entry.TargetSublocationId;
+        }
     }
 
     private void UpdateTravel(Person person, SimulationState state)
