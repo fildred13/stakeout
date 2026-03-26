@@ -6,7 +6,7 @@ namespace Stakeout.Simulation.Sublocations;
 
 public class ApartmentBuildingGenerator : ISublocationGenerator
 {
-    public SublocationGraph Generate(int addressId, SimulationState state, Random rng)
+    public SublocationGraph Generate(Address address, SimulationState state, Random rng)
     {
         var subs = new Dictionary<int, Sublocation>();
         var conns = new List<SublocationConnection>();
@@ -16,14 +16,14 @@ public class ApartmentBuildingGenerator : ISublocationGenerator
             var sub = new Sublocation
             {
                 Id = state.GenerateEntityId(),
-                AddressId = addressId,
+                AddressId = address.Id,
                 Name = name,
                 Tags = tags,
                 Floor = floor,
                 IsGenerated = isGenerated
             };
             subs[sub.Id] = sub;
-            state.Sublocations[sub.Id] = sub;
+            address.Sublocations[sub.Id] = sub;
             return sub;
         }
 
@@ -37,7 +37,7 @@ public class ApartmentBuildingGenerator : ISublocationGenerator
                 IsBidirectional = true
             };
             conns.Add(conn);
-            state.SublocationConnections.Add(conn);
+            address.Connections.Add(conn);
         }
 
         var road = Make("Road", new[] { "road" }, 0);
@@ -75,7 +75,7 @@ public class ApartmentBuildingGenerator : ISublocationGenerator
     {
         var subs = new Dictionary<int, Sublocation>();
         var conns = new List<SublocationConnection>();
-        int addressId = floorPlaceholder.AddressId;
+        var address = state.Addresses[floorPlaceholder.AddressId];
         int floor = floorPlaceholder.Floor ?? 1;
 
         Sublocation Make(string name, string[] tags)
@@ -83,14 +83,14 @@ public class ApartmentBuildingGenerator : ISublocationGenerator
             var sub = new Sublocation
             {
                 Id = state.GenerateEntityId(),
-                AddressId = addressId,
+                AddressId = address.Id,
                 Name = name,
                 Tags = tags,
                 Floor = floor,
                 ParentId = floorPlaceholder.Id
             };
             subs[sub.Id] = sub;
-            state.Sublocations[sub.Id] = sub;
+            address.Sublocations[sub.Id] = sub;
             return sub;
         }
 
@@ -104,7 +104,7 @@ public class ApartmentBuildingGenerator : ISublocationGenerator
                 IsBidirectional = true
             };
             conns.Add(conn);
-            state.SublocationConnections.Add(conn);
+            address.Connections.Add(conn);
         }
 
         var hallway = Make($"Floor {floor} Hallway", new[] { "hallway" });

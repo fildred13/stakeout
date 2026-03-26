@@ -112,8 +112,8 @@ public class ScheduleBuilderTests
 
         // Generate sublocations
         SublocationGeneratorRegistry.RegisterAll();
-        new SuburbanHomeGenerator().Generate(1, state, new Random(42));
-        new OfficeGenerator().Generate(2, state, new Random(42));
+        new SuburbanHomeGenerator().Generate(home, state, new Random(42));
+        new OfficeGenerator().Generate(work, state, new Random(42));
 
         var tasks = CreateOfficeWorkerTasks(home, work);
         var schedule = ScheduleBuilder.BuildFromTasks(tasks, state, DefaultConfig);

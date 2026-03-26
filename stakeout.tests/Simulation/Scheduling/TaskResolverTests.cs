@@ -25,7 +25,7 @@ public class TaskResolverTests
         var address = new Address { Id = 1, Type = AddressType.Office };
         state.Addresses[1] = address;
         var gen = new OfficeGenerator();
-        gen.Generate(1, state, new Random(42));
+        gen.Generate(address, state, new Random(42));
         return state;
     }
 
@@ -77,7 +77,7 @@ public class TaskResolverTests
         var address = new Address { Id = 1, Type = AddressType.SuburbanHome };
         state.Addresses[1] = address;
         var gen = new SuburbanHomeGenerator();
-        gen.Generate(1, state, new Random(42));
+        gen.Generate(address, state, new Random(42));
 
         var task = new SimTask
         {
@@ -91,8 +91,8 @@ public class TaskResolverTests
 
         Assert.NotEmpty(entries);
         // Should contain bedroom entries for sleep
-        var bedroomSubs = state.Sublocations.Values
-            .Where(s => s.AddressId == 1 && s.HasTag("bedroom"))
+        var bedroomSubs = address.Sublocations.Values
+            .Where(s => s.HasTag("bedroom"))
             .Select(s => s.Id)
             .ToHashSet();
         Assert.Contains(entries, e => bedroomSubs.Contains(e.TargetSublocationId ?? 0));

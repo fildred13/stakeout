@@ -17,31 +17,47 @@ public static class ScheduleBuilder
 
         // Step 2: Expand non-travel entries with sublocation detail
         var expandedEntries = new List<ScheduleEntry>();
+        var groups = new List<ScheduleGroup>();
         var rng = new Random(42); // seeded for determinism
 
         foreach (var entry in baseSchedule.Entries)
         {
+            var group = new ScheduleGroup
+            {
+                Action = entry.Action,
+                StartTime = entry.StartTime,
+                EndTime = entry.EndTime,
+                TargetAddressId = entry.TargetAddressId,
+                FromAddressId = entry.FromAddressId
+            };
+
             if (entry.Action == ActionType.TravelByCar)
             {
                 expandedEntries.Add(entry);
-                continue;
+                group.Children.Add(entry);
+            }
+            else
+            {
+                // Create a temporary SimTask for this entry to pass to TaskResolver
+                var tempTask = new SimTask
+                {
+                    ActionType = entry.Action,
+                    TargetAddressId = entry.TargetAddressId,
+                    WindowStart = entry.StartTime,
+                    WindowEnd = entry.EndTime
+                };
+
+                var sublocationEntries = TaskResolver.Resolve(tempTask, state, rng);
+                expandedEntries.AddRange(sublocationEntries);
+                group.Children.AddRange(sublocationEntries);
             }
 
-            // Create a temporary SimTask for this entry to pass to TaskResolver
-            var tempTask = new SimTask
-            {
-                ActionType = entry.Action,
-                TargetAddressId = entry.TargetAddressId,
-                WindowStart = entry.StartTime,
-                WindowEnd = entry.EndTime
-            };
-
-            var sublocationEntries = TaskResolver.Resolve(tempTask, state, rng);
-            expandedEntries.AddRange(sublocationEntries);
+            groups.Add(group);
         }
 
         var schedule = new DailySchedule();
         schedule.Entries.AddRange(expandedEntries);
+        schedule.Groups.AddRange(groups);
         return schedule;
     }
 

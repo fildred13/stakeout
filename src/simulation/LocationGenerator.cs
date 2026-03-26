@@ -61,7 +61,7 @@ public class LocationGenerator
         var sublocationGenerator = SublocationGeneratorRegistry.Get(address.Type);
         if (sublocationGenerator != null)
         {
-            sublocationGenerator.Generate(address.Id, state, _random);
+            sublocationGenerator.Generate(address, state, _random);
         }
 
         return address;
@@ -78,13 +78,30 @@ public class LocationGenerator
         var usedNames = new System.Collections.Generic.HashSet<string>();
         foreach (var s in state.Streets.Values) usedNames.Add(s.Name);
 
+        var maxCombinations = StreetData.StreetNames.Length * StreetData.StreetSuffixes.Length;
         string streetName;
-        do
+
+        if (usedNames.Count >= maxCombinations)
         {
-            var baseName = StreetData.StreetNames[_random.Next(StreetData.StreetNames.Length)];
-            var suffix = StreetData.StreetSuffixes[_random.Next(StreetData.StreetSuffixes.Length)];
-            streetName = $"{baseName} {suffix}";
-        } while (!usedNames.Add(streetName));
+            // All base combinations exhausted — append a numeric suffix
+            var counter = usedNames.Count - maxCombinations + 1;
+            do
+            {
+                var baseName = StreetData.StreetNames[_random.Next(StreetData.StreetNames.Length)];
+                var suffix = StreetData.StreetSuffixes[_random.Next(StreetData.StreetSuffixes.Length)];
+                streetName = $"{baseName} {suffix} {counter}";
+                counter++;
+            } while (!usedNames.Add(streetName));
+        }
+        else
+        {
+            do
+            {
+                var baseName = StreetData.StreetNames[_random.Next(StreetData.StreetNames.Length)];
+                var suffix = StreetData.StreetSuffixes[_random.Next(StreetData.StreetSuffixes.Length)];
+                streetName = $"{baseName} {suffix}";
+            } while (!usedNames.Add(streetName));
+        }
 
         var street = new Street
         {
