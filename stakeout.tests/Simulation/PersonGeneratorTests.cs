@@ -259,4 +259,48 @@ public class PersonGeneratorTests
         var conn = homeAddress.Connections.First(c => c.Id == targetConnId);
         Assert.True(conn.HasTag(aptResident.HomeUnitTag));
     }
+
+    [Fact]
+    public void GeneratePerson_SuburbanHome_KeyAssignedToAllLockableConnections()
+    {
+        var state = CreateState();
+        var gen = CreateGenerator();
+        for (int i = 0; i < 100; i++)
+        {
+            gen.GeneratePerson(state);
+        }
+        var suburbanResident = state.People.Values
+            .First(p => state.Addresses[p.HomeAddressId].Type == AddressType.SuburbanHome);
+        var itemId = suburbanResident.InventoryItemIds[0];
+        var homeAddress = state.Addresses[suburbanResident.HomeAddressId];
+        var lockableConns = homeAddress.Connections.Where(c => c.Lockable != null).ToList();
+
+        // Suburban homes have front door, back door, and ground floor window — all lockable
+        Assert.True(lockableConns.Count >= 2);
+        foreach (var conn in lockableConns)
+        {
+            Assert.Equal(itemId, conn.Lockable.KeyItemId);
+        }
+    }
+
+    [Fact]
+    public void GeneratePerson_ApartmentResident_KeyOnlyAssignedToOwnUnitDoor()
+    {
+        var state = CreateState();
+        var gen = CreateGenerator();
+        for (int i = 0; i < 100; i++)
+        {
+            gen.GeneratePerson(state);
+        }
+        var aptResident = state.People.Values
+            .First(p => state.Addresses[p.HomeAddressId].Type == AddressType.ApartmentBuilding);
+        var itemId = aptResident.InventoryItemIds[0];
+        var homeAddress = state.Addresses[aptResident.HomeAddressId];
+
+        // Only the unit door should have this person's key
+        var connsWithKey = homeAddress.Connections
+            .Where(c => c.Lockable != null && c.Lockable.KeyItemId == itemId)
+            .ToList();
+        Assert.All(connsWithKey, c => Assert.True(c.HasTag(aptResident.HomeUnitTag)));
+    }
 }

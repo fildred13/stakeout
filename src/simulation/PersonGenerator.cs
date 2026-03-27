@@ -237,17 +237,15 @@ public class PersonGenerator
 
     private static void CreateHomeKey(SimulationState state, Person person, Address homeAddress)
     {
-        // Find the entrance connection for this person's home
+        // Find the primary entrance connection for this person's home
         SublocationConnection entranceConn = null;
         if (person.HomeUnitTag != null)
         {
-            // Apartment: find the unit door tagged with their unit tag
             entranceConn = homeAddress.Connections
                 .FirstOrDefault(c => c.Tags != null && c.Tags.Contains(person.HomeUnitTag));
         }
         else
         {
-            // Suburban home: find the front door tagged "entrance"
             entranceConn = homeAddress.Connections
                 .FirstOrDefault(c => c.Tags != null && c.Tags.Contains("entrance"));
         }
@@ -259,6 +257,7 @@ public class PersonGenerator
             Id = state.GenerateEntityId(),
             ItemType = ItemType.Key,
             HeldByEntityId = person.Id,
+            Fingerprints = new FingerprintSurface(),
             Data = new Dictionary<string, object>
             {
                 ["TargetConnectionId"] = entranceConn.Id
@@ -266,6 +265,12 @@ public class PersonGenerator
         };
         state.Items[key.Id] = key;
         person.InventoryItemIds.Add(key.Id);
-        entranceConn.Lockable.KeyItemId = key.Id;
+
+        // Assign key to all lockable connections belonging to this person's residence
+        var residenceConnections = DoorLockingService.GetResidenceLockableConnections(homeAddress, person.HomeUnitTag);
+        foreach (var conn in residenceConnections)
+        {
+            conn.Lockable.KeyItemId = key.Id;
+        }
     }
 }
