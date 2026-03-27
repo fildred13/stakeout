@@ -1,4 +1,7 @@
+using System;
+using Stakeout.Simulation;
 using Stakeout.Simulation.Entities;
+using Stakeout.Simulation.Sublocations;
 using Xunit;
 
 namespace Stakeout.Tests.Simulation.Entities;
@@ -87,5 +90,27 @@ public class ConnectionPropertiesTests
     {
         var item = new Item();
         Assert.Null(item.Fingerprints);
+    }
+
+    [Fact]
+    public void GeneratedConnections_AllHaveFingerprintSurface()
+    {
+        var state = new SimulationState(new GameClock(new DateTime(1980, 1, 1)));
+        var address = new Address
+        {
+            Id = state.GenerateEntityId(),
+            Type = AddressType.SuburbanHome,
+            Position = new Godot.Vector2(100, 100),
+            Number = 1,
+            StreetId = 1
+        };
+        state.Addresses[address.Id] = address;
+        var generator = new SuburbanHomeGenerator();
+        generator.Generate(address, state, new Random(42));
+
+        foreach (var conn in address.Connections)
+        {
+            Assert.NotNull(conn.Fingerprints);
+        }
     }
 }
