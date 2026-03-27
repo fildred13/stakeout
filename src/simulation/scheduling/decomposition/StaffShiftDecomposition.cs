@@ -17,7 +17,8 @@ public class StaffShiftDecomposition : IDecompositionStrategy
         TimeSpan startTime, TimeSpan endTime, Random rng)
     {
         // Use staff_entry if available, fall back to entrance
-        var staffEntry = graph.FindByTag("staff_entry") ?? graph.FindByTag("entrance");
+        var staffResult = graph.FindEntryPoint("staff_entry") ?? graph.FindEntryPoint("entrance");
+        var staffEntry = staffResult?.target;
         if (staffEntry == null)
             return new List<ScheduleEntry>();
 

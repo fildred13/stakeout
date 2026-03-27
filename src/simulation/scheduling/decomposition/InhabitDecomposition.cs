@@ -16,7 +16,8 @@ public class InhabitDecomposition : IDecompositionStrategy
         var bedroom = graph.FindByTag("bedroom");
         var restroom = graph.FindByTag("restroom");
         var kitchen = graph.FindByTag("kitchen");
-        var entrance = graph.FindByTag("entrance");
+        var entryResult = graph.FindEntryPoint("entrance");
+        var entrance = entryResult?.target;
 
         // Build list of meaningful rooms only (no pathfinding intermediates)
         var rooms = new List<Sublocation>();

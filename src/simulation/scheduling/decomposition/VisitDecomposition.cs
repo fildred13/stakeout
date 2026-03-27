@@ -14,7 +14,7 @@ public class VisitDecomposition : IDecompositionStrategy
     public List<ScheduleEntry> Decompose(SimTask task, SublocationGraph graph,
         TimeSpan startTime, TimeSpan endTime, Random rng)
     {
-        var entrance = graph.FindByTag("entrance");
+        var entrance = graph.FindEntryPoint("entrance")?.target;
         if (entrance == null)
             return new List<ScheduleEntry>();
 

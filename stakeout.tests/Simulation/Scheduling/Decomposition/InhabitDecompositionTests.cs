@@ -16,7 +16,6 @@ public class InhabitDecompositionTests
         var subs = new Dictionary<int, Sublocation>
         {
             { 1, new Sublocation { Id = 1, AddressId = 10, Name = "Road", Tags = new[] { "road" } } },
-            { 2, new Sublocation { Id = 2, AddressId = 10, Name = "Front Door", Tags = new[] { "entrance" } } },
             { 3, new Sublocation { Id = 3, AddressId = 10, Name = "Hallway", Tags = new[] { "living" } } },
             { 4, new Sublocation { Id = 4, AddressId = 10, Name = "Kitchen", Tags = new[] { "kitchen" } } },
             { 5, new Sublocation { Id = 5, AddressId = 10, Name = "Bathroom", Tags = new[] { "restroom" } } },
@@ -24,11 +23,10 @@ public class InhabitDecompositionTests
         };
         var conns = new List<SublocationConnection>
         {
-            new() { FromSublocationId = 1, ToSublocationId = 2, Type = ConnectionType.Door },
-            new() { FromSublocationId = 2, ToSublocationId = 3, Type = ConnectionType.Door },
-            new() { FromSublocationId = 3, ToSublocationId = 4, Type = ConnectionType.Door },
-            new() { FromSublocationId = 3, ToSublocationId = 5, Type = ConnectionType.Door },
-            new() { FromSublocationId = 3, ToSublocationId = 6, Type = ConnectionType.Door },
+            new() { Id = 100, FromSublocationId = 1, ToSublocationId = 3, Type = ConnectionType.Door, Name = "Front Door", Tags = new[] { "entrance" } },
+            new() { Id = 101, FromSublocationId = 3, ToSublocationId = 4 },
+            new() { Id = 102, FromSublocationId = 3, ToSublocationId = 5, Type = ConnectionType.Door },
+            new() { Id = 103, FromSublocationId = 3, ToSublocationId = 6, Type = ConnectionType.Door },
         };
         return new SublocationGraph(subs, conns);
     }
@@ -54,7 +52,7 @@ public class InhabitDecompositionTests
         var entries = strategy.Decompose(task, graph,
             new TimeSpan(6, 0, 0), new TimeSpan(9, 0, 0), new Random(42));
         Assert.NotEmpty(entries);
-        Assert.Equal(2, entries[^1].TargetSublocationId); // Entrance (Front Door)
+        Assert.Equal(3, entries[^1].TargetSublocationId); // Entrance (Hallway, target of Front Door connection)
     }
 
     [Fact]
@@ -66,7 +64,7 @@ public class InhabitDecompositionTests
         var entries = strategy.Decompose(task, graph,
             new TimeSpan(17, 0, 0), new TimeSpan(22, 0, 0), new Random(42));
         Assert.NotEmpty(entries);
-        Assert.Equal(2, entries[0].TargetSublocationId); // Entrance (Front Door)
+        Assert.Equal(3, entries[0].TargetSublocationId); // Entrance (Hallway, target of Front Door connection)
     }
 
     [Fact]

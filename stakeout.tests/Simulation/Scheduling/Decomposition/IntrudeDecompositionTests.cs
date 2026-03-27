@@ -16,18 +16,16 @@ public class IntrudeDecompositionTests
         var subs = new Dictionary<int, Sublocation>
         {
             { 1, new Sublocation { Id = 1, AddressId = 10, Name = "Road", Tags = new[] { "road" } } },
-            { 2, new Sublocation { Id = 2, AddressId = 10, Name = "Front Door", Tags = new[] { "entrance" } } },
             { 3, new Sublocation { Id = 3, AddressId = 10, Name = "Hallway", Tags = new[] { "living" } } },
             { 4, new Sublocation { Id = 4, AddressId = 10, Name = "Bedroom", Tags = new[] { "bedroom" } } },
             { 5, new Sublocation { Id = 5, AddressId = 10, Name = "Back Window", Tags = new[] { "covert_entry" } } },
         };
         var conns = new List<SublocationConnection>
         {
-            new() { FromSublocationId = 1, ToSublocationId = 2, Type = ConnectionType.Door },
-            new() { FromSublocationId = 2, ToSublocationId = 3, Type = ConnectionType.Door },
-            new() { FromSublocationId = 3, ToSublocationId = 4, Type = ConnectionType.Door },
-            new() { FromSublocationId = 1, ToSublocationId = 5, Type = ConnectionType.Window },
-            new() { FromSublocationId = 5, ToSublocationId = 3, Type = ConnectionType.OpenPassage },
+            new() { Id = 100, FromSublocationId = 1, ToSublocationId = 3, Type = ConnectionType.Door, Name = "Front Door", Tags = new[] { "entrance" } },
+            new() { Id = 101, FromSublocationId = 3, ToSublocationId = 4, Type = ConnectionType.Door },
+            new() { Id = 102, FromSublocationId = 1, ToSublocationId = 5, Type = ConnectionType.Window },
+            new() { Id = 103, FromSublocationId = 5, ToSublocationId = 3, Type = ConnectionType.OpenPassage },
         };
         return new SublocationGraph(subs, conns);
     }
@@ -37,15 +35,13 @@ public class IntrudeDecompositionTests
         var subs = new Dictionary<int, Sublocation>
         {
             { 1, new Sublocation { Id = 1, AddressId = 10, Name = "Road", Tags = new[] { "road" } } },
-            { 2, new Sublocation { Id = 2, AddressId = 10, Name = "Front Door", Tags = new[] { "entrance" } } },
             { 3, new Sublocation { Id = 3, AddressId = 10, Name = "Hallway", Tags = new[] { "living" } } },
             { 4, new Sublocation { Id = 4, AddressId = 10, Name = "Bedroom", Tags = new[] { "bedroom" } } },
         };
         var conns = new List<SublocationConnection>
         {
-            new() { FromSublocationId = 1, ToSublocationId = 2, Type = ConnectionType.Door },
-            new() { FromSublocationId = 2, ToSublocationId = 3, Type = ConnectionType.Door },
-            new() { FromSublocationId = 3, ToSublocationId = 4, Type = ConnectionType.Door },
+            new() { Id = 100, FromSublocationId = 1, ToSublocationId = 3, Type = ConnectionType.Door, Name = "Front Door", Tags = new[] { "entrance" } },
+            new() { Id = 101, FromSublocationId = 3, ToSublocationId = 4, Type = ConnectionType.Door },
         };
         return new SublocationGraph(subs, conns);
     }
@@ -60,7 +56,7 @@ public class IntrudeDecompositionTests
             new TimeSpan(2, 0, 0), new TimeSpan(4, 0, 0), new Random(42));
         Assert.NotEmpty(entries);
         Assert.Equal(5, entries[0].TargetSublocationId); // Back Window (covert_entry)
-        Assert.NotEqual(2, entries[0].TargetSublocationId); // Not Front Door
+        Assert.NotEqual(3, entries[0].TargetSublocationId); // Not Hallway (main entrance target)
     }
 
     [Fact]
@@ -95,7 +91,7 @@ public class IntrudeDecompositionTests
         var entries = strategy.Decompose(task, graph,
             new TimeSpan(2, 0, 0), new TimeSpan(4, 0, 0), new Random(42));
         Assert.NotEmpty(entries);
-        Assert.Equal(2, entries[0].TargetSublocationId); // Front Door (entrance fallback)
+        Assert.Equal(3, entries[0].TargetSublocationId); // Hallway (target of entrance connection, fallback)
     }
 
     [Fact]

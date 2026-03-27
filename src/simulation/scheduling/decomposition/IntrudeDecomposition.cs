@@ -13,7 +13,8 @@ public class IntrudeDecomposition : IDecompositionStrategy
         TimeSpan startTime, TimeSpan endTime, Random rng)
     {
         // Use covert_entry if available; fall back to entrance
-        var entryPoint = graph.FindByTag("covert_entry") ?? graph.FindByTag("entrance");
+        var covertResult = graph.FindEntryPoint("covert_entry") ?? graph.FindEntryPoint("entrance");
+        var entryPoint = covertResult?.target;
 
         if (entryPoint == null)
             return new List<ScheduleEntry>();
