@@ -224,6 +224,9 @@ public class PersonGenerator
             }
         }
 
+        if (vacantTags.Count == 0)
+            throw new InvalidOperationException($"No vacant units in building {building.Id}");
+
         var list = new List<string>(vacantTags);
         return list[_random.Next(list.Count)];
     }
