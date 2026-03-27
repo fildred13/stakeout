@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Godot;
 
 namespace Stakeout.Simulation.Entities;
@@ -9,4 +10,5 @@ public class Player
     public int CurrentAddressId { get; set; }
     public Vector2 CurrentPosition { get; set; }
     public TravelInfo TravelInfo { get; set; }
+    public List<int> InventoryItemIds { get; set; } = new();
 }

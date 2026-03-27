@@ -27,6 +27,7 @@ public class Person
     public List<Objective> Objectives { get; set; } = new();
     public DailySchedule Schedule { get; set; }
     public bool NeedsScheduleRebuild { get; set; }
+    public List<int> InventoryItemIds { get; set; } = new();
 
     public string FullName => $"{FirstName} {LastName}";
 }
