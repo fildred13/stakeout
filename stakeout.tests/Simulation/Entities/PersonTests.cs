@@ -12,4 +12,11 @@ public class PersonTests
 
         Assert.Equal("James Smith", person.FullName);
     }
+
+    [Fact]
+    public void HomeUnitTag_DefaultsToNull()
+    {
+        var person = new Person();
+        Assert.Null(person.HomeUnitTag);
+    }
 }
