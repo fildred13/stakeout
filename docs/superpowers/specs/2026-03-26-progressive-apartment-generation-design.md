@@ -22,7 +22,7 @@ Replace the current two-phase approach (skeleton + lazy `ExpandFloor`) with a si
 
 - Road, lobby, elevator (as before)
 - For each floor: one hallway connected to elevator and stairs (the current `Generate` already creates these hallways — keep that, don't create a second one)
-- For each unit on each floor: bedroom, kitchen, living room, bathroom connected to the floor's hallway
+- For each floor: 4-8 units (random, same range as current `ExpandFloor`). Each unit has bedroom, kitchen, living room, bathroom — all connected to that floor's hallway (the one created in the same loop iteration)
 - Remove floor placeholder sublocations (`floor_placeholder` tag, `IsGenerated = false`) — they are no longer needed
 
 This eliminates `ExpandFloor`, floor placeholders, and the `IsGenerated` flag from this generator.
