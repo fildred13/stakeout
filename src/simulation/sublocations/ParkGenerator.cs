@@ -11,7 +11,7 @@ public class ParkGenerator : ISublocationGenerator
         var subs = new Dictionary<int, Sublocation>();
         var conns = new List<SublocationConnection>();
 
-        Sublocation Make(string name, string[] tags, int floor)
+        Sublocation Make(string name, string[] tags, int? floor)
         {
             var sub = new Sublocation
             {
@@ -26,22 +26,18 @@ public class ParkGenerator : ISublocationGenerator
             return sub;
         }
 
-        void Connect(Sublocation from, Sublocation to, ConnectionType type = ConnectionType.OpenPassage)
+        void Connect(Sublocation from, Sublocation to, SublocationConnection template = null)
         {
-            var conn = new SublocationConnection
-            {
-                FromSublocationId = from.Id,
-                ToSublocationId = to.Id,
-                Type = type
-            };
+            var conn = template ?? new SublocationConnection();
+            conn.Id = state.GenerateEntityId();
+            conn.FromSublocationId = from.Id;
+            conn.ToSublocationId = to.Id;
             conns.Add(conn);
             address.Connections.Add(conn);
         }
 
         var road = Make("Road", new[] { "road" }, 0);
         var parkingLot = Make("Parking Lot", new[] { "parking" }, 0);
-        var mainEntrance = Make("Main Entrance", new[] { "entrance" }, 0);
-        var sideGate = Make("Side Gate", new[] { "covert_entry" }, 0);
         var joggingPath = Make("Jogging Path", new[] { "outdoor" }, 0);
         var picnicArea = Make("Picnic Area", new[] { "food", "social" }, 0);
         var playground = Make("Playground", new[] { "outdoor", "social" }, 0);
@@ -50,21 +46,29 @@ public class ParkGenerator : ISublocationGenerator
         var restroomBuilding = Make("Restroom Building", new[] { "restroom" }, 0);
 
         Connect(road, parkingLot);
-        Connect(parkingLot, mainEntrance);
-        Connect(road, sideGate, ConnectionType.Gate);
-        Connect(sideGate, joggingPath);
-        Connect(mainEntrance, joggingPath);
-        Connect(joggingPath, picnicArea, ConnectionType.OpenPassage);
-        Connect(joggingPath, playground, ConnectionType.OpenPassage);
-        Connect(joggingPath, woodedArea, ConnectionType.OpenPassage);
-        Connect(joggingPath, shoreLine, ConnectionType.OpenPassage);
+        Connect(parkingLot, joggingPath, new SublocationConnection
+        {
+            Name = "Main Entrance",
+            Tags = new[] { "entrance" },
+            Type = ConnectionType.Gate
+        });
+        Connect(road, joggingPath, new SublocationConnection
+        {
+            Name = "Side Gate",
+            Tags = new[] { "covert_entry" },
+            Type = ConnectionType.Gate
+        });
+        Connect(joggingPath, picnicArea);
+        Connect(joggingPath, playground);
+        Connect(joggingPath, woodedArea);
+        Connect(joggingPath, shoreLine);
         Connect(picnicArea, playground);
         Connect(picnicArea, woodedArea);
         Connect(picnicArea, shoreLine);
         Connect(playground, woodedArea);
         Connect(playground, shoreLine);
         Connect(woodedArea, shoreLine);
-        Connect(picnicArea, restroomBuilding, ConnectionType.Door);
+        Connect(picnicArea, restroomBuilding, new SublocationConnection { Type = ConnectionType.Door });
 
         return new SublocationGraph(subs, conns);
     }

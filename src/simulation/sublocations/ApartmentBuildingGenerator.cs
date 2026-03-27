@@ -11,7 +11,7 @@ public class ApartmentBuildingGenerator : ISublocationGenerator
         var subs = new Dictionary<int, Sublocation>();
         var conns = new List<SublocationConnection>();
 
-        Sublocation Make(string name, string[] tags, int floor, bool isGenerated = true)
+        Sublocation Make(string name, string[] tags, int? floor, bool isGenerated = true)
         {
             var sub = new Sublocation
             {
@@ -27,44 +27,37 @@ public class ApartmentBuildingGenerator : ISublocationGenerator
             return sub;
         }
 
-        void Connect(Sublocation from, Sublocation to, ConnectionType type = ConnectionType.OpenPassage)
+        void Connect(Sublocation from, Sublocation to, SublocationConnection template = null)
         {
-            var conn = new SublocationConnection
-            {
-                FromSublocationId = from.Id,
-                ToSublocationId = to.Id,
-                Type = type
-            };
+            var conn = template ?? new SublocationConnection();
+            conn.Id = state.GenerateEntityId();
+            conn.FromSublocationId = from.Id;
+            conn.ToSublocationId = to.Id;
             conns.Add(conn);
             address.Connections.Add(conn);
         }
 
         var road = Make("Road", new[] { "road" }, 0);
         var lobby = Make("Lobby", new[] { "entrance", "public" }, 0);
-        var elevator = Make("Elevator", new[] { "elevator" }, 0);
-        var stairwell = Make("Stairwell", new[] { "stairs" }, 0);
+        var elevator = Make("Elevator", new[] { "elevator" }, null);
 
-        Connect(road, lobby, ConnectionType.Door);
-        Connect(lobby, elevator, ConnectionType.Door);
-        Connect(lobby, stairwell, ConnectionType.Stairs);
+        Connect(road, lobby, new SublocationConnection { Type = ConnectionType.Door });
+        Connect(lobby, elevator, new SublocationConnection { Type = ConnectionType.Door });
 
         int floorCount = rng.Next(4, 21);
-        Sublocation prevFloorElevator = elevator;
-        Sublocation prevFloorStairwell = stairwell;
+        Sublocation prevHallway = lobby;
 
         for (int n = 1; n <= floorCount; n++)
         {
             var floorPlaceholder = Make($"Floor {n}", new[] { "floor_placeholder" }, n, isGenerated: false);
             floorPlaceholder.ParentId = null;
 
-            var floorElevator = Make($"Floor {n} Elevator", new[] { "elevator" }, n);
-            var floorStairwell = Make($"Floor {n} Stairwell", new[] { "stairs" }, n);
+            var floorHallway = Make($"Floor {n} Hallway", new[] { "hallway" }, n);
 
-            Connect(prevFloorElevator, floorElevator, ConnectionType.Door);
-            Connect(prevFloorStairwell, floorStairwell, ConnectionType.Stairs);
+            Connect(elevator, floorHallway, new SublocationConnection { Type = ConnectionType.Door });
+            Connect(prevHallway, floorHallway, new SublocationConnection { Type = ConnectionType.Stairs });
 
-            prevFloorElevator = floorElevator;
-            prevFloorStairwell = floorStairwell;
+            prevHallway = floorHallway;
         }
 
         return new SublocationGraph(subs, conns);
@@ -75,7 +68,7 @@ public class ApartmentBuildingGenerator : ISublocationGenerator
         var subs = new Dictionary<int, Sublocation>();
         var conns = new List<SublocationConnection>();
         var address = state.Addresses[floorPlaceholder.AddressId];
-        int floor = floorPlaceholder.Floor ?? 1;
+        int? floor = floorPlaceholder.Floor;
 
         Sublocation Make(string name, string[] tags)
         {
@@ -93,14 +86,12 @@ public class ApartmentBuildingGenerator : ISublocationGenerator
             return sub;
         }
 
-        void Connect(Sublocation from, Sublocation to, ConnectionType type = ConnectionType.Door)
+        void Connect(Sublocation from, Sublocation to, SublocationConnection template = null)
         {
-            var conn = new SublocationConnection
-            {
-                FromSublocationId = from.Id,
-                ToSublocationId = to.Id,
-                Type = type
-            };
+            var conn = template ?? new SublocationConnection();
+            conn.Id = state.GenerateEntityId();
+            conn.FromSublocationId = from.Id;
+            conn.ToSublocationId = to.Id;
             conns.Add(conn);
             address.Connections.Add(conn);
         }
@@ -115,7 +106,7 @@ public class ApartmentBuildingGenerator : ISublocationGenerator
             var living = Make($"Apt {i} Living Room", new[] { "living", "social" });
             var bathroom = Make($"Apt {i} Bathroom", new[] { "restroom" });
 
-            Connect(hallway, living);
+            Connect(hallway, living, new SublocationConnection { Type = ConnectionType.Door });
             Connect(living, bedroom);
             Connect(living, kitchen);
             Connect(living, bathroom);

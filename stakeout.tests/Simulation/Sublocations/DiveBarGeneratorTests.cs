@@ -30,8 +30,8 @@ public class DiveBarGeneratorTests
     public void Generate_HasEntrance()
     {
         var graph = Generate();
-        var entrance = graph.FindByTag("entrance");
-        Assert.NotNull(entrance);
+        var entry = graph.FindEntryPoint("entrance");
+        Assert.NotNull(entry);
     }
 
     [Fact]
@@ -46,6 +46,7 @@ public class DiveBarGeneratorTests
     public void Generate_HasCovertEntry()
     {
         var graph = Generate();
+        // Alley sublocation retains its covert_entry tag
         var covert = graph.FindByTag("covert_entry");
         Assert.NotNull(covert);
     }
@@ -89,8 +90,9 @@ public class DiveBarGeneratorTests
     {
         var graph = Generate();
         var road = graph.GetRoad();
-        var entrance = graph.FindByTag("entrance");
-        var path = graph.FindPath(road.Id, entrance.Id);
+        var entry = graph.FindEntryPoint("entrance");
+        Assert.NotNull(entry);
+        var path = graph.FindPath(road.Id, entry.Value.target.Id);
         Assert.True(path.Count >= 2);
     }
 
