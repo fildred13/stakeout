@@ -44,7 +44,7 @@ public class InhabitDecompositionTests
     }
 
     [Fact]
-    public void MorningRoutine_EndsAtEntrance()
+    public void MorningRoutine_EndsAtRoad()
     {
         var strategy = new InhabitDecomposition();
         var task = new SimTask { ActionType = ActionType.Sleep, TargetAddressId = 10 };
@@ -52,11 +52,12 @@ public class InhabitDecompositionTests
         var entries = strategy.Decompose(task, graph,
             new TimeSpan(6, 0, 0), new TimeSpan(9, 0, 0), new Random(42));
         Assert.NotEmpty(entries);
-        Assert.Equal(3, entries[^1].TargetSublocationId); // Entrance (Hallway, target of Front Door connection)
+        Assert.Equal(1, entries[^1].TargetSublocationId); // Road (leaving)
+        Assert.Equal(3, entries[^2].TargetSublocationId); // Entrance (Hallway)
     }
 
     [Fact]
-    public void EveningRoutine_StartsAtEntrance()
+    public void EveningRoutine_StartsAtRoad()
     {
         var strategy = new InhabitDecomposition();
         var task = new SimTask { ActionType = ActionType.Idle, TargetAddressId = 10 };
@@ -64,7 +65,8 @@ public class InhabitDecompositionTests
         var entries = strategy.Decompose(task, graph,
             new TimeSpan(17, 0, 0), new TimeSpan(22, 0, 0), new Random(42));
         Assert.NotEmpty(entries);
-        Assert.Equal(3, entries[0].TargetSublocationId); // Entrance (Hallway, target of Front Door connection)
+        Assert.Equal(1, entries[0].TargetSublocationId); // Road (arriving)
+        Assert.Equal(3, entries[1].TargetSublocationId); // Entrance (Hallway)
     }
 
     [Fact]

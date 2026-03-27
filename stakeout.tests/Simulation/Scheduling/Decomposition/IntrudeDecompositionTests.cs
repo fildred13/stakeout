@@ -47,7 +47,7 @@ public class IntrudeDecompositionTests
     }
 
     [Fact]
-    public void UsesCovertEntry_NotMainEntrance()
+    public void StartsAtRoad_ThenUsesCovertEntry()
     {
         var strategy = new IntrudeDecomposition();
         var task = new SimTask { ActionType = ActionType.KillPerson, TargetAddressId = 10 };
@@ -55,8 +55,8 @@ public class IntrudeDecompositionTests
         var entries = strategy.Decompose(task, graph,
             new TimeSpan(2, 0, 0), new TimeSpan(4, 0, 0), new Random(42));
         Assert.NotEmpty(entries);
-        Assert.Equal(5, entries[0].TargetSublocationId); // Back Window (covert_entry)
-        Assert.NotEqual(3, entries[0].TargetSublocationId); // Not Hallway (main entrance target)
+        Assert.Equal(1, entries[0].TargetSublocationId); // Road
+        Assert.Equal(5, entries[1].TargetSublocationId); // Back Window (covert_entry)
     }
 
     [Fact]
@@ -71,7 +71,7 @@ public class IntrudeDecompositionTests
     }
 
     [Fact]
-    public void ExitsViaCovertEntry()
+    public void EndsAtRoad_AfterCovertEntry()
     {
         var strategy = new IntrudeDecomposition();
         var task = new SimTask { ActionType = ActionType.KillPerson, TargetAddressId = 10 };
@@ -79,7 +79,8 @@ public class IntrudeDecompositionTests
         var entries = strategy.Decompose(task, graph,
             new TimeSpan(2, 0, 0), new TimeSpan(4, 0, 0), new Random(42));
         Assert.NotEmpty(entries);
-        Assert.Equal(5, entries[^1].TargetSublocationId); // Back Window (covert_entry)
+        Assert.Equal(1, entries[^1].TargetSublocationId); // Road
+        Assert.Equal(5, entries[^2].TargetSublocationId); // Back Window (covert_entry)
     }
 
     [Fact]
@@ -91,7 +92,8 @@ public class IntrudeDecompositionTests
         var entries = strategy.Decompose(task, graph,
             new TimeSpan(2, 0, 0), new TimeSpan(4, 0, 0), new Random(42));
         Assert.NotEmpty(entries);
-        Assert.Equal(3, entries[0].TargetSublocationId); // Hallway (target of entrance connection, fallback)
+        Assert.Equal(1, entries[0].TargetSublocationId); // Road
+        Assert.Equal(3, entries[1].TargetSublocationId); // Hallway (target of entrance connection, fallback)
     }
 
     [Fact]

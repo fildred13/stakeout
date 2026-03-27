@@ -14,10 +14,11 @@ public class VisitDecomposition : IDecompositionStrategy
     public List<ScheduleEntry> Decompose(SimTask task, SublocationGraph graph,
         TimeSpan startTime, TimeSpan endTime, Random rng)
     {
+        var road = graph.GetRoad();
         var entryResult = graph.FindEntryPoint("entrance");
         var entrance = entryResult?.target;
         var entranceConnId = entryResult?.conn?.Id;
-        if (entrance == null)
+        if (entrance == null || road == null)
             return new List<ScheduleEntry>();
 
         // Determine the target sublocation
@@ -52,45 +53,64 @@ public class VisitDecomposition : IDecompositionStrategy
             };
         }
 
-        // Meaningful stops: entrance (brief) → target (bulk) → entrance (brief)
+        // Meaningful stops: road (brief) → entrance → target (bulk) → entrance → road (brief)
         var totalDuration = endTime - startTime;
         if (totalDuration <= TimeSpan.Zero)
             totalDuration += TimeSpan.FromHours(24);
 
-        var arrivalDuration = TimeSpan.FromMinutes(Math.Min(ArrivalMinutes, totalDuration.TotalMinutes / 3));
-        var departureDuration = TimeSpan.FromMinutes(Math.Min(DepartureMinutes, totalDuration.TotalMinutes / 3));
+        var transitMinutes = ArrivalMinutes + DepartureMinutes + ArrivalMinutes + DepartureMinutes;
+        var transitDuration = TimeSpan.FromMinutes(Math.Min(transitMinutes, totalDuration.TotalMinutes * 0.4));
+        var perTransit = TimeSpan.FromTicks(transitDuration.Ticks / 4);
+        var mainDuration = totalDuration - transitDuration;
 
-        var arrivalEnd = startTime + arrivalDuration;
-        var departureStart = endTime - departureDuration;
+        var current = startTime;
+        var entries = new List<ScheduleEntry>();
 
-        return new List<ScheduleEntry>
+        // Road arrival
+        var roadEnd = current + perTransit;
+        entries.Add(new ScheduleEntry
         {
-            new ScheduleEntry
-            {
-                Action = task.ActionType,
-                StartTime = startTime,
-                EndTime = arrivalEnd,
-                TargetAddressId = task.TargetAddressId,
-                TargetSublocationId = entrance.Id,
-                ViaConnectionId = entranceConnId
-            },
-            new ScheduleEntry
-            {
-                Action = task.ActionType,
-                StartTime = arrivalEnd,
-                EndTime = departureStart,
-                TargetAddressId = task.TargetAddressId,
-                TargetSublocationId = target.Id
-            },
-            new ScheduleEntry
-            {
-                Action = task.ActionType,
-                StartTime = departureStart,
-                EndTime = endTime,
-                TargetAddressId = task.TargetAddressId,
-                TargetSublocationId = entrance.Id,
-                ViaConnectionId = entranceConnId
-            }
-        };
+            Action = task.ActionType, StartTime = current, EndTime = roadEnd,
+            TargetAddressId = task.TargetAddressId, TargetSublocationId = road.Id
+        });
+        current = roadEnd;
+
+        // Entrance arrival
+        var entranceEnd = current + perTransit;
+        entries.Add(new ScheduleEntry
+        {
+            Action = task.ActionType, StartTime = current, EndTime = entranceEnd,
+            TargetAddressId = task.TargetAddressId, TargetSublocationId = entrance.Id,
+            ViaConnectionId = entranceConnId
+        });
+        current = entranceEnd;
+
+        // Main activity
+        var mainEnd = current + mainDuration;
+        entries.Add(new ScheduleEntry
+        {
+            Action = task.ActionType, StartTime = current, EndTime = mainEnd,
+            TargetAddressId = task.TargetAddressId, TargetSublocationId = target.Id
+        });
+        current = mainEnd;
+
+        // Entrance departure
+        var entranceDepartEnd = current + perTransit;
+        entries.Add(new ScheduleEntry
+        {
+            Action = task.ActionType, StartTime = current, EndTime = entranceDepartEnd,
+            TargetAddressId = task.TargetAddressId, TargetSublocationId = entrance.Id,
+            ViaConnectionId = entranceConnId
+        });
+        current = entranceDepartEnd;
+
+        // Road departure
+        entries.Add(new ScheduleEntry
+        {
+            Action = task.ActionType, StartTime = current, EndTime = endTime,
+            TargetAddressId = task.TargetAddressId, TargetSublocationId = road.Id
+        });
+
+        return entries;
     }
 }

@@ -12,12 +12,13 @@ public class IntrudeDecomposition : IDecompositionStrategy
     public List<ScheduleEntry> Decompose(SimTask task, SublocationGraph graph,
         TimeSpan startTime, TimeSpan endTime, Random rng)
     {
+        var road = graph.GetRoad();
         // Use covert_entry if available; fall back to entrance
         var covertResult = graph.FindEntryPoint("covert_entry") ?? graph.FindEntryPoint("entrance");
         var entryPoint = covertResult?.target;
         var entryConnId = covertResult?.conn?.Id;
 
-        if (entryPoint == null)
+        if (entryPoint == null || road == null)
             return new List<ScheduleEntry>();
 
         // Determine target room: use task's TargetSublocationId if set, else first bedroom
@@ -32,6 +33,9 @@ public class IntrudeDecomposition : IDecompositionStrategy
         }
 
         var steps = new List<(Sublocation sub, int? viaConnId)>();
+
+        // Always start from road
+        steps.Add((road, null));
 
         if (targetRoom == null || targetRoom.Id == entryPoint.Id)
         {
@@ -50,6 +54,9 @@ public class IntrudeDecomposition : IDecompositionStrategy
             foreach (var step in exitPath.Skip(1))
                 steps.Add((step.Location, step.Via?.Id));
         }
+
+        // Always end at road
+        steps.Add((road, null));
 
         return AssignTimes(steps, task.TargetAddressId, task.ActionType, startTime, endTime);
     }

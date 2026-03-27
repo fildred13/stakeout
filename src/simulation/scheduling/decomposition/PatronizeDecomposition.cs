@@ -15,10 +15,11 @@ public class PatronizeDecomposition : IDecompositionStrategy
     public List<ScheduleEntry> Decompose(SimTask task, SublocationGraph graph,
         TimeSpan startTime, TimeSpan endTime, Random rng)
     {
+        var road = graph.GetRoad();
         var entryResult = graph.FindEntryPoint("entrance");
         var entrance = entryResult?.target;
         var entranceConnId = entryResult?.conn?.Id;
-        if (entrance == null)
+        if (entrance == null || road == null)
             return new List<ScheduleEntry>();
 
         var serviceArea = graph.FindByTag("service_area") ?? graph.FindByTag("social");
@@ -38,9 +39,10 @@ public class PatronizeDecomposition : IDecompositionStrategy
             };
         }
 
-        // Build meaningful stops: entrance → service area → optional restroom → entrance
+        // Build meaningful stops: road → entrance → service area → ... → entrance → road
         var stops = new List<(Sublocation sub, StopKind kind, int? viaConnId)>();
 
+        stops.Add((road, StopKind.Transit, null));
         stops.Add((entrance, StopKind.Transit, entranceConnId));
         stops.Add((serviceArea, StopKind.Main, null));
 
@@ -55,6 +57,7 @@ public class PatronizeDecomposition : IDecompositionStrategy
         }
 
         stops.Add((entrance, StopKind.Transit, entranceConnId));
+        stops.Add((road, StopKind.Transit, null));
 
         return AllocateTimes(stops, task.TargetAddressId, startTime, endTime);
     }

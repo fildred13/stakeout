@@ -33,7 +33,7 @@ public class WorkDayDecompositionTests
     }
 
     [Fact]
-    public void Decompose_StartsAtEntrance()
+    public void Decompose_StartsAtRoad()
     {
         var strategy = new WorkDayDecomposition();
         var task = new SimTask { ActionType = ActionType.Work, TargetAddressId = 10 };
@@ -41,7 +41,8 @@ public class WorkDayDecompositionTests
         var entries = strategy.Decompose(task, graph,
             new TimeSpan(9, 0, 0), new TimeSpan(17, 0, 0), new Random(42));
         Assert.NotEmpty(entries);
-        Assert.Equal(2, entries[0].TargetSublocationId); // Lobby (entrance)
+        Assert.Equal(1, entries[0].TargetSublocationId); // Road
+        Assert.Equal(2, entries[1].TargetSublocationId); // Lobby (entrance)
     }
 
     [Fact]
@@ -56,15 +57,15 @@ public class WorkDayDecompositionTests
     }
 
     [Fact]
-    public void Decompose_EndsAtEntrance()
+    public void Decompose_EndsAtRoad()
     {
         var strategy = new WorkDayDecomposition();
         var task = new SimTask { ActionType = ActionType.Work, TargetAddressId = 10 };
         var graph = CreateOfficeGraph();
         var entries = strategy.Decompose(task, graph,
             new TimeSpan(9, 0, 0), new TimeSpan(17, 0, 0), new Random(42));
-        var last = entries[^1];
-        Assert.Equal(2, last.TargetSublocationId); // Lobby (entrance)
+        Assert.Equal(1, entries[^1].TargetSublocationId); // Road
+        Assert.Equal(2, entries[^2].TargetSublocationId); // Lobby (entrance)
     }
 
     [Fact]

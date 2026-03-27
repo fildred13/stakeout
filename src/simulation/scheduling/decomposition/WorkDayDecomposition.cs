@@ -16,10 +16,11 @@ public class WorkDayDecomposition : IDecompositionStrategy
     public List<ScheduleEntry> Decompose(SimTask task, SublocationGraph graph,
         TimeSpan startTime, TimeSpan endTime, Random rng)
     {
+        var road = graph.GetRoad();
         var entryResult = graph.FindEntryPoint("entrance");
         var entrance = entryResult?.target;
         var entranceConnId = entryResult?.conn?.Id;
-        if (entrance == null)
+        if (entrance == null || road == null)
             return new List<ScheduleEntry>();
 
         var workArea = graph.FindByTag("work_area");
@@ -38,9 +39,10 @@ public class WorkDayDecomposition : IDecompositionStrategy
             };
         }
 
-        // Build sequence of meaningful stops (no pathfinding intermediates)
+        // Build sequence of meaningful stops: road → entrance → work → ... → entrance → road
         var stops = new List<(Sublocation sub, StopKind kind, int? viaConnId)>();
 
+        stops.Add((road, StopKind.Arrival, null));
         stops.Add((entrance, StopKind.Arrival, entranceConnId));
         stops.Add((workArea, StopKind.Work, null));
 
@@ -70,6 +72,7 @@ public class WorkDayDecomposition : IDecompositionStrategy
         }
 
         stops.Add((entrance, StopKind.Departure, entranceConnId));
+        stops.Add((road, StopKind.Departure, null));
 
         return AllocateTimes(stops, task.TargetAddressId, startTime, endTime);
     }

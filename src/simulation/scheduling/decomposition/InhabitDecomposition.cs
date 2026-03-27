@@ -13,6 +13,7 @@ public class InhabitDecomposition : IDecompositionStrategy
     {
         bool isMorning = startTime.Hours < 12;
 
+        var road = graph.GetRoad();
         var bedroom = graph.FindByTag("bedroom");
         var restroom = graph.FindByTag("restroom");
         var kitchen = graph.FindByTag("kitchen");
@@ -24,16 +25,18 @@ public class InhabitDecomposition : IDecompositionStrategy
 
         if (isMorning)
         {
-            // Morning routine: bedroom → restroom → kitchen → entrance
+            // Morning routine: bedroom → restroom → kitchen → entrance → road (leaving)
             if (bedroom != null) rooms.Add(bedroom);
             if (restroom != null) rooms.Add(restroom);
             if (kitchen != null) rooms.Add(kitchen);
             if (entrance != null) rooms.Add(entrance);
+            if (road != null) rooms.Add(road);
         }
         else
         {
-            // Evening routine: entrance → kitchen → living → restroom → bedroom
+            // Evening routine: road (arriving) → entrance → kitchen → living → restroom → bedroom
             var living = graph.FindByTag("living");
+            if (road != null) rooms.Add(road);
             if (entrance != null) rooms.Add(entrance);
             if (kitchen != null) rooms.Add(kitchen);
             if (living != null) rooms.Add(living);

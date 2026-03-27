@@ -16,11 +16,12 @@ public class StaffShiftDecomposition : IDecompositionStrategy
     public List<ScheduleEntry> Decompose(SimTask task, SublocationGraph graph,
         TimeSpan startTime, TimeSpan endTime, Random rng)
     {
+        var road = graph.GetRoad();
         // Use staff_entry if available, fall back to entrance
         var staffResult = graph.FindEntryPoint("staff_entry") ?? graph.FindEntryPoint("entrance");
         var staffEntry = staffResult?.target;
         var staffConnId = staffResult?.conn?.Id;
-        if (staffEntry == null)
+        if (staffEntry == null || road == null)
             return new List<ScheduleEntry>();
 
         var workArea = graph.FindByTag("work_area");
@@ -39,9 +40,10 @@ public class StaffShiftDecomposition : IDecompositionStrategy
             };
         }
 
-        // Build sequence of meaningful stops (no pathfinding intermediates)
+        // Build sequence: road → staff_entry → work → ... → staff_entry → road
         var stops = new List<(Sublocation sub, StopKind kind, int? viaConnId)>();
 
+        stops.Add((road, StopKind.Arrival, null));
         stops.Add((staffEntry, StopKind.Arrival, staffConnId));
         stops.Add((workArea, StopKind.Work, null));
 
@@ -70,6 +72,7 @@ public class StaffShiftDecomposition : IDecompositionStrategy
         }
 
         stops.Add((staffEntry, StopKind.Departure, staffConnId));
+        stops.Add((road, StopKind.Departure, null));
 
         return AllocateTimes(stops, task.TargetAddressId, startTime, endTime);
     }
