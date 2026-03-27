@@ -37,7 +37,7 @@ public partial class GraphView : Control
         {
             if (adjacency.ContainsKey(c.FromSublocationId))
                 adjacency[c.FromSublocationId].Add(c.ToSublocationId);
-            if (c.IsBidirectional && adjacency.ContainsKey(c.ToSublocationId))
+            if (adjacency.ContainsKey(c.ToSublocationId))
                 adjacency[c.ToSublocationId].Add(c.FromSublocationId);
         }
 

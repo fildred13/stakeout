@@ -32,8 +32,7 @@ public class ParkGenerator : ISublocationGenerator
             {
                 FromSublocationId = from.Id,
                 ToSublocationId = to.Id,
-                Type = type,
-                IsBidirectional = true
+                Type = type
             };
             conns.Add(conn);
             address.Connections.Add(conn);
@@ -55,10 +54,10 @@ public class ParkGenerator : ISublocationGenerator
         Connect(road, sideGate, ConnectionType.Gate);
         Connect(sideGate, joggingPath);
         Connect(mainEntrance, joggingPath);
-        Connect(joggingPath, picnicArea, ConnectionType.Trail);
-        Connect(joggingPath, playground, ConnectionType.Trail);
-        Connect(joggingPath, woodedArea, ConnectionType.Trail);
-        Connect(joggingPath, shoreLine, ConnectionType.Trail);
+        Connect(joggingPath, picnicArea, ConnectionType.OpenPassage);
+        Connect(joggingPath, playground, ConnectionType.OpenPassage);
+        Connect(joggingPath, woodedArea, ConnectionType.OpenPassage);
+        Connect(joggingPath, shoreLine, ConnectionType.OpenPassage);
         Connect(picnicArea, playground);
         Connect(picnicArea, woodedArea);
         Connect(picnicArea, shoreLine);

@@ -22,8 +22,7 @@ public class SublocationGraph
         foreach (var conn in connections)
         {
             _adjacency[conn.FromSublocationId].Add(conn.ToSublocationId);
-            if (conn.IsBidirectional)
-                _adjacency[conn.ToSublocationId].Add(conn.FromSublocationId);
+            _adjacency[conn.ToSublocationId].Add(conn.FromSublocationId);
         }
     }
 

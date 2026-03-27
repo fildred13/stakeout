@@ -4,14 +4,12 @@ namespace Stakeout.Simulation.Entities;
 
 public enum ConnectionType
 {
+    OpenPassage,
     Door,
     Window,
-    Elevator,
     Stairs,
-    OpenPassage,
     Gate,
-    HiddenPath,
-    Trail
+    HiddenPath
 }
 
 public class Sublocation
@@ -29,8 +27,17 @@ public class Sublocation
 
 public class SublocationConnection
 {
+    public int Id { get; set; }
     public int FromSublocationId { get; set; }
     public int ToSublocationId { get; set; }
-    public ConnectionType Type { get; set; } = ConnectionType.Door;
-    public bool IsBidirectional { get; set; } = true;
+    public ConnectionType Type { get; set; } = ConnectionType.OpenPassage;
+    public string Name { get; set; }
+    public string[] Tags { get; set; } = Array.Empty<string>();
+
+    public LockableProperty Lockable { get; set; }
+    public ConcealableProperty Concealable { get; set; }
+    public TransparentProperty Transparent { get; set; }
+    public BreakableProperty Breakable { get; set; }
+
+    public bool HasTag(string tag) => Array.IndexOf(Tags, tag) >= 0;
 }

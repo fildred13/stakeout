@@ -32,8 +32,7 @@ public class OfficeGenerator : ISublocationGenerator
             {
                 FromSublocationId = from.Id,
                 ToSublocationId = to.Id,
-                Type = type,
-                IsBidirectional = true
+                Type = type
             };
             conns.Add(conn);
             address.Connections.Add(conn);
@@ -48,7 +47,7 @@ public class OfficeGenerator : ISublocationGenerator
 
         Connect(road, lobby, ConnectionType.Door);
         Connect(lobby, securityRoom, ConnectionType.Door);
-        Connect(lobby, elevator, ConnectionType.Elevator);
+        Connect(lobby, elevator, ConnectionType.Door);
         Connect(lobby, stairwell, ConnectionType.Stairs);
 
         // Upper floors
@@ -66,7 +65,7 @@ public class OfficeGenerator : ISublocationGenerator
             var breakRoom = Make($"Floor {floor} Break Room", new[] { "food", "social" }, floor);
             var restroom = Make($"Floor {floor} Restroom", new[] { "restroom" }, floor);
 
-            Connect(prevElevator, floorElevator, ConnectionType.Elevator);
+            Connect(prevElevator, floorElevator, ConnectionType.Door);
             Connect(prevStairwell, floorStairwell, ConnectionType.Stairs);
             Connect(floorElevator, reception);
             Connect(reception, cubicleArea);

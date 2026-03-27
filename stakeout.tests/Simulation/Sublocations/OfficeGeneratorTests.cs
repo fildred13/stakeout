@@ -69,9 +69,8 @@ public class OfficeGeneratorTests
         var gen = new OfficeGenerator();
         gen.Generate(address, state, new Random(42));
 
-        bool hasElevator = address.Connections.Any(c => c.Type == ConnectionType.Elevator);
         bool hasStairs = address.Connections.Any(c => c.Type == ConnectionType.Stairs);
-        Assert.True(hasElevator || hasStairs);
+        Assert.True(hasStairs);
     }
 
     [Fact]

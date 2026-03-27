@@ -33,8 +33,7 @@ public class ApartmentBuildingGenerator : ISublocationGenerator
             {
                 FromSublocationId = from.Id,
                 ToSublocationId = to.Id,
-                Type = type,
-                IsBidirectional = true
+                Type = type
             };
             conns.Add(conn);
             address.Connections.Add(conn);
@@ -46,7 +45,7 @@ public class ApartmentBuildingGenerator : ISublocationGenerator
         var stairwell = Make("Stairwell", new[] { "stairs" }, 0);
 
         Connect(road, lobby, ConnectionType.Door);
-        Connect(lobby, elevator, ConnectionType.Elevator);
+        Connect(lobby, elevator, ConnectionType.Door);
         Connect(lobby, stairwell, ConnectionType.Stairs);
 
         int floorCount = rng.Next(4, 21);
@@ -61,7 +60,7 @@ public class ApartmentBuildingGenerator : ISublocationGenerator
             var floorElevator = Make($"Floor {n} Elevator", new[] { "elevator" }, n);
             var floorStairwell = Make($"Floor {n} Stairwell", new[] { "stairs" }, n);
 
-            Connect(prevFloorElevator, floorElevator, ConnectionType.Elevator);
+            Connect(prevFloorElevator, floorElevator, ConnectionType.Door);
             Connect(prevFloorStairwell, floorStairwell, ConnectionType.Stairs);
 
             prevFloorElevator = floorElevator;
@@ -100,8 +99,7 @@ public class ApartmentBuildingGenerator : ISublocationGenerator
             {
                 FromSublocationId = from.Id,
                 ToSublocationId = to.Id,
-                Type = type,
-                IsBidirectional = true
+                Type = type
             };
             conns.Add(conn);
             address.Connections.Add(conn);

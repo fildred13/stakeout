@@ -32,8 +32,7 @@ public class DinerGenerator : ISublocationGenerator
             {
                 FromSublocationId = from.Id,
                 ToSublocationId = to.Id,
-                Type = type,
-                IsBidirectional = true
+                Type = type
             };
             conns.Add(conn);
             address.Connections.Add(conn);
