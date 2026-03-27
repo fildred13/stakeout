@@ -38,6 +38,7 @@ public class SublocationConnection
     public ConcealableProperty Concealable { get; set; }
     public TransparentProperty Transparent { get; set; }
     public BreakableProperty Breakable { get; set; }
+    public FingerprintSurface Fingerprints { get; set; }
 
     public bool HasTag(string tag) => Array.IndexOf(Tags, tag) >= 0;
 }

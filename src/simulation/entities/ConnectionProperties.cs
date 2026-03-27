@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 namespace Stakeout.Simulation.Entities;
 
 public enum LockMechanism
@@ -42,4 +44,11 @@ public class BreakableProperty
 {
     public float Durability { get; set; } = 1.0f;
     public bool IsBroken { get; set; } = false;
+}
+
+public class FingerprintSurface
+{
+    public List<int> SideATraceIds { get; set; } = new();
+    public List<int> SideBTraceIds { get; set; } = new();
+    public List<int> TraceIds { get; set; } = new();
 }

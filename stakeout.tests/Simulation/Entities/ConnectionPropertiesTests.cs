@@ -66,4 +66,26 @@ public class ConnectionPropertiesTests
         var conn = new SublocationConnection { Tags = new[] { "exterior" } };
         Assert.False(conn.HasTag("locked"));
     }
+
+    [Fact]
+    public void FingerprintSurface_DefaultsToEmptyLists()
+    {
+        var surface = new FingerprintSurface();
+        Assert.Empty(surface.SideATraceIds);
+        Assert.Empty(surface.SideBTraceIds);
+    }
+
+    [Fact]
+    public void SublocationConnection_FingerprintSurface_NullByDefault()
+    {
+        var conn = new SublocationConnection();
+        Assert.Null(conn.Fingerprints);
+    }
+
+    [Fact]
+    public void Item_FingerprintSurface_NullByDefault()
+    {
+        var item = new Item();
+        Assert.Null(item.Fingerprints);
+    }
 }
