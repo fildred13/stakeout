@@ -44,7 +44,8 @@ public static class ScheduleBuilder
                     ActionType = entry.Action,
                     TargetAddressId = entry.TargetAddressId,
                     WindowStart = entry.StartTime,
-                    WindowEnd = entry.EndTime
+                    WindowEnd = entry.EndTime,
+                    UnitTag = entry.UnitTag
                 };
 
                 var sublocationEntries = TaskResolver.Resolve(tempTask, state, rng);
@@ -132,7 +133,8 @@ public static class ScheduleBuilder
                     Action = block.Task.ActionType,
                     StartTime = TimeSpan.FromMinutes(blockStart),
                     EndTime = TimeSpan.FromMinutes(blockEnd),
-                    TargetAddressId = currentAddressId
+                    TargetAddressId = currentAddressId,
+                    UnitTag = block.Task.UnitTag
                 });
             }
         }
