@@ -28,8 +28,9 @@ public class PersonGenerator
         var addressType = JobTypeToAddressType(jobType);
         var workAddress = _locationGenerator.GenerateAddress(state, addressType);
 
-        // 2. Generate home address
-        var homeAddress = _locationGenerator.GenerateAddress(state, AddressType.SuburbanHome);
+        // 2. Generate home address (random residential type)
+        var homeType = _random.NextDouble() < 0.5 ? AddressType.SuburbanHome : AddressType.ApartmentBuilding;
+        var homeAddress = _locationGenerator.GenerateAddress(state, homeType);
 
         // 3. Create Job
         var job = CreateJob(state, jobType, workAddress.Id);

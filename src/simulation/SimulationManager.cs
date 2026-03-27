@@ -40,6 +40,10 @@ public partial class SimulationManager : Node
         SublocationGeneratorRegistry.RegisterAll();
         _locationGenerator.GenerateCityScaffolding(State);
 
+        // Generate a park
+        var park = _locationGenerator.GenerateAddress(State, AddressType.Park);
+        AddressAdded?.Invoke(park);
+
         // Generate 5 people
         for (var i = 0; i < 5; i++)
         {
