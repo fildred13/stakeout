@@ -89,6 +89,8 @@ public partial class GraphView : Control
 
     public override void _Draw()
     {
+        var font = ThemeDB.FallbackFont;
+
         // Draw connections
         foreach (var conn in _connections)
         {
@@ -96,11 +98,19 @@ public partial class GraphView : Control
                 _nodePositions.TryGetValue(conn.ToSublocationId, out var to))
             {
                 DrawLine(from, to, Colors.Gray, 2);
+
+                if (conn.Type != ConnectionType.OpenPassage)
+                {
+                    var mid = (from + to) / 2;
+                    var label = conn.Name ?? conn.Type.ToString();
+                    var labelSize = font.GetStringSize(label, HorizontalAlignment.Center, -1, 9);
+                    DrawString(font, new Vector2(mid.X - labelSize.X / 2, mid.Y - 2), label,
+                        HorizontalAlignment.Left, -1, 9, new Color(0.7f, 0.7f, 0.5f));
+                }
             }
         }
 
         // Draw nodes
-        var font = ThemeDB.FallbackFont;
         int fontSize = 12;
 
         foreach (var sub in _sublocations)
