@@ -21,8 +21,9 @@ Add `UnitTag` (nullable string). Tasks targeting a specific unit within an addre
 Replace the current two-phase approach (skeleton + lazy `ExpandFloor`) with a single `Generate` method that creates the entire building upfront:
 
 - Road, lobby, elevator (as before)
-- For each floor: hallway connected to elevator and stairs
-- For each unit on each floor: bedroom, kitchen, living room, bathroom connected to the hallway
+- For each floor: one hallway connected to elevator and stairs (the current `Generate` already creates these hallways — keep that, don't create a second one)
+- For each unit on each floor: bedroom, kitchen, living room, bathroom connected to the floor's hallway
+- Remove floor placeholder sublocations (`floor_placeholder` tag, `IsGenerated = false`) — they are no longer needed
 
 This eliminates `ExpandFloor`, floor placeholders, and the `IsGenerated` flag from this generator.
 
@@ -56,13 +57,13 @@ In `PersonGenerator`, these factory methods are called after unit assignment, so
 
 ### SleepDecomposition
 
-When `task.UnitTag` is set: call `graph.FindAllByTag(unitTag)` to get the unit's rooms, then pick the one also tagged `bedroom`.
+When `task.UnitTag` is set: call `graph.FindAllByTag(unitTag)` to get the unit's rooms, then use `.FirstOrDefault(s => s.HasTag("bedroom"))` on that list. This two-tag intersection (unit tag + room-type tag) is the core query pattern for all unit-scoped decompositions.
 
 When `task.UnitTag` is null (suburban home): behavior unchanged — `graph.FindByTag("bedroom")` as before.
 
 ### InhabitDecomposition
 
-Same scoping pattern for room-type lookups (bedroom, kitchen, restroom, living). Structural lookups (road, entrance via `FindEntryPoint`) remain unscoped — these are shared building infrastructure, not per-unit.
+Same two-tag intersection pattern for room-type lookups (bedroom, kitchen, restroom, living). Structural lookups (road, entrance via `FindEntryPoint`) remain unscoped — these are shared building infrastructure, not per-unit.
 
 ## Vacancy Tracking
 
