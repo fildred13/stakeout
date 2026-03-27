@@ -58,7 +58,7 @@ public static class ObjectiveResolver
         return tasks;
     }
 
-    public static Objective CreateGetSleepObjective(TimeSpan sleepTime, TimeSpan wakeTime, int homeAddressId)
+    public static Objective CreateGetSleepObjective(TimeSpan sleepTime, TimeSpan wakeTime, int homeAddressId, string unitTag = null)
     {
         var objective = new Objective
         {
@@ -82,7 +82,8 @@ public static class ObjectiveResolver
                 Priority = obj.Priority,
                 WindowStart = sleepTime,
                 WindowEnd = wakeTime,
-                TargetAddressId = homeAddressId
+                TargetAddressId = homeAddressId,
+                UnitTag = unitTag
             }
         });
 
@@ -120,7 +121,7 @@ public static class ObjectiveResolver
         return objective;
     }
 
-    public static Objective CreateDefaultIdleObjective(int homeAddressId)
+    public static Objective CreateDefaultIdleObjective(int homeAddressId, string unitTag = null)
     {
         var objective = new Objective
         {
@@ -144,7 +145,8 @@ public static class ObjectiveResolver
                 Priority = obj.Priority,
                 WindowStart = TimeSpan.Zero,
                 WindowEnd = TimeSpan.Zero,
-                TargetAddressId = homeAddressId
+                TargetAddressId = homeAddressId,
+                UnitTag = unitTag
             }
         });
 

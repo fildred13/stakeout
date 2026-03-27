@@ -235,4 +235,36 @@ public class ObjectiveResolverTests
         Assert.Empty(tasks);
         Assert.Equal(ObjectiveStatus.Completed, objective.Status);
     }
+
+    [Fact]
+    public void CreateGetSleepObjective_SetsUnitTagOnTask()
+    {
+        var state = new SimulationState();
+        var objective = ObjectiveResolver.CreateGetSleepObjective(
+            new TimeSpan(22, 0, 0), new TimeSpan(6, 0, 0), 1, "unit_f2_3");
+        var tasks = ObjectiveResolver.ResolveTasks(new List<Objective> { objective }, state);
+        Assert.Single(tasks);
+        Assert.Equal("unit_f2_3", tasks[0].UnitTag);
+    }
+
+    [Fact]
+    public void CreateGetSleepObjective_NullUnitTag_TaskHasNullUnitTag()
+    {
+        var state = new SimulationState();
+        var objective = ObjectiveResolver.CreateGetSleepObjective(
+            new TimeSpan(22, 0, 0), new TimeSpan(6, 0, 0), 1, null);
+        var tasks = ObjectiveResolver.ResolveTasks(new List<Objective> { objective }, state);
+        Assert.Single(tasks);
+        Assert.Null(tasks[0].UnitTag);
+    }
+
+    [Fact]
+    public void CreateDefaultIdleObjective_SetsUnitTagOnTask()
+    {
+        var state = new SimulationState();
+        var objective = ObjectiveResolver.CreateDefaultIdleObjective(1, "unit_f1_5");
+        var tasks = ObjectiveResolver.ResolveTasks(new List<Objective> { objective }, state);
+        Assert.Single(tasks);
+        Assert.Equal("unit_f1_5", tasks[0].UnitTag);
+    }
 }
