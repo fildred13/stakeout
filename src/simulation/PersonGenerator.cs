@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Stakeout.Simulation.Actions;
 using Stakeout.Simulation.Data;
 using Stakeout.Simulation.Entities;
@@ -101,7 +102,10 @@ public class PersonGenerator
         };
         state.People[person.Id] = person;
 
-        // 8. Log initial event
+        // 8. Create home key
+        CreateHomeKey(state, person, homeAddress);
+
+        // 9. Log initial event
         state.Journal.Append(new SimulationEvent
         {
             Timestamp = state.Clock.CurrentTime,
@@ -229,5 +233,39 @@ public class PersonGenerator
 
         var list = new List<string>(vacantTags);
         return list[_random.Next(list.Count)];
+    }
+
+    private static void CreateHomeKey(SimulationState state, Person person, Address homeAddress)
+    {
+        // Find the entrance connection for this person's home
+        SublocationConnection entranceConn = null;
+        if (person.HomeUnitTag != null)
+        {
+            // Apartment: find the unit door tagged with their unit tag
+            entranceConn = homeAddress.Connections
+                .FirstOrDefault(c => c.Tags != null && c.Tags.Contains(person.HomeUnitTag));
+        }
+        else
+        {
+            // Suburban home: find the front door tagged "entrance"
+            entranceConn = homeAddress.Connections
+                .FirstOrDefault(c => c.Tags != null && c.Tags.Contains("entrance"));
+        }
+
+        if (entranceConn?.Lockable == null) return;
+
+        var key = new Item
+        {
+            Id = state.GenerateEntityId(),
+            ItemType = ItemType.Key,
+            HeldByEntityId = person.Id,
+            Data = new Dictionary<string, object>
+            {
+                ["TargetConnectionId"] = entranceConn.Id
+            }
+        };
+        state.Items[key.Id] = key;
+        person.InventoryItemIds.Add(key.Id);
+        entranceConn.Lockable.KeyItemId = key.Id;
     }
 }
