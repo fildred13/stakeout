@@ -40,11 +40,11 @@ public class IntrudeDecomposition : IDecompositionStrategy
         {
             // entry → target room
             var entryPath = graph.FindPath(entryPoint.Id, targetRoom.Id);
-            sublocationSequence.AddRange(entryPath);
+            sublocationSequence.AddRange(entryPath.Select(s => s.Location));
 
             // target room → entry (exit)
             var exitPath = graph.FindPath(targetRoom.Id, entryPoint.Id);
-            sublocationSequence.AddRange(exitPath.Skip(1));
+            sublocationSequence.AddRange(exitPath.Skip(1).Select(s => s.Location));
         }
 
         return AssignTimes(sublocationSequence, task.TargetAddressId, task.ActionType, startTime, endTime);
