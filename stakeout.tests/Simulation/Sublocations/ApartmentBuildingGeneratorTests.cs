@@ -157,4 +157,29 @@ public class ApartmentBuildingGeneratorTests
             Assert.True(unitTags.Count <= 8, $"Floor {floor} has {unitTags.Count} units, expected <= 8");
         }
     }
+
+    [Fact]
+    public void Generate_UnitDoorsAreLockableWithUnitTag()
+    {
+        var state = new SimulationState();
+        var address = new Address { Id = 1, Type = AddressType.ApartmentBuilding };
+        state.Addresses[1] = address;
+        var gen = new ApartmentBuildingGenerator();
+        gen.Generate(address, state, new Random(42));
+
+        // Find all connections that have a unit tag
+        var unitDoors = address.Connections
+            .Where(c => c.Tags.Any(t => t.StartsWith("unit_f")))
+            .ToList();
+
+        Assert.NotEmpty(unitDoors);
+        foreach (var door in unitDoors)
+        {
+            Assert.Equal(ConnectionType.Door, door.Type);
+            Assert.NotNull(door.Lockable);
+            Assert.Equal(LockMechanism.Key, door.Lockable.Mechanism);
+            Assert.NotNull(door.Breakable);
+            Assert.NotNull(door.Name);
+        }
+    }
 }

@@ -82,7 +82,14 @@ public class ApartmentBuildingGenerator : ISublocationGenerator
                 var living = Make($"Apt {i} Living Room", new[] { "living", "social", unitTag }, n);
                 var bathroom = Make($"Apt {i} Bathroom", new[] { "restroom", unitTag }, n);
 
-                Connect(floorHallway, living, new SublocationConnection { Type = ConnectionType.Door });
+                Connect(floorHallway, living, new SublocationConnection
+                {
+                    Type = ConnectionType.Door,
+                    Name = $"Apt {i} Door",
+                    Tags = new[] { unitTag },
+                    Lockable = new LockableProperty { Mechanism = LockMechanism.Key },
+                    Breakable = new BreakableProperty()
+                });
                 Connect(living, bedroom);
                 Connect(living, kitchen);
                 Connect(living, bathroom);
