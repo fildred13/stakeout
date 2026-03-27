@@ -2,7 +2,6 @@
 - sublocation rethink: are doors and windows considered locations? graph view at least is confusing, as is inspector. It's weird that a person has an action to exist in "front door" between road and lobby, for example. Rather, I think "via" is going to be much more elegant. Edges can be doors/windows.Can we improve the algo to minimize overlaps of edges and nodes?
 - is "decomposition" a good name for the breakdowns of tasks to subtasks?
 
-- add apartment buildings and parks to gen so we can see them. They already got created, but we forgot to add them to generation
 - inventory, locked doors/windows, and keys
 - traces: fingerprints
 - music!

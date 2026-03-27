@@ -16,9 +16,12 @@ public class StaffShiftDecomposition : IDecompositionStrategy
     public List<ScheduleEntry> Decompose(SimTask task, SublocationGraph graph,
         TimeSpan startTime, TimeSpan endTime, Random rng)
     {
+        var road = graph.GetRoad();
         // Use staff_entry if available, fall back to entrance
-        var staffEntry = graph.FindByTag("staff_entry") ?? graph.FindByTag("entrance");
-        if (staffEntry == null)
+        var staffResult = graph.FindEntryPoint("staff_entry") ?? graph.FindEntryPoint("entrance");
+        var staffEntry = staffResult?.target;
+        var staffConnId = staffResult?.conn?.Id;
+        if (staffEntry == null || road == null)
             return new List<ScheduleEntry>();
 
         var workArea = graph.FindByTag("work_area");
@@ -37,11 +40,12 @@ public class StaffShiftDecomposition : IDecompositionStrategy
             };
         }
 
-        // Build sequence of meaningful stops (no pathfinding intermediates)
-        var stops = new List<(Sublocation sub, StopKind kind)>();
+        // Build sequence: road → staff_entry → work → ... → staff_entry → road
+        var stops = new List<(Sublocation sub, StopKind kind, int? viaConnId)>();
 
-        stops.Add((staffEntry, StopKind.Arrival));
-        stops.Add((workArea, StopKind.Work));
+        stops.Add((road, StopKind.Arrival, null));
+        stops.Add((staffEntry, StopKind.Arrival, staffConnId));
+        stops.Add((workArea, StopKind.Work, null));
 
         int breakCount = rng.Next(1, 4);
         for (int i = 0; i < breakCount; i++)
@@ -51,8 +55,8 @@ public class StaffShiftDecomposition : IDecompositionStrategy
                 var food = graph.FindByTag("food");
                 if (food != null)
                 {
-                    stops.Add((food, StopKind.Break));
-                    stops.Add((workArea, StopKind.Work));
+                    stops.Add((food, StopKind.Break, null));
+                    stops.Add((workArea, StopKind.Work, null));
                 }
             }
 
@@ -61,13 +65,14 @@ public class StaffShiftDecomposition : IDecompositionStrategy
                 var restroom = graph.FindByTag("restroom");
                 if (restroom != null)
                 {
-                    stops.Add((restroom, StopKind.Break));
-                    stops.Add((workArea, StopKind.Work));
+                    stops.Add((restroom, StopKind.Break, null));
+                    stops.Add((workArea, StopKind.Work, null));
                 }
             }
         }
 
-        stops.Add((staffEntry, StopKind.Departure));
+        stops.Add((staffEntry, StopKind.Departure, staffConnId));
+        stops.Add((road, StopKind.Departure, null));
 
         return AllocateTimes(stops, task.TargetAddressId, startTime, endTime);
     }
@@ -75,7 +80,7 @@ public class StaffShiftDecomposition : IDecompositionStrategy
     private enum StopKind { Arrival, Departure, Break, Work }
 
     private List<ScheduleEntry> AllocateTimes(
-        List<(Sublocation sub, StopKind kind)> stops,
+        List<(Sublocation sub, StopKind kind, int? viaConnId)> stops,
         int? addressId, TimeSpan startTime, TimeSpan endTime)
     {
         var totalDuration = endTime - startTime;
@@ -84,7 +89,7 @@ public class StaffShiftDecomposition : IDecompositionStrategy
 
         int fixedMinutes = 0;
         int workCount = 0;
-        foreach (var (_, kind) in stops)
+        foreach (var (_, kind, _) in stops)
         {
             switch (kind)
             {
@@ -106,7 +111,7 @@ public class StaffShiftDecomposition : IDecompositionStrategy
 
         for (int i = 0; i < stops.Count; i++)
         {
-            var (sub, kind) = stops[i];
+            var (sub, kind, viaConnId) = stops[i];
             var duration = kind switch
             {
                 StopKind.Arrival => TimeSpan.FromMinutes(ArrivalMinutes),
@@ -124,7 +129,8 @@ public class StaffShiftDecomposition : IDecompositionStrategy
                 StartTime = current,
                 EndTime = slotEnd,
                 TargetAddressId = addressId,
-                TargetSublocationId = sub.Id
+                TargetSublocationId = sub.Id,
+                ViaConnectionId = viaConnId
             });
             current = slotEnd;
         }

@@ -104,6 +104,13 @@ public partial class BlueprintView : Control
                 var from = fromRect.GetCenter();
                 var to = toRect.GetCenter();
                 DrawLine(from, to, new Color(0.5f, 0.5f, 0.5f, 0.5f), 1);
+
+                if (conn.Type != ConnectionType.OpenPassage && conn.Name != null)
+                {
+                    var mid = (from + to) / 2;
+                    DrawString(font, new Vector2(mid.X, mid.Y - 2), conn.Name,
+                        HorizontalAlignment.Left, -1, 8, new Color(0.6f, 0.6f, 0.4f, 0.7f));
+                }
             }
         }
 

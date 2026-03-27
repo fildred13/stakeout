@@ -39,7 +39,6 @@ public class SublocationTests
         var conn = new SublocationConnection();
         Assert.Equal(0, conn.FromSublocationId);
         Assert.Equal(0, conn.ToSublocationId);
-        Assert.Equal(ConnectionType.Door, conn.Type);
-        Assert.True(conn.IsBidirectional);
+        Assert.Equal(ConnectionType.OpenPassage, conn.Type);
     }
 }

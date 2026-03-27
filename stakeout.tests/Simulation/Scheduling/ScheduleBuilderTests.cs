@@ -127,6 +127,55 @@ public class ScheduleBuilderTests
     }
 
     [Fact]
+    public void BuildFromTasks_ApartmentWithUnitTag_SublocationEntriesUseCorrectUnit()
+    {
+        var state = new SimulationState();
+        var home = new Address { Id = 1, Position = new Vector2(100, 100), Type = AddressType.ApartmentBuilding };
+        var work = new Address { Id = 2, Position = new Vector2(600, 100), Type = AddressType.Office };
+        state.Addresses[1] = home;
+        state.Addresses[2] = work;
+
+        SublocationGeneratorRegistry.RegisterAll();
+        new ApartmentBuildingGenerator().Generate(home, state, new Random(42));
+        new OfficeGenerator().Generate(work, state, new Random(42));
+
+        // Pick the SECOND unit tag — not the first, so FindByTag("bedroom")
+        // without unit scoping would return the wrong bedroom
+        var unitTag = home.Sublocations.Values
+            .SelectMany(s => s.Tags)
+            .Where(t => t.StartsWith("unit_f"))
+            .Distinct()
+            .Skip(1)
+            .First();
+
+        // Find the bedroom for this specific unit
+        var unitBedroom = home.Sublocations.Values
+            .First(s => s.HasTag(unitTag) && s.HasTag("bedroom"));
+
+        var tasks = new List<SimTask>
+        {
+            new SimTask { Id = 1, ActionType = ActionType.Sleep, Priority = 30,
+                WindowStart = new TimeSpan(22, 0, 0), WindowEnd = new TimeSpan(6, 0, 0),
+                TargetAddressId = home.Id, UnitTag = unitTag },
+            new SimTask { Id = 2, ActionType = ActionType.Work, Priority = 20,
+                WindowStart = new TimeSpan(9, 0, 0), WindowEnd = new TimeSpan(17, 0, 0),
+                TargetAddressId = work.Id },
+            new SimTask { Id = 3, ActionType = ActionType.Idle, Priority = 10,
+                WindowStart = TimeSpan.Zero, WindowEnd = TimeSpan.Zero,
+                TargetAddressId = home.Id, UnitTag = unitTag }
+        };
+
+        var schedule = ScheduleBuilder.BuildFromTasks(tasks, state, DefaultConfig);
+
+        // Sleep entries targeting the home address should use this unit's bedroom
+        var sleepEntries = schedule.Entries
+            .Where(e => e.Action == ActionType.Sleep && e.TargetSublocationId.HasValue)
+            .ToList();
+        Assert.NotEmpty(sleepEntries);
+        Assert.All(sleepEntries, e => Assert.Equal(unitBedroom.Id, e.TargetSublocationId));
+    }
+
+    [Fact]
     public void BuildFromTasks_ThirdAddress_KillPersonAppears()
     {
         var home = new Address { Id = 1, Position = new Vector2(100, 100), Type = AddressType.SuburbanHome };

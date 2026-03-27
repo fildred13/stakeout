@@ -11,8 +11,9 @@ Gives each Person an AI "brain" that follows a daily schedule derived from prior
 | `src/simulation/objectives/Task.cs` | SimTask class — schedulable item with ActionType, priority, time window, target address |
 | `src/simulation/actions/ActionType.cs` | ActionType enum (Idle, Work, Sleep, TravelByCar, KillPerson) |
 | `src/simulation/actions/ActionExecutor.cs` | Executes actions on task boundaries — modifies world state, produces Traces |
-| `src/simulation/scheduling/ScheduleBuilder.cs` | Converts List\<SimTask\> → DailySchedule — minute-by-minute priority resolution, block merging, travel insertion |
-| `src/simulation/scheduling/DailySchedule.cs` | DailySchedule (list of ScheduleEntry) and ScheduleEntry (ActionType, time window, target/from address IDs) |
+| `src/simulation/scheduling/ScheduleBuilder.cs` | Converts List\<SimTask\> → DailySchedule — minute-by-minute priority resolution, block merging, travel insertion, sublocation decomposition |
+| `src/simulation/scheduling/DailySchedule.cs` | DailySchedule (list of ScheduleEntry/ScheduleGroup) and ScheduleEntry (ActionType, time window, target/from address, sublocation, ViaConnectionId) |
+| `src/simulation/scheduling/decomposition/*Decomposition.cs` | Per-activity strategies that expand a ScheduleEntry into sublocation-level stops (e.g., entrance → work area → break room → entrance) |
 | `src/simulation/scheduling/SleepScheduleCalculator.cs` | Pure function: computes sleep/wake times from job shift + commute |
 | `src/simulation/scheduling/PersonBehavior.cs` | Per-frame updater: compares current action to schedule, triggers transitions, executes actions (e.g., KillPerson), skips dead NPCs |
 

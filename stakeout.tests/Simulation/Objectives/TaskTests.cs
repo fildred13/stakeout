@@ -35,4 +35,11 @@ public class TaskTests
         };
         Assert.Null(task.TargetAddressId);
     }
+
+    [Fact]
+    public void UnitTag_DefaultsToNull()
+    {
+        var task = new SimTask();
+        Assert.Null(task.UnitTag);
+    }
 }

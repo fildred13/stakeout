@@ -11,7 +11,7 @@ public class DinerGenerator : ISublocationGenerator
         var subs = new Dictionary<int, Sublocation>();
         var conns = new List<SublocationConnection>();
 
-        Sublocation Make(string name, string[] tags, int floor)
+        Sublocation Make(string name, string[] tags, int? floor)
         {
             var sub = new Sublocation
             {
@@ -26,37 +26,44 @@ public class DinerGenerator : ISublocationGenerator
             return sub;
         }
 
-        void Connect(Sublocation from, Sublocation to, ConnectionType type = ConnectionType.OpenPassage)
+        void Connect(Sublocation from, Sublocation to, SublocationConnection template = null)
         {
-            var conn = new SublocationConnection
-            {
-                FromSublocationId = from.Id,
-                ToSublocationId = to.Id,
-                Type = type,
-                IsBidirectional = true
-            };
+            var conn = template ?? new SublocationConnection();
+            conn.Id = state.GenerateEntityId();
+            conn.FromSublocationId = from.Id;
+            conn.ToSublocationId = to.Id;
             conns.Add(conn);
             address.Connections.Add(conn);
         }
 
         var road = Make("Road", new[] { "road" }, 0);
-        var frontDoor = Make("Front Door", new[] { "entrance" }, 0);
         var diningArea = Make("Dining Area", new[] { "service_area", "social" }, 0);
         var counter = Make("Counter", new[] { "service_area" }, 0);
-        var backDoor = Make("Back Door", new[] { "staff_entry" }, 0);
         var kitchen = Make("Kitchen", new[] { "work_area", "food" }, 0);
         var storage = Make("Storage", new[] { "storage" }, 0);
         var managerOffice = Make("Manager Office", new[] { "work_area", "private" }, 0);
         var restrooms = Make("Restrooms", new[] { "restroom" }, 0);
 
-        Connect(road, frontDoor, ConnectionType.Door);
-        Connect(frontDoor, diningArea);
+        Connect(road, diningArea, new SublocationConnection
+        {
+            Name = "Front Door",
+            Tags = new[] { "entrance" },
+            Type = ConnectionType.Door,
+            Lockable = new LockableProperty(),
+            Breakable = new BreakableProperty()
+        });
         Connect(diningArea, counter);
-        Connect(road, backDoor, ConnectionType.Door);
-        Connect(backDoor, kitchen);
+        Connect(road, kitchen, new SublocationConnection
+        {
+            Name = "Back Door",
+            Tags = new[] { "staff_entry" },
+            Type = ConnectionType.Door,
+            Lockable = new LockableProperty(),
+            Breakable = new BreakableProperty()
+        });
         Connect(kitchen, storage);
-        Connect(kitchen, managerOffice, ConnectionType.Door);
-        Connect(diningArea, restrooms, ConnectionType.Door);
+        Connect(kitchen, managerOffice, new SublocationConnection { Type = ConnectionType.Door });
+        Connect(diningArea, restrooms, new SublocationConnection { Type = ConnectionType.Door });
 
         return new SublocationGraph(subs, conns);
     }

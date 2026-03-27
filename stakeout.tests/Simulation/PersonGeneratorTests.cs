@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using Stakeout.Simulation;
 using Stakeout.Simulation.Data;
@@ -115,5 +116,74 @@ public class PersonGeneratorTests
         Assert.Contains(person.Objectives, o => o.Type == ObjectiveType.GetSleep);
         Assert.Contains(person.Objectives, o => o.Type == ObjectiveType.MaintainJob);
         Assert.Contains(person.Objectives, o => o.Type == ObjectiveType.DefaultIdle);
+    }
+
+    [Fact]
+    public void GeneratePerson_ApartmentResident_HasHomeUnitTag()
+    {
+        var state = CreateState();
+        var gen = CreateGenerator();
+        for (int i = 0; i < 100; i++)
+        {
+            gen.GeneratePerson(state);
+        }
+        var apartmentResident = state.People.Values
+            .FirstOrDefault(p => state.Addresses[p.HomeAddressId].Type == AddressType.ApartmentBuilding);
+        Assert.NotNull(apartmentResident);
+        Assert.NotNull(apartmentResident.HomeUnitTag);
+        Assert.StartsWith("unit_f", apartmentResident.HomeUnitTag);
+    }
+
+    [Fact]
+    public void GeneratePerson_SuburbanResident_HasNullHomeUnitTag()
+    {
+        var state = CreateState();
+        var gen = CreateGenerator();
+        for (int i = 0; i < 100; i++)
+        {
+            gen.GeneratePerson(state);
+        }
+        var suburbanResident = state.People.Values
+            .FirstOrDefault(p => state.Addresses[p.HomeAddressId].Type == AddressType.SuburbanHome);
+        Assert.NotNull(suburbanResident);
+        Assert.Null(suburbanResident.HomeUnitTag);
+    }
+
+    [Fact]
+    public void GeneratePerson_MultipleApartmentResidents_CanShareBuilding()
+    {
+        var state = CreateState();
+        var gen = CreateGenerator();
+        for (int i = 0; i < 100; i++)
+        {
+            gen.GeneratePerson(state);
+        }
+        var apartmentAddressIds = state.People.Values
+            .Where(p => state.Addresses[p.HomeAddressId].Type == AddressType.ApartmentBuilding)
+            .Select(p => p.HomeAddressId)
+            .ToList();
+        var grouped = apartmentAddressIds.GroupBy(id => id).Where(g => g.Count() > 1);
+        Assert.NotEmpty(grouped);
+    }
+
+    [Fact]
+    public void GeneratePerson_SharedBuilding_DifferentUnitTags()
+    {
+        var state = CreateState();
+        var gen = CreateGenerator();
+        for (int i = 0; i < 100; i++)
+        {
+            gen.GeneratePerson(state);
+        }
+        var byAddress = state.People.Values
+            .Where(p => state.Addresses[p.HomeAddressId].Type == AddressType.ApartmentBuilding)
+            .GroupBy(p => p.HomeAddressId)
+            .Where(g => g.Count() > 1);
+
+        foreach (var group in byAddress)
+        {
+            var tags = group.Select(p => p.HomeUnitTag).ToList();
+            Assert.Equal(tags.Count, tags.Distinct().Count());
+        }
     }
 }
