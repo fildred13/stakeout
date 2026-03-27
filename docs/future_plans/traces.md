@@ -2,7 +2,7 @@ Let's start to flesh out the traces system just a bit, along with some more comp
 
 Most Actions that People execute in the game should start to leave traces. We'll zoom in on one, and then flesh out the systems around that.
 
-When a person enters a location, they should leave a fingerprint on the entry method they used. For example, a person walking through the front door of their house should leave a fingerprint on the front door.
+When a person interacts with a door, they should leave a fingerprint on the handle of the door on the side of the door they are coming from. For example, a person walking through the front door of their house should leave a fingerprint on the front door.
 
 In order to simulate other fingerprints rubbing off, for each other fingerprint on the front door, there should be a 25% chance to erase the fingerprint, which is increased by an additional 25% for every other fingerprint on the door. If this is generalized to all places where fingerprints are added to things, then we have a system which ensures that we don't have infinite fingerprints on surfaces.
 

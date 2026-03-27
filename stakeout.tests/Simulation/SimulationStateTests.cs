@@ -136,6 +136,14 @@ public class SimulationStateTests
     }
 
     [Fact]
+    public void SimulationState_ItemsDictionary_Exists()
+    {
+        var state = new SimulationState();
+        Assert.NotNull(state.Items);
+        Assert.Empty(state.Items);
+    }
+
+    [Fact]
     public void GetEntityNamesAtAddress_MatchesOnCurrentAddressId()
     {
         var state = new SimulationState();

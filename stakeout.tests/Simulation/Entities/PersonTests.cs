@@ -19,4 +19,12 @@ public class PersonTests
         var person = new Person();
         Assert.Null(person.HomeUnitTag);
     }
+
+    [Fact]
+    public void Person_InventoryItemIds_DefaultsToEmptyList()
+    {
+        var person = new Person();
+        Assert.NotNull(person.InventoryItemIds);
+        Assert.Empty(person.InventoryItemIds);
+    }
 }

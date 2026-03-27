@@ -468,6 +468,36 @@ public partial class GameShell : Control
             AddScheduleTree(vbox, font, person.Schedule, state, person.Id);
         }
 
+        // Inventory
+        var inventoryLines = new List<string>();
+        if (person.InventoryItemIds.Count == 0)
+        {
+            inventoryLines.Add("(empty)");
+        }
+        else
+        {
+            foreach (var itemId in person.InventoryItemIds)
+            {
+                if (state.Items.TryGetValue(itemId, out var item))
+                {
+                    var desc = item.ItemType.ToString();
+                    if (item.ItemType == ItemType.Key && item.Data.TryGetValue("TargetConnectionId", out var connIdObj))
+                    {
+                        var connId = (int)connIdObj;
+                        var homeAddr = state.Addresses.GetValueOrDefault(person.HomeAddressId);
+                        var conn = homeAddr?.Connections.FirstOrDefault(c => c.Id == connId);
+                        if (conn != null && homeAddr != null)
+                        {
+                            var street = state.Streets.GetValueOrDefault(homeAddr.StreetId);
+                            desc = $"Key: {conn.Name} at {homeAddr.Number} {street?.Name ?? "Unknown"}";
+                        }
+                    }
+                    inventoryLines.Add(desc);
+                }
+            }
+        }
+        AddInspectorSection(vbox, font, "— Inventory —", inventoryLines.ToArray());
+
         // Recent Events
         var events = state.Journal.GetEventsForPerson(person.Id);
         var recentEvents = events.TakeLast(10).Reverse().Select(e =>
