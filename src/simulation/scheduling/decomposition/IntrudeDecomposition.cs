@@ -15,6 +15,7 @@ public class IntrudeDecomposition : IDecompositionStrategy
         // Use covert_entry if available; fall back to entrance
         var covertResult = graph.FindEntryPoint("covert_entry") ?? graph.FindEntryPoint("entrance");
         var entryPoint = covertResult?.target;
+        var entryConnId = covertResult?.conn?.Id;
 
         if (entryPoint == null)
             return new List<ScheduleEntry>();
@@ -30,48 +31,52 @@ public class IntrudeDecomposition : IDecompositionStrategy
             targetRoom = graph.FindByTag("bedroom");
         }
 
-        var sublocationSequence = new List<Sublocation>();
+        var steps = new List<(Sublocation sub, int? viaConnId)>();
 
         if (targetRoom == null || targetRoom.Id == entryPoint.Id)
         {
             // No distinct target: just stay at entry point
-            sublocationSequence.Add(entryPoint);
+            steps.Add((entryPoint, entryConnId));
         }
         else
         {
             // entry → target room
             var entryPath = graph.FindPath(entryPoint.Id, targetRoom.Id);
-            sublocationSequence.AddRange(entryPath.Select(s => s.Location));
+            foreach (var step in entryPath)
+                steps.Add((step.Location, step.Via?.Id));
 
             // target room → entry (exit)
             var exitPath = graph.FindPath(targetRoom.Id, entryPoint.Id);
-            sublocationSequence.AddRange(exitPath.Skip(1).Select(s => s.Location));
+            foreach (var step in exitPath.Skip(1))
+                steps.Add((step.Location, step.Via?.Id));
         }
 
-        return AssignTimes(sublocationSequence, task.TargetAddressId, task.ActionType, startTime, endTime);
+        return AssignTimes(steps, task.TargetAddressId, task.ActionType, startTime, endTime);
     }
 
-    private List<ScheduleEntry> AssignTimes(List<Sublocation> sublocations, int? addressId,
-        ActionType actionType, TimeSpan startTime, TimeSpan endTime)
+    private List<ScheduleEntry> AssignTimes(List<(Sublocation sub, int? viaConnId)> steps,
+        int? addressId, ActionType actionType, TimeSpan startTime, TimeSpan endTime)
     {
-        if (sublocations.Count == 0) return new List<ScheduleEntry>();
+        if (steps.Count == 0) return new List<ScheduleEntry>();
 
         var totalDuration = endTime - startTime;
-        var slotDuration = TimeSpan.FromTicks(totalDuration.Ticks / sublocations.Count);
+        var slotDuration = TimeSpan.FromTicks(totalDuration.Ticks / steps.Count);
 
         var entries = new List<ScheduleEntry>();
         var current = startTime;
 
-        for (int i = 0; i < sublocations.Count; i++)
+        for (int i = 0; i < steps.Count; i++)
         {
-            var slotEnd = (i == sublocations.Count - 1) ? endTime : current + slotDuration;
+            var (sub, viaConnId) = steps[i];
+            var slotEnd = (i == steps.Count - 1) ? endTime : current + slotDuration;
             entries.Add(new ScheduleEntry
             {
                 Action = actionType,
                 StartTime = current,
                 EndTime = slotEnd,
                 TargetAddressId = addressId,
-                TargetSublocationId = sublocations[i].Id
+                TargetSublocationId = sub.Id,
+                ViaConnectionId = viaConnId
             });
             current = slotEnd;
         }

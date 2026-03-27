@@ -48,15 +48,20 @@ public class DiveBarGenerator : ISublocationGenerator
         {
             Name = "Front Door",
             Tags = new[] { "entrance" },
-            Type = ConnectionType.Door
+            Type = ConnectionType.Door,
+            Lockable = new LockableProperty { Mechanism = LockMechanism.Key },
+            Breakable = new BreakableProperty()
         });
         Connect(road, backHallway, new SublocationConnection
         {
             Name = "Back Door",
             Tags = new[] { "staff_entry" },
-            Type = ConnectionType.Door
+            Type = ConnectionType.Door,
+            Lockable = new LockableProperty { Mechanism = LockMechanism.Key },
+            Breakable = new BreakableProperty()
         });
         Connect(road, alley);
+        Connect(alley, backHallway);
         Connect(backHallway, storage);
         Connect(backHallway, managerOffice, new SublocationConnection { Type = ConnectionType.Door });
         Connect(barArea, restrooms, new SublocationConnection { Type = ConnectionType.Door });

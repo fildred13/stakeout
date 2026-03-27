@@ -14,7 +14,9 @@ public class VisitDecomposition : IDecompositionStrategy
     public List<ScheduleEntry> Decompose(SimTask task, SublocationGraph graph,
         TimeSpan startTime, TimeSpan endTime, Random rng)
     {
-        var entrance = graph.FindEntryPoint("entrance")?.target;
+        var entryResult = graph.FindEntryPoint("entrance");
+        var entrance = entryResult?.target;
+        var entranceConnId = entryResult?.conn?.Id;
         if (entrance == null)
             return new List<ScheduleEntry>();
 
@@ -44,7 +46,8 @@ public class VisitDecomposition : IDecompositionStrategy
                     StartTime = startTime,
                     EndTime = endTime,
                     TargetAddressId = task.TargetAddressId,
-                    TargetSublocationId = entrance.Id
+                    TargetSublocationId = entrance.Id,
+                    ViaConnectionId = entranceConnId
                 }
             };
         }
@@ -68,7 +71,8 @@ public class VisitDecomposition : IDecompositionStrategy
                 StartTime = startTime,
                 EndTime = arrivalEnd,
                 TargetAddressId = task.TargetAddressId,
-                TargetSublocationId = entrance.Id
+                TargetSublocationId = entrance.Id,
+                ViaConnectionId = entranceConnId
             },
             new ScheduleEntry
             {
@@ -84,7 +88,8 @@ public class VisitDecomposition : IDecompositionStrategy
                 StartTime = departureStart,
                 EndTime = endTime,
                 TargetAddressId = task.TargetAddressId,
-                TargetSublocationId = entrance.Id
+                TargetSublocationId = entrance.Id,
+                ViaConnectionId = entranceConnId
             }
         };
     }

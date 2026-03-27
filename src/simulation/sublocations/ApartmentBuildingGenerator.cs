@@ -41,8 +41,19 @@ public class ApartmentBuildingGenerator : ISublocationGenerator
         var lobby = Make("Lobby", new[] { "entrance", "public" }, 0);
         var elevator = Make("Elevator", new[] { "elevator" }, null);
 
-        Connect(road, lobby, new SublocationConnection { Type = ConnectionType.Door });
-        Connect(lobby, elevator, new SublocationConnection { Type = ConnectionType.Door });
+        Connect(road, lobby, new SublocationConnection
+        {
+            Type = ConnectionType.Door,
+            Name = "Front Door",
+            Tags = new[] { "entrance" },
+            Lockable = new LockableProperty { Mechanism = LockMechanism.Key },
+            Breakable = new BreakableProperty()
+        });
+        Connect(lobby, elevator, new SublocationConnection
+        {
+            Type = ConnectionType.Door,
+            Name = "Elevator Doors (Lobby)"
+        });
 
         int floorCount = rng.Next(4, 21);
         Sublocation prevHallway = lobby;
@@ -54,8 +65,16 @@ public class ApartmentBuildingGenerator : ISublocationGenerator
 
             var floorHallway = Make($"Floor {n} Hallway", new[] { "hallway" }, n);
 
-            Connect(elevator, floorHallway, new SublocationConnection { Type = ConnectionType.Door });
-            Connect(prevHallway, floorHallway, new SublocationConnection { Type = ConnectionType.Stairs });
+            Connect(elevator, floorHallway, new SublocationConnection
+            {
+                Type = ConnectionType.Door,
+                Name = $"Elevator Doors (Floor {n})"
+            });
+            Connect(prevHallway, floorHallway, new SublocationConnection
+            {
+                Type = ConnectionType.Stairs,
+                Name = n == 1 ? "Stairs (Lobby to Floor 1)" : $"Stairs (Floor {n - 1} to {n})"
+            });
 
             prevHallway = floorHallway;
         }

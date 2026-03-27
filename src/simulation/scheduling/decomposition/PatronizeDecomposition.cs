@@ -15,7 +15,9 @@ public class PatronizeDecomposition : IDecompositionStrategy
     public List<ScheduleEntry> Decompose(SimTask task, SublocationGraph graph,
         TimeSpan startTime, TimeSpan endTime, Random rng)
     {
-        var entrance = graph.FindEntryPoint("entrance")?.target;
+        var entryResult = graph.FindEntryPoint("entrance");
+        var entrance = entryResult?.target;
+        var entranceConnId = entryResult?.conn?.Id;
         if (entrance == null)
             return new List<ScheduleEntry>();
 
@@ -37,22 +39,22 @@ public class PatronizeDecomposition : IDecompositionStrategy
         }
 
         // Build meaningful stops: entrance → service area → optional restroom → entrance
-        var stops = new List<(Sublocation sub, StopKind kind)>();
+        var stops = new List<(Sublocation sub, StopKind kind, int? viaConnId)>();
 
-        stops.Add((entrance, StopKind.Transit));
-        stops.Add((serviceArea, StopKind.Main));
+        stops.Add((entrance, StopKind.Transit, entranceConnId));
+        stops.Add((serviceArea, StopKind.Main, null));
 
         if (rng.NextDouble() < 0.3)
         {
             var restroom = graph.FindByTag("restroom");
             if (restroom != null)
             {
-                stops.Add((restroom, StopKind.Transit));
-                stops.Add((serviceArea, StopKind.Main));
+                stops.Add((restroom, StopKind.Transit, null));
+                stops.Add((serviceArea, StopKind.Main, null));
             }
         }
 
-        stops.Add((entrance, StopKind.Transit));
+        stops.Add((entrance, StopKind.Transit, entranceConnId));
 
         return AllocateTimes(stops, task.TargetAddressId, startTime, endTime);
     }
@@ -60,7 +62,7 @@ public class PatronizeDecomposition : IDecompositionStrategy
     private enum StopKind { Transit, Main }
 
     private List<ScheduleEntry> AllocateTimes(
-        List<(Sublocation sub, StopKind kind)> stops,
+        List<(Sublocation sub, StopKind kind, int? viaConnId)> stops,
         int? addressId, TimeSpan startTime, TimeSpan endTime)
     {
         var totalDuration = endTime - startTime;
@@ -69,7 +71,7 @@ public class PatronizeDecomposition : IDecompositionStrategy
 
         int transitMinutes = 0;
         int mainCount = 0;
-        foreach (var (_, kind) in stops)
+        foreach (var (_, kind, _) in stops)
         {
             if (kind == StopKind.Transit) transitMinutes += ArrivalMinutes;
             else mainCount++;
@@ -86,7 +88,7 @@ public class PatronizeDecomposition : IDecompositionStrategy
 
         for (int i = 0; i < stops.Count; i++)
         {
-            var (sub, kind) = stops[i];
+            var (sub, kind, viaConnId) = stops[i];
             var duration = kind == StopKind.Transit
                 ? TimeSpan.FromMinutes(ArrivalMinutes)
                 : mainSlot;
@@ -99,7 +101,8 @@ public class PatronizeDecomposition : IDecompositionStrategy
                 StartTime = current,
                 EndTime = slotEnd,
                 TargetAddressId = addressId,
-                TargetSublocationId = sub.Id
+                TargetSublocationId = sub.Id,
+                ViaConnectionId = viaConnId
             });
             current = slotEnd;
         }
