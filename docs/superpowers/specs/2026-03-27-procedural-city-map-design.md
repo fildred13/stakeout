@@ -14,7 +14,7 @@ Replace the point-cloud map with a procedurally generated grid-based city. Each 
 
 Every position in the 100x100 grid is a Cell:
 
-- `PlotType` (enum) — Road, SuburbanHome, ApartmentBuilding, Office, Diner, DiveBar, Park, Empty
+- `PlotType` (enum) — Road, SuburbanHome, ApartmentBuilding, Office, Diner, DiveBar, Park, Empty. Building values map directly to `AddressType` values; `PlotType` extends `AddressType` with grid-only types (Road, Empty).
 - `AddressId` (int?) — set for building plots, null for roads and empty plots. Shared across all cells of a multi-plot building.
 - `StreetId` (int?) — set for road plots, null otherwise
 - `FacingDirection` (enum: North, South, East, West) — which side of the plot faces its connected road. Set for building plots.
@@ -30,7 +30,7 @@ Holds the `Cell[100, 100]` array. Provides lookup methods:
 ### Changes to Address
 
 - Remove `Position` (Vector2) — replaced by grid coordinates
-- Add `GridX`, `GridY` (int) — position of the anchor cell (or one of the cells for multi-plot buildings)
+- Add `GridX`, `GridY` (int) — position of the top-left cell of the building (anchor cell for multi-plot buildings)
 - Pixel position derived: `new Vector2(GridX * 48, GridY * 48)`
 - Street and number derived from grid position along the street
 - Interiors (sublocations, connections) start empty and are generated lazily when a person is assigned or the player enters
@@ -111,18 +111,18 @@ For each building plot:
 
 For each building plot (or group of plots for multi-plot buildings):
 - Create a lightweight Address with type, grid position, street, and facing direction
-- Street number derived from position along the street (sequential, like real addresses)
+- Street number derived from position along the street — sequential by plot index, even numbers on one side, odd on the other
 - Interiors left empty — generated lazily when needed
 
 ## Lazy Interior Generation
 
 Plot types are assigned during city generation, but interiors are not. When a person is generated and needs a home, the algorithm:
 
-1. Scans plots of the appropriate type that don't yet have resolved Addresses (or whose Addresses have capacity)
+1. Queries `CityGrid.GetPlotsByType()` for plots of the appropriate type that don't yet have resolved interiors (or whose Addresses have capacity)
 2. Picks one using appropriate selection criteria
-3. Generates the interior (sublocations, connections) at that point
+3. Calls a resolution method on CityGrid/Address that generates the interior (sublocations, connections)
 
-Same process for workplaces. The player entering a building also triggers interior generation if not already resolved.
+Same process for workplaces. The player entering a building also triggers interior generation if not already resolved. The existing sublocation generation logic moves into this lazy resolution path.
 
 ## CityView Refactor
 
