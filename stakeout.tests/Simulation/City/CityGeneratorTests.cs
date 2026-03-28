@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using Stakeout.Simulation.City;
 using Stakeout.Simulation;
 using Xunit;
@@ -93,6 +94,46 @@ public class CityGeneratorTests
         for (int x = 0; x < grid1.Width; x++)
             for (int y = 0; y < grid1.Height; y++)
                 Assert.Equal(grid1.GetCell(x, y).PlotType, grid2.GetCell(x, y).PlotType);
+    }
+
+    [Fact]
+    public void Generate_AllRoadCellsHaveStreetIds()
+    {
+        var state = new SimulationState();
+        var generator = new CityGenerator(seed: 42);
+        var grid = generator.Generate(state);
+
+        var roadCells = grid.GetPlotsByType(PlotType.Road);
+        foreach (var (x, y) in roadCells)
+        {
+            var cell = grid.GetCell(x, y);
+            Assert.NotNull(cell.StreetId);
+        }
+    }
+
+    [Fact]
+    public void Generate_StreetsHaveNames()
+    {
+        var state = new SimulationState();
+        var generator = new CityGenerator(seed: 42);
+        generator.Generate(state);
+
+        Assert.NotEmpty(state.Streets);
+        foreach (var street in state.Streets.Values)
+        {
+            Assert.False(string.IsNullOrEmpty(street.Name));
+        }
+    }
+
+    [Fact]
+    public void Generate_ArterialStreetsHaveGrandNames()
+    {
+        var state = new SimulationState();
+        var generator = new CityGenerator(seed: 42);
+        generator.Generate(state);
+
+        var names = state.Streets.Values.Select(s => s.Name).ToList();
+        Assert.Contains(names, n => n.Contains("Boulevard") || n.Contains("Avenue"));
     }
 
     [Fact]

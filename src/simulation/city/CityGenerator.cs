@@ -1,6 +1,9 @@
 using System;
 using System.Collections.Generic;
-using System.Numerics;
+using Godot;
+using Stakeout.Simulation.Data;
+using Stakeout.Simulation.Entities;
+using NumericsVector2 = System.Numerics.Vector2;
 
 namespace Stakeout.Simulation.City;
 
@@ -12,9 +15,9 @@ public class CityGenerator
     private const int ArterialVariance = 2;
 
     // Center of the grid for urbanness calculation
-    private static readonly Vector2 Center = new Vector2(50f, 50f);
+    private static readonly NumericsVector2 Center = new NumericsVector2(50f, 50f);
     // Max distance from center to corner
-    private static readonly float MaxDist = Vector2.Distance(Center, new Vector2(0f, 0f));
+    private static readonly float MaxDist = NumericsVector2.Distance(Center, new NumericsVector2(0f, 0f));
 
     private List<int> _horizontalArterials = new();
     private List<int> _verticalArterials = new();
@@ -29,6 +32,7 @@ public class CityGenerator
         var grid = new CityGrid(GridSize, GridSize);
         PlaceArterialRoads(grid);
         SubdivideSuperBlocks(grid);
+        AssignStreetNames(grid, state);
         return grid;
     }
 
@@ -123,7 +127,7 @@ public class CityGenerator
         // Compute urbanness from the block center
         float blockCenterX = (left + right) / 2f;
         float blockCenterY = (top + bottom) / 2f;
-        float dist = Vector2.Distance(new Vector2(blockCenterX, blockCenterY), Center);
+        float dist = NumericsVector2.Distance(new NumericsVector2(blockCenterX, blockCenterY), Center);
         float urbanness = 1.0f - Math.Clamp(dist / MaxDist, 0f, 1f);
 
         int width = right - left + 1;
@@ -191,6 +195,192 @@ public class CityGenerator
                 grid.SetCell(cx, cy, cell);
             }
         }
+    }
+
+    private void AssignStreetNames(CityGrid grid, SimulationState state)
+    {
+        int cityId = state.Cities.Count > 0 ? state.Cities.Keys.GetEnumerator().Current : 0;
+        // Get first city id properly
+        foreach (var k in state.Cities.Keys) { cityId = k; break; }
+
+        var usedNames = new HashSet<string>();
+        var horizontalArterialSet = new HashSet<int>(_horizontalArterials);
+        var verticalArterialSet = new HashSet<int>(_verticalArterials);
+
+        // Map from (x,y) to horizontal street id and vertical street id
+        var hStreetMap = new Dictionary<(int, int), int>();
+        var vStreetMap = new Dictionary<(int, int), int>();
+
+        // Scan rows for horizontal streets
+        for (int y = 0; y < GridSize; y++)
+        {
+            bool isArterial = horizontalArterialSet.Contains(y);
+
+            if (isArterial)
+            {
+                // Arterial: entire row is one street
+                // Check there are any road cells on this row
+                bool hasRoad = false;
+                for (int x = 0; x < GridSize; x++)
+                    if (grid.GetCell(x, y).PlotType == PlotType.Road) { hasRoad = true; break; }
+
+                if (!hasRoad) continue;
+
+                var street = CreateStreet(state, cityId, isArterial: true, usedNames);
+                for (int x = 0; x < GridSize; x++)
+                {
+                    if (grid.GetCell(x, y).PlotType == PlotType.Road)
+                    {
+                        hStreetMap[(x, y)] = street.Id;
+                        street.RoadCells.Add(new Vector2I(x, y));
+                    }
+                }
+            }
+            else
+            {
+                // Secondary: scan for continuous runs
+                int runStart = -1;
+                for (int x = 0; x <= GridSize; x++)
+                {
+                    bool isRoad = x < GridSize && grid.GetCell(x, y).PlotType == PlotType.Road;
+                    if (isRoad && runStart < 0)
+                    {
+                        runStart = x;
+                    }
+                    else if (!isRoad && runStart >= 0)
+                    {
+                        // End of run — create a street for [runStart, x-1]
+                        var street = CreateStreet(state, cityId, isArterial: false, usedNames);
+                        for (int rx = runStart; rx < x; rx++)
+                        {
+                            hStreetMap[(rx, y)] = street.Id;
+                            street.RoadCells.Add(new Vector2I(rx, y));
+                        }
+                        runStart = -1;
+                    }
+                }
+            }
+        }
+
+        // Scan columns for vertical streets
+        for (int x = 0; x < GridSize; x++)
+        {
+            bool isArterial = verticalArterialSet.Contains(x);
+
+            if (isArterial)
+            {
+                bool hasRoad = false;
+                for (int y = 0; y < GridSize; y++)
+                    if (grid.GetCell(x, y).PlotType == PlotType.Road) { hasRoad = true; break; }
+
+                if (!hasRoad) continue;
+
+                var street = CreateStreet(state, cityId, isArterial: true, usedNames);
+                for (int y = 0; y < GridSize; y++)
+                {
+                    if (grid.GetCell(x, y).PlotType == PlotType.Road)
+                    {
+                        vStreetMap[(x, y)] = street.Id;
+                        street.RoadCells.Add(new Vector2I(x, y));
+                    }
+                }
+            }
+            else
+            {
+                int runStart = -1;
+                for (int y = 0; y <= GridSize; y++)
+                {
+                    bool isRoad = y < GridSize && grid.GetCell(x, y).PlotType == PlotType.Road;
+                    if (isRoad && runStart < 0)
+                    {
+                        runStart = y;
+                    }
+                    else if (!isRoad && runStart >= 0)
+                    {
+                        var street = CreateStreet(state, cityId, isArterial: false, usedNames);
+                        for (int ry = runStart; ry < y; ry++)
+                        {
+                            vStreetMap[(x, ry)] = street.Id;
+                            street.RoadCells.Add(new Vector2I(x, ry));
+                        }
+                        runStart = -1;
+                    }
+                }
+            }
+        }
+
+        // Assign StreetId to each road cell: prefer horizontal street
+        for (int x = 0; x < GridSize; x++)
+        {
+            for (int y = 0; y < GridSize; y++)
+            {
+                var cell = grid.GetCell(x, y);
+                if (cell.PlotType != PlotType.Road) continue;
+
+                if (hStreetMap.TryGetValue((x, y), out int hId))
+                    cell.StreetId = hId;
+                else if (vStreetMap.TryGetValue((x, y), out int vId))
+                    cell.StreetId = vId;
+
+                grid.SetCell(x, y, cell);
+            }
+        }
+    }
+
+    private Street CreateStreet(SimulationState state, int cityId, bool isArterial, HashSet<string> usedNames)
+    {
+        string name = GenerateStreetName(isArterial, usedNames);
+        usedNames.Add(name);
+
+        var street = new Street
+        {
+            Id = state.GenerateEntityId(),
+            Name = name,
+            CityId = cityId
+        };
+        state.Streets[street.Id] = street;
+        return street;
+    }
+
+    private string GenerateStreetName(bool isArterial, HashSet<string> usedNames)
+    {
+        // Try to find an unused base name
+        string baseName = null;
+        // Shuffle attempt: try up to all names
+        var names = StreetData.StreetNames;
+        for (int attempt = 0; attempt < names.Length * 2; attempt++)
+        {
+            string candidate = names[_rng.Next(names.Length)];
+            if (!usedNames.Contains(candidate + " Boulevard") &&
+                !usedNames.Contains(candidate + " Avenue") &&
+                !usedNames.Contains(candidate + " Street") &&
+                !usedNames.Contains(candidate + " Road") &&
+                !usedNames.Contains(candidate + " Drive") &&
+                !usedNames.Contains(candidate + " Lane"))
+            {
+                baseName = candidate;
+                break;
+            }
+        }
+
+        // Fall back to a numbered name if all base names are used
+        if (baseName == null)
+            baseName = $"Street {_rng.Next(100, 999)}";
+
+        string suffix;
+        if (isArterial)
+        {
+            // Arterial: Boulevard or Avenue
+            suffix = _rng.Next(2) == 0 ? "Boulevard" : "Avenue";
+        }
+        else
+        {
+            // Secondary: Street, Road, Drive, Lane (skip Avenue — reserve for arterials)
+            string[] secondarySuffixes = { "Street", "Road", "Drive", "Lane" };
+            suffix = secondarySuffixes[_rng.Next(secondarySuffixes.Length)];
+        }
+
+        return $"{baseName} {suffix}";
     }
 
     // Expose arterial positions for later pipeline stages
