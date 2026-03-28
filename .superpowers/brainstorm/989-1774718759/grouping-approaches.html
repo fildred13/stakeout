@@ -1,0 +1,296 @@
+<h2>NPC Grouping Approaches — Heist Scenario</h2>
+<p class="subtitle">Planner, Driver, Gunman, Safecracker assemble → heist → split. Bagman picks up money 7hrs later.</p>
+
+<div class="section" style="padding:1rem;border:1px solid #444;border-radius:8px;margin-bottom:2rem">
+  <div class="label">The Scenario Timeline</div>
+  <div style="font-family:monospace;font-size:13px;color:#ccc;line-height:1.8">
+9:00  — Planner, Driver, Gunman, Safecracker arrive independently at Planner's house
+9:15  — All get in Driver's car together
+9:30  — Arrive at alley near bank, wait
+11:00 — Move to bank. Driver stays in car. Gunman enters lobby. Safecracker enters vault area.
+11:10 — Regroup at car, drive to random parking lot
+11:25 — Arrive at lot. Each person gets in own car, separates.
+11:30 — Driver hides money in a utility closet at a warehouse
+18:30 — Bagman (separate NPC) picks up money from utility closet
+  </div>
+</div>
+
+<hr style="border-color:#333;margin:2rem 0">
+
+<div class="section">
+  <h3>A) Simple Co-location</h3>
+  <p class="subtitle">Each NPC gets independent objectives that happen to align in time and place.</p>
+
+  <div class="mockup">
+    <div class="mockup-header">How it works</div>
+    <div class="mockup-body" style="font-family:monospace;font-size:13px;white-space:pre;color:#ccc;line-height:1.6">
+Crime template generates 5 independent objectives:
+
+Planner:  GoTo(home, 8:45) → Wait(home, 9:00-9:15) → TravelWith(alley, 9:15)
+          → Wait(alley, 9:30-11:00) → GoTo(bank, 11:00) → Wait(bank.lobby, 11:00-11:10)
+          → TravelWith(lot, 11:10) → GetInOwnCar(11:25) → GoHome
+
+Driver:   GoTo(planner.home, 9:00) → Wait(9:00-9:15) → Drive(alley, 9:15)
+          → Wait(alley, 9:30-11:00) → Drive(bank, 11:00) → Wait(car, 11:00-11:10)
+          → Drive(lot, 11:10) → Drive(warehouse, 11:25) → StashMoney(closet)
+          → GoHome
+
+Gunman:   GoTo(planner.home, 9:00) → Wait(9:00-9:15) → TravelWith(alley, 9:15)
+          → Wait(alley, 9:30-11:00) → GoTo(bank.lobby, 11:00) → HoldLobby(11:00-11:10)
+          → TravelWith(lot, 11:10) → GetInOwnCar(11:25) → GoHome
+
+Cracker:  GoTo(planner.home, 9:00) → Wait(9:00-9:15) → TravelWith(alley, 9:15)
+          → Wait(alley, 9:30-11:00) → GoTo(bank.vault, 11:00) → CrackSafe(11:00-11:10)
+          → TravelWith(lot, 11:10) → GetInOwnCar(11:25) → GoHome
+
+Bagman:   [normal day] → GoTo(warehouse, 18:30) → PickUp(closet) → GoTo(dropoff)
+    </div>
+  </div>
+
+  <div class="mockup" style="margin-top:1rem">
+    <div class="mockup-header">Trace generation</div>
+    <div class="mockup-body" style="font-family:monospace;font-size:13px;white-space:pre;color:#ccc;line-height:1.6">
+Each person's objective generates their OWN traces independently:
+- Planner's "Wait at home" → Planner's fingerprints at home (already there)
+- Driver's "GoTo planner.home" → Driver's fingerprints at Planner's house
+- Gunman's "HoldLobby" → Gunman's fingerprints in bank lobby, witness sightings
+- Cracker's "CrackSafe" → Cracker's fingerprints on safe, tools marks
+
+Problem: How does "TravelWith" know they're in the SAME car?
+It doesn't. Each person just independently travels. Traces can't reference
+the shared vehicle because there's no shared context.
+
+Problem: How does Driver know to stash money from the heist?
+The money doesn't exist as a shared object. Each objective is independent.
+We'd have to hardcode "Driver gets money" in Driver's objective.
+    </div>
+  </div>
+
+  <div class="pros-cons">
+    <div class="pros"><h4>Pros</h4><ul>
+      <li>No new scheduling concepts — just objectives and tasks</li>
+      <li>Each NPC's behavior is self-contained and testable</li>
+      <li>Works with existing schedule system</li>
+    </ul></div>
+    <div class="cons"><h4>Cons</h4><ul>
+      <li>Shared state is impossible — no shared car, no shared loot</li>
+      <li>Fragile synchronization — if Gunman is late, others don't know</li>
+      <li>Duplicate logic — each person's objective repeats the same timeline</li>
+      <li>Traces can't reference group context ("all 4 fingerprints in same car")</li>
+      <li>Modifying the plan means updating 4-5 objectives in lockstep</li>
+    </ul></div>
+  </div>
+</div>
+
+<hr style="border-color:#333;margin:2rem 0">
+
+<div class="section">
+  <h3>B) Paired/Linked Actions</h3>
+  <p class="subtitle">One initiator NPC, others get linked objectives. Shared ActionContext for traces.</p>
+
+  <div class="mockup">
+    <div class="mockup-header">How it works</div>
+    <div class="mockup-body" style="font-family:monospace;font-size:13px;white-space:pre;color:#ccc;line-height:1.6">
+Crime template creates ONE master objective on Planner.
+Planner's objective injects linked sub-objectives onto other NPCs.
+
+Planner's HeistObjective:
+  step 1: InjectObjective(Driver, "drive_heist_getaway", times, locations)
+  step 2: InjectObjective(Gunman, "heist_muscle", times, locations)
+  step 3: InjectObjective(Cracker, "heist_safecrack", times, locations)
+  step 4: InjectObjective(Bagman, "heist_pickup", warehouse, 18:30)
+  step 5: ExecuteHeist (Planner's own actions during the heist)
+
+Each injected objective is independent but shares a HeistContext:
+  { heistId, vehicle: Driver.car, meetPoint: planner.home,
+    bankAddress: bank, stashLocation: warehouse.closet }
+
+The linked objectives reference HeistContext for shared state.
+When Driver's objective says "drive group to alley", it knows the car.
+When Cracker finishes, loot goes into HeistContext.loot.
+Driver's post-heist step reads HeistContext.loot to stash it.
+    </div>
+  </div>
+
+  <div class="mockup" style="margin-top:1rem">
+    <div class="mockup-header">Trace generation</div>
+    <div class="mockup-body" style="font-family:monospace;font-size:13px;white-space:pre;color:#ccc;line-height:1.6">
+Each NPC generates their own traces, but can reference shared context:
+- Driver's "drive group" → ALL passengers' fingerprints in Driver's car
+- Gunman's "hold lobby" → Gunman's fingerprints + witness sightings
+- Cracker's "crack safe" → tool marks + Cracker's fingerprints on safe
+- Driver's "stash money" → Driver's fingerprints at warehouse closet
+  + money bag with Cracker's fingerprints (from HeistContext)
+- Bagman's "pick up" → Bagman's fingerprints at warehouse closet
+
+Synchronization: Still time-based. If times drift, NPCs act independently
+at their scheduled times. No runtime "wait for others" — the template
+pre-calculates times that work.
+    </div>
+  </div>
+
+  <div class="pros-cons">
+    <div class="pros"><h4>Pros</h4><ul>
+      <li>Shared context enables cross-person traces (fingerprints in shared car)</li>
+      <li>Single template defines the heist — injected objectives are derived</li>
+      <li>Each NPC still has their own schedule — existing system works</li>
+      <li>Bagman's delayed pickup is natural — just another injected objective</li>
+    </ul></div>
+    <div class="cons"><h4>Cons</h4><ul>
+      <li>Synchronization is still fragile — pre-calculated times, no runtime coordination</li>
+      <li>Injected objectives are still somewhat duplicative</li>
+      <li>"Who generates traces for shared moments?" is ambiguous (all in car together — does Driver's template or everyone's template emit car fingerprints?)</li>
+      <li>Complex to reason about — the heist logic is split across 5 objectives</li>
+    </ul></div>
+  </div>
+</div>
+
+<hr style="border-color:#333;margin:2rem 0">
+
+<div class="section">
+  <h3>C) Explicit Group Entity</h3>
+  <p class="subtitle">A Group object owns the shared schedule. Members join/leave. Group template drives the action.</p>
+
+  <div class="mockup">
+    <div class="mockup-header">How it works</div>
+    <div class="mockup-body" style="font-family:monospace;font-size:13px;white-space:pre;color:#ccc;line-height:1.6">
+Crime template creates a Group:
+  HeistGroup { members: [Planner, Driver, Gunman, Cracker], vehicle: Driver.car }
+
+Phase 1 — Assembly (individual schedules):
+  Each member gets: GoTo(planner.home, 9:00) → JoinGroup(heistGroup)
+  As each NPC arrives + joins, their individual schedule is SUSPENDED.
+
+Phase 2 — Group action (group schedule takes over):
+  HeistGroup template runs with all members:
+    .DriveGroupTo(alley)                           // all in Driver's car
+    .WaitUntil(11:00)                              // all idle in alley
+    .Split(                                        // parallel actions
+        driver  => driver.WaitInCar(),
+        gunman  => gunman.Do(HoldLobby),
+        cracker => cracker.Do(CrackSafe),
+        planner => planner.Do(Lookout)
+    )
+    .Regroup()                                     // wait for all, back in car
+    .DriveGroupTo(randomLot)
+
+Phase 3 — Disbanding (individual schedules resume):
+  Group.Disband() → each member's schedule RESUMES
+  Driver gets post-disband objective: StashMoney(warehouse.closet)
+
+Phase 4 — Delayed follow-up (separate individual):
+  Bagman gets: GoTo(warehouse, 18:30) → PickUp(closet) → Deliver(dropoff)
+    </div>
+  </div>
+
+  <div class="mockup" style="margin-top:1rem">
+    <div class="mockup-header">Trace generation</div>
+    <div class="mockup-body" style="font-family:monospace;font-size:13px;white-space:pre;color:#ccc;line-height:1.6">
+Group template generates traces for ALL members in shared moments:
+
+DriveGroupTo(alley):
+  → All 4 members' fingerprints in Driver's car
+  → Car spotted on road between planner's house and alley (witness)
+
+WaitUntil(11:00) in alley:
+  → Cigarette butts from Gunman (smoker trait)
+  → All 4 members' fingerprints near alley
+  → Suspicious car parked in alley (witness event)
+
+Split() — each sub-action generates its OWN traces:
+  → Driver: fingerprints on steering wheel (already there)
+  → Gunman: fingerprints in lobby, witness descriptions, security footage
+  → Cracker: fingerprints on safe, tool marks, vault dust on clothes
+  → Planner: fingerprints near bank exterior
+
+Regroup + DriveGroupTo(lot):
+  → Car spotted leaving bank area
+  → Car arrives at lot — all members seen exiting
+
+Post-disband:
+  → Driver's fingerprints at warehouse closet
+  → Money bag with Cracker + Driver fingerprints
+  → Bagman's fingerprints at warehouse closet (7 hrs later)
+    </div>
+  </div>
+
+  <div class="pros-cons">
+    <div class="pros"><h4>Pros</h4><ul>
+      <li>Heist reads as ONE coherent story, not 5 fragmented objectives</li>
+      <li>Shared moments (car, waiting) generate correct multi-person traces naturally</li>
+      <li>Split/Regroup handles the "parallel then converge" pattern cleanly</li>
+      <li>Synchronization is built in — Regroup waits for all members</li>
+      <li>Loot, vehicle, shared items live on the Group — no ambiguity</li>
+      <li>Schedule suspend/resume is clean — NPC is "busy" while grouped</li>
+      <li>Bagman is a separate solo action — groups don't need to cover everything</li>
+    </ul></div>
+    <div class="cons"><h4>Cons</h4><ul>
+      <li>New concept (Group) with its own lifecycle, schedule, and template system</li>
+      <li>Need to handle edge cases: what if a member dies? Gets arrested? Player intercepts?</li>
+      <li>Suspend/resume adds complexity to the scheduling system</li>
+      <li>Overkill for simple 2-person interactions (a date, a meeting)</li>
+    </ul></div>
+  </div>
+</div>
+
+<hr style="border-color:#333;margin:2rem 0">
+
+<div class="section" style="padding:1.5rem;border:1px solid #555;border-radius:8px">
+  <h3>Summary Comparison</h3>
+  <table style="width:100%;border-collapse:collapse;font-size:14px;color:#ccc">
+    <tr style="border-bottom:1px solid #444">
+      <th style="text-align:left;padding:8px">Dimension</th>
+      <th style="text-align:center;padding:8px">A) Co-location</th>
+      <th style="text-align:center;padding:8px">B) Linked Actions</th>
+      <th style="text-align:center;padding:8px">C) Explicit Group</th>
+    </tr>
+    <tr style="border-bottom:1px solid #333">
+      <td style="padding:8px">Shared car ride</td>
+      <td style="text-align:center;padding:8px">❌ Can't model</td>
+      <td style="text-align:center;padding:8px">⚠️ Awkward — who emits?</td>
+      <td style="text-align:center;padding:8px">✅ DriveGroupTo</td>
+    </tr>
+    <tr style="border-bottom:1px solid #333">
+      <td style="padding:8px">Parallel split (lobby/vault/car)</td>
+      <td style="text-align:center;padding:8px">✅ Natural (independent)</td>
+      <td style="text-align:center;padding:8px">✅ Natural (independent)</td>
+      <td style="text-align:center;padding:8px">✅ Split/Regroup</td>
+    </tr>
+    <tr style="border-bottom:1px solid #333">
+      <td style="padding:8px">Shared loot tracking</td>
+      <td style="text-align:center;padding:8px">❌ No shared state</td>
+      <td style="text-align:center;padding:8px">⚠️ Via shared context</td>
+      <td style="text-align:center;padding:8px">✅ Group owns it</td>
+    </tr>
+    <tr style="border-bottom:1px solid #333">
+      <td style="padding:8px">Delayed follow-up (bagman)</td>
+      <td style="text-align:center;padding:8px">✅ Independent objective</td>
+      <td style="text-align:center;padding:8px">✅ Injected objective</td>
+      <td style="text-align:center;padding:8px">✅ Separate solo action</td>
+    </tr>
+    <tr style="border-bottom:1px solid #333">
+      <td style="padding:8px">Template readability</td>
+      <td style="text-align:center;padding:8px">❌ Scattered across 5</td>
+      <td style="text-align:center;padding:8px">⚠️ Split across master + 4</td>
+      <td style="text-align:center;padding:8px">✅ One coherent story</td>
+    </tr>
+    <tr style="border-bottom:1px solid #333">
+      <td style="padding:8px">Interrupts (player intervenes)</td>
+      <td style="text-align:center;padding:8px">⚠️ Per-NPC only</td>
+      <td style="text-align:center;padding:8px">⚠️ Context helps somewhat</td>
+      <td style="text-align:center;padding:8px">✅ Group can react</td>
+    </tr>
+    <tr style="border-bottom:1px solid #333">
+      <td style="padding:8px">Simple 2-person interaction</td>
+      <td style="text-align:center;padding:8px">✅ Minimal overhead</td>
+      <td style="text-align:center;padding:8px">✅ Lightweight</td>
+      <td style="text-align:center;padding:8px">⚠️ Maybe overkill</td>
+    </tr>
+    <tr>
+      <td style="padding:8px">Implementation complexity</td>
+      <td style="text-align:center;padding:8px">✅ Low</td>
+      <td style="text-align:center;padding:8px">⚠️ Medium</td>
+      <td style="text-align:center;padding:8px">⚠️ Medium-High</td>
+    </tr>
+  </table>
+</div>

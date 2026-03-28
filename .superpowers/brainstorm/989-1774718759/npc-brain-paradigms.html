@@ -1,0 +1,317 @@
+<h2>NPC Brain Paradigms — Beyond Scheduling</h2>
+<p class="subtitle">What does an NPC brain actually need to do? Let's start from requirements, not from the existing code.</p>
+
+<div class="section" style="padding:1.5rem;border:1px solid #555;border-radius:8px;margin-bottom:2rem">
+  <h3>What does the game actually need from NPCs?</h3>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-top:1rem">
+    <div>
+      <div class="label">Player-facing needs</div>
+      <ul style="color:#ccc;line-height:1.8">
+        <li><strong>Where is this person right now?</strong> (stakeout, tailing)</li>
+        <li><strong>What traces did they leave?</strong> (investigation)</li>
+        <li><strong>Can I interact with them?</strong> (conversation, arrest)</li>
+        <li><strong>What did witnesses see?</strong> (who was where when)</li>
+      </ul>
+    </div>
+    <div>
+      <div class="label">Simulation needs</div>
+      <ul style="color:#ccc;line-height:1.8">
+        <li>NPCs react to events (heist, arrest, player presence)</li>
+        <li>NPCs coordinate (groups form, act, disband)</li>
+        <li>New NPCs spawn with plausible history (backfill)</li>
+        <li>Actions produce traces proportional to drama, not granularity</li>
+        <li>Time can fast-forward without simulating every minute</li>
+      </ul>
+    </div>
+  </div>
+  <p style="color:#f0c040;margin-top:1rem"><strong>Key insight:</strong> The player never observes minute-by-minute NPC movement. They observe <em>presence</em> (stakeout), <em>traces</em> (investigation), and <em>availability</em> (interaction). The simulation's job is to produce those three outputs believably — not to compute a perfect timeline.</p>
+</div>
+
+<hr style="border-color:#333;margin:2rem 0">
+
+<div class="section">
+  <h3>Paradigm 1: Pre-computed Schedule (what we have now)</h3>
+  <p class="subtitle">Plan the whole day, then replay it. Interrupts = rebuild the schedule.</p>
+
+  <div class="mockup">
+    <div class="mockup-header">Mental model</div>
+    <div class="mockup-body" style="font-family:monospace;font-size:13px;white-space:pre;color:#ccc;line-height:1.6">
+Each NPC has a 1440-slot daily schedule, pre-computed from objectives.
+Every frame: look up "what should I be doing at this minute?" and do it.
+
+Interrupt happens? Set NeedsScheduleRebuild = true.
+Next frame: throw away schedule, recompute from scratch.
+
+          ┌─────────────┐
+          │  Objectives  │
+          └──────┬───────┘
+                 ▼
+          ┌─────────────┐
+          │  Resolve to  │
+          │    Tasks     │
+          └──────┬───────┘
+                 ▼
+          ┌─────────────┐
+          │ Build 1440- │──→  minute 0: sleep at home/bedroom
+          │ slot schedule│──→  minute 480: travel to work
+          └──────┬───────┘──→  minute 510: work at office/cubicle
+                 ▼           ...
+          ┌─────────────┐
+          │  Execute     │
+          │  per frame   │
+          └──────────────┘
+    </div>
+  </div>
+
+  <div style="margin-top:1rem;padding:1rem;border:1px solid #444;border-radius:8px">
+    <div class="label">How it handles the hard cases</div>
+    <table style="width:100%;border-collapse:collapse;font-size:13px;color:#ccc">
+      <tr style="border-bottom:1px solid #333">
+        <td style="padding:8px;width:35%">Driver arrested mid-heist</td>
+        <td style="padding:8px">All other NPCs' schedules are stale — they still think Driver is coming. Need manual invalidation of every linked schedule. How does the heist template know to abort? It doesn't — schedules are independent.</td>
+      </tr>
+      <tr style="border-bottom:1px solid #333">
+        <td style="padding:8px">Bank patrons react to heist</td>
+        <td style="padding:8px">Each patron needs NeedsScheduleRebuild. Their new schedule: "cower, then wait for police, then go home." But their original schedule is gone — do they go back to work after? When? The rebuild doesn't know their pre-interrupt intent.</td>
+      </tr>
+      <tr style="border-bottom:1px solid #333">
+        <td style="padding:8px">Fast-forward 6 hours</td>
+        <td style="padding:8px">Works well — just advance time, schedule entries still valid. ✅</td>
+      </tr>
+      <tr style="border-bottom:1px solid #333">
+        <td style="padding:8px">Backfill NPC history</td>
+        <td style="padding:8px">Generate past schedules, walk through them, deposit traces. Expensive — you're replaying days of 1440-slot schedules to produce a handful of traces.</td>
+      </tr>
+      <tr>
+        <td style="padding:8px">Groups</td>
+        <td style="padding:8px">Requires pre-coordinated schedules across NPCs. Fragile — any deviation breaks synchronization.</td>
+      </tr>
+    </table>
+  </div>
+</div>
+
+<hr style="border-color:#333;margin:2rem 0">
+
+<div class="section">
+  <h3>Paradigm 2: Intent Stack — "What do I want to do right now?"</h3>
+  <p class="subtitle">NPCs have a routine and react to events. No pre-computed schedule. Behavior emerges from prioritized intents.</p>
+
+  <div class="mockup">
+    <div class="mockup-header">Mental model</div>
+    <div class="mockup-body" style="font-family:monospace;font-size:13px;white-space:pre;color:#ccc;line-height:1.6">
+Each NPC has:
+  - A Routine: repeating time blocks ("home 10pm-8am", "work 9am-5pm", "diner 12-1pm")
+  - An Intent Stack: things overriding the routine, newest on top
+
+Every tick: top of intent stack (or routine if stack empty) → determines
+            current location + activity + trace generation.
+
+Interrupt? Push a new intent. When it completes, pop it — previous
+intent (or routine) resumes naturally.
+
+     ┌───────────────────────────────┐
+     │        Intent Stack           │
+     │  ┌─────────────────────────┐  │
+     │  │ "react to heist" (p:60) │  │  ← newest: pushed by event
+     │  ├─────────────────────────┤  │
+     │  │ "eat lunch at diner"    │  │  ← was doing this, interrupted
+     │  ├─────────────────────────┤  │
+     │  │ (routine: work 9-5)     │  │  ← resumes after lunch
+     │  └─────────────────────────┘  │
+     └───────────────────────────────┘
+
+     Each intent knows:
+       - What activity am I doing?
+       - Where should I be?
+       - When am I done? (or: what condition ends this?)
+       - What traces do I leave while doing this?
+    </div>
+  </div>
+
+  <div class="mockup" style="margin-top:1rem">
+    <div class="mockup-header">Heist scenario under Intent Stack</div>
+    <div class="mockup-body" style="font-family:monospace;font-size:13px;white-space:pre;color:#ccc;line-height:1.6">
+8:30 — Crime template pushes "participate_in_heist" intent onto each member.
+        Each member's routine is now overridden.
+
+9:00 — Each member's intent says "go to planner's house."
+        They travel there independently. On arrival, they're "assembled."
+
+9:15 — Group forms. A GroupIntent is pushed onto all members:
+        "execute heist plan as group"
+        The group intent manages the shared timeline:
+          → drive to alley (group moves together)
+          → wait until 11:00
+          → split: each member gets a sub-intent for their role
+          → regroup: sub-intents complete, group resumes
+
+11:10 — Group drives to lot. GroupIntent disbands.
+         "participate_in_heist" intent pops.
+         Each member's routine resumes (or next solo intent kicks in).
+
+11:25 — Driver has a queued intent: "stash money at warehouse."
+
+18:30 — Bagman has a timed intent: "pick up from warehouse closet."
+
+DRIVER ARRESTED AT 10:45?
+  → Driver's intent stack is replaced with "arrested" intent.
+  → Group detects missing member at regroup.
+  → Group intent has a contingency: abort? continue without driver?
+  → Other members get "flee" or "improvise getaway" intent pushed.
+  → No schedule rebuild needed. Each NPC reacts to their current state.
+
+BANK PATRON DURING HEIST?
+  → Patron is in the bank. Heist event pushes "react_to_threat" intent.
+  → Patron cowers for duration. When heist ends, intent pops.
+  → "Questioned by police" intent pushed (takes 30-60 min).
+  → When that pops, patron's routine resumes — they go back to work
+     or go home depending on what time it is.
+  → No schedule rebuild. Routine was never lost.
+    </div>
+  </div>
+
+  <div style="margin-top:1rem;padding:1rem;border:1px solid #444;border-radius:8px">
+    <div class="label">How it handles the hard cases</div>
+    <table style="width:100%;border-collapse:collapse;font-size:13px;color:#ccc">
+      <tr style="border-bottom:1px solid #333">
+        <td style="padding:8px;width:35%">Driver arrested mid-heist</td>
+        <td style="padding:8px">Driver gets "arrested" intent. Group detects it at next sync point. Group intent branches to contingency. Other members react individually. <strong>No schedule invalidation — intents handle it.</strong></td>
+      </tr>
+      <tr style="border-bottom:1px solid #333">
+        <td style="padding:8px">Bank patrons react to heist</td>
+        <td style="padding:8px">"React to threat" intent pushed onto everyone present. When resolved, it pops and routine resumes. Patron naturally goes back to whatever their routine says for this time of day. <strong>Previous state is preserved on the stack.</strong></td>
+      </tr>
+      <tr style="border-bottom:1px solid #333">
+        <td style="padding:8px">Fast-forward 6 hours</td>
+        <td style="padding:8px">Trickier — need to resolve intents forward. But most NPCs are on routine, which is trivial to fast-forward. Only NPCs with active non-routine intents need step-through. Can batch routine NPCs.</td>
+      </tr>
+      <tr style="border-bottom:1px solid #333">
+        <td style="padding:8px">Backfill NPC history</td>
+        <td style="padding:8px">Routine IS the history. "This person works at the diner 9-5 and lives at 45 Oak St" → generate traces from the routine pattern directly, no simulation needed. Only special events need explicit trace generation.</td>
+      </tr>
+      <tr>
+        <td style="padding:8px">Groups</td>
+        <td style="padding:8px">GroupIntent coordinates naturally — it's just an intent shared by multiple NPCs. Split = push sub-intents, regroup = wait for sub-intents to pop.</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="pros-cons">
+    <div class="pros"><h4>Pros</h4><ul>
+      <li>Interrupts are natural — push/pop, no rebuild</li>
+      <li>Routine never lost — it's always at the bottom of the stack</li>
+      <li>Groups are just shared intents, not a separate system</li>
+      <li>Backfill is cheap — routines generate traces directly</li>
+      <li>Reactive by default — any event can push an intent</li>
+      <li>Composable action templates map directly to intents</li>
+    </ul></div>
+    <div class="cons"><h4>Cons</h4><ul>
+      <li>Fast-forward needs care (but routine NPCs are trivial)</li>
+      <li>Debugging "why is this NPC here?" means reading the stack</li>
+      <li>New paradigm — significant rewrite of scheduling system</li>
+    </ul></div>
+  </div>
+</div>
+
+<hr style="border-color:#333;margin:2rem 0">
+
+<div class="section">
+  <h3>Paradigm 3: Event-Sourced — "What happened to me?"</h3>
+  <p class="subtitle">NPC state is derived from a log of events. No mutable schedule or intent stack. History IS the data model.</p>
+
+  <div class="mockup">
+    <div class="mockup-header">Mental model</div>
+    <div class="mockup-body" style="font-family:monospace;font-size:13px;white-space:pre;color:#ccc;line-height:1.6">
+Each NPC has:
+  - A Routine: same as Paradigm 2
+  - An Event Log: immutable list of things that happened to/by this NPC
+  - Current state is DERIVED: replay log from last checkpoint to get
+    current location, activity, relationships, etc.
+
+Something happens? Append an event to the log.
+"Where is this NPC?" → derive from routine + events.
+"What traces exist?" → traces ARE events in the log.
+
+     Timeline:
+     ──●────────●────────●──────●────────●────→
+       spawn    hired    date   heist    arrest
+                at diner  w/X   starts
+
+     Events:
+     { type: "hired", job: diner_cook, time: day_1 }
+     { type: "date", with: person_X, at: person_X.home, time: day_3_19:00 }
+     { type: "joined_group", group: heist_crew, time: day_5_09:00 }
+     { type: "arrested", time: day_5_10:45 }
+
+     Current state at any point in time = routine + events before that time
+    </div>
+  </div>
+
+  <div style="margin-top:1rem;padding:1rem;border:1px solid #444;border-radius:8px">
+    <div class="label">How it handles the hard cases</div>
+    <table style="width:100%;border-collapse:collapse;font-size:13px;color:#ccc">
+      <tr style="border-bottom:1px solid #333">
+        <td style="padding:8px;width:35%">Driver arrested mid-heist</td>
+        <td style="padding:8px">"Arrested" event appended. Group queries Driver's state, sees arrest event, appends contingency events for other members.</td>
+      </tr>
+      <tr style="border-bottom:1px solid #333">
+        <td style="padding:8px">Bank patrons react to heist</td>
+        <td style="padding:8px">"Witnessed heist" event for each patron. Derive behavior: cowering until "heist_ended" event, then "police_interview" event, then routine resumes.</td>
+      </tr>
+      <tr style="border-bottom:1px solid #333">
+        <td style="padding:8px">Fast-forward 6 hours</td>
+        <td style="padding:8px">No simulation needed — just advance clock. State derived on demand.</td>
+      </tr>
+      <tr style="border-bottom:1px solid #333">
+        <td style="padding:8px">Backfill NPC history</td>
+        <td style="padding:8px">Perfect fit — just insert historical events into the log. ✅✅</td>
+      </tr>
+      <tr>
+        <td style="padding:8px">Groups</td>
+        <td style="padding:8px">Group events in the log. But coordinating real-time group behavior requires deriving state constantly, which is expensive.</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="pros-cons">
+    <div class="pros"><h4>Pros</h4><ul>
+      <li>Backfill is trivially natural — insert past events</li>
+      <li>History is first-class — "what happened" is the data model</li>
+      <li>Fast-forward is free — no simulation, derive on demand</li>
+      <li>Traces and events are unified — no separate systems</li>
+      <li>Time-travel debugging: look at any point in an NPC's history</li>
+    </ul></div>
+    <div class="cons"><h4>Cons</h4><ul>
+      <li>"What is this NPC doing RIGHT NOW?" requires derivation every query</li>
+      <li>Real-time behavior (groups, reactions) needs a separate execution layer on top</li>
+      <li>Risk of becoming two systems: event log for history + something else for real-time</li>
+      <li>Performance: deriving state from log grows expensive over time (needs checkpointing)</li>
+      <li>Most complex to implement correctly</li>
+    </ul></div>
+  </div>
+</div>
+
+<hr style="border-color:#333;margin:2rem 0">
+
+<div class="section" style="padding:1.5rem;border:1px solid #f0c040;border-radius:8px">
+  <h3>Recommendation: Paradigm 2 (Intent Stack) with Event Log for History</h3>
+  <p style="color:#ccc;line-height:1.8">
+    The Intent Stack gives you reactive, interruptible NPC behavior with natural group support. The routine at the bottom of the stack means you never lose "normal life" — it's always there to resume.
+  </p>
+  <p style="color:#ccc;line-height:1.8">
+    Borrow the best idea from Paradigm 3: keep an event log for history. When you backfill an NPC, you're generating events, not replaying schedules. Traces are generated from events. But the <strong>real-time brain</strong> is the intent stack — it decides what the NPC is doing now and what they'll do next.
+  </p>
+  <p style="color:#ccc;line-height:1.8">
+    This also maps cleanly onto the composable action template system (Approach C from earlier): an action template IS an intent. <code>BreakInMurder</code> is an intent that pushes sub-intents (<code>ForcedEntry</code>, <code>Fight</code>, <code>Kill</code>). A group heist is a shared intent that pushes individual role intents during the split phase.
+  </p>
+
+  <div style="margin-top:1rem;font-family:monospace;font-size:13px;color:#ccc;white-space:pre;line-height:1.6">
+  Routine ──→ "where would I normally be at this time?"
+       │
+  Intent Stack ──→ "but what am I ACTUALLY doing right now?"
+       │
+  Action Templates ──→ "HOW do I do it, and what traces do I leave?"
+       │
+  Event Log ──→ "what DID I do?" (history, backfill, investigation)
+  </div>
+</div>

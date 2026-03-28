@@ -1,0 +1,293 @@
+<h2>Action Template Approaches</h2>
+<p class="subtitle">Same scenario (break-in murder) shown three ways. Which feels right?</p>
+
+<div class="section">
+  <h3>Approach A: Pure C# — Composable Event Builder</h3>
+  <p class="subtitle">Events are small C# methods. Templates compose them with control flow. All code, no config.</p>
+
+  <div class="mockup">
+    <div class="mockup-header">File structure</div>
+    <div class="mockup-body" style="font-family:monospace;font-size:13px;white-space:pre;color:#ccc;line-height:1.5">src/simulation/actions/
+  events/                        # Reusable event primitives
+    ForcedEntry.cs               # BreakWindow, PickLock, BreakDoor
+    Movement.cs                  # MoveTo, ChaseFromTo, FleeFromTo
+    Violence.cs                  # Fight, Kill, Stab, Strangle
+    Social.cs                    # HangOut, Converse, HaveSex
+    Search.cs                    # Ransack, SearchFor, StashItem
+  templates/                     # Composed action sequences
+    BreakInMurderTemplate.cs
+    BurglaryTemplate.cs
+    DateVisitTemplate.cs
+    DailyRoutineTemplate.cs
+  ActionContext.cs               # State bag passed through events
+  TraceEmitter.cs                # Events call this to deposit traces</div>
+  </div>
+
+  <div class="mockup" style="margin-top:1rem">
+    <div class="mockup-header">events/ForcedEntry.cs</div>
+    <div class="mockup-body" style="font-family:monospace;font-size:13px;white-space:pre;color:#ccc;line-height:1.5">public static class ForcedEntry
+{
+    public static void Execute(ActionContext ctx)
+    {
+        // Pick method based on location properties + randomness
+        var method = ChooseMethod(ctx);
+
+        switch (method)
+        {
+            case EntryMethod.Window:
+                ctx.Traces.Add(Trace.Mark("broken window", ctx.EntryPoint));
+                ctx.Traces.Add(Trace.Fingerprint(ctx.Actor, ctx.EntryPoint, "window exterior"));
+                ctx.Traces.Add(Trace.Fingerprint(ctx.Actor, ctx.EntryPoint, "window frame"));
+                if (ctx.Random.Chance(0.3f))
+                    ctx.Traces.Add(Trace.Mark("torn clothing fiber on window frame", ctx.EntryPoint));
+                ctx.Noise += NoiseLevel.Loud;
+                break;
+
+            case EntryMethod.LockPick:
+                ctx.Traces.Add(Trace.Mark("scratch marks on lock", ctx.EntryPoint));
+                ctx.Traces.Add(Trace.Fingerprint(ctx.Actor, ctx.EntryPoint, "door handle"));
+                ctx.Noise += NoiseLevel.Quiet;
+                break;
+
+            case EntryMethod.BreakDoor:
+                ctx.Traces.Add(Trace.Mark("door broken down", ctx.EntryPoint));
+                ctx.Traces.Add(Trace.Footprint(ctx.Actor, ctx.EntryPoint, "boot print on door"));
+                ctx.Noise += NoiseLevel.VeryLoud;
+                break;
+        }
+
+        // Neighbors might witness based on noise
+        if (ctx.Noise >= NoiseLevel.Loud)
+            Witnesses.CheckNeighbors(ctx, "heard loud noise from {address}");
+    }
+}</div>
+  </div>
+
+  <div class="mockup" style="margin-top:1rem">
+    <div class="mockup-header">templates/BreakInMurderTemplate.cs</div>
+    <div class="mockup-body" style="font-family:monospace;font-size:13px;white-space:pre;color:#ccc;line-height:1.5">public class BreakInMurderTemplate : IActionTemplate
+{
+    public ActionResult Execute(ActionContext ctx)
+    {
+        var victim = ctx.GetTarget&lt;Person&gt;();
+        var home = ctx.State.GetAddress(victim.HomeAddressId);
+
+        // Step 1: Get inside
+        ForcedEntry.Execute(ctx);
+
+        // Step 2: Find victim (they're in a sublocation)
+        var victimRoom = FindPersonRoom(victim, home);
+        Movement.MoveTo(ctx, victimRoom);
+
+        // Step 3: Confrontation — does victim fight back?
+        if (ctx.Random.Chance(0.6f))
+        {
+            Violence.Fight(ctx, victim, victimRoom);
+
+            // Chase? 40% chance victim flees
+            if (victim.IsAlive &amp;&amp; ctx.Random.Chance(0.4f))
+            {
+                var fleeRoom = PickAdjacentRoom(home, victimRoom);
+                Movement.ChaseFromTo(ctx, victim, victimRoom, fleeRoom);
+                Violence.Fight(ctx, victim, fleeRoom);
+            }
+        }
+
+        // Step 4: Kill
+        Violence.Kill(ctx, victim, ctx.CurrentRoom);
+
+        // Step 5: Leave (optional: clean up, search, take trophy)
+        if (ctx.Random.Chance(0.2f))
+            Search.SearchFor(ctx, home, "valuables");
+
+        Movement.MoveTo(ctx, home.GetEntryPoint());
+        ForcedEntry.Exit(ctx);
+
+        return new ActionResult { Duration = ctx.ElapsedTime };
+    }
+}</div>
+  </div>
+
+  <div class="pros-cons">
+    <div class="pros"><h4>Pros</h4><ul>
+      <li>Full power of C# — any logic, any branching</li>
+      <li>Easy to debug, step through, unit test</li>
+      <li>Composable: Fight, MoveTo, ForcedEntry reused everywhere</li>
+      <li>IDE autocomplete, type safety, refactoring support</li>
+    </ul></div>
+    <div class="cons"><h4>Cons</h4><ul>
+      <li>Adding a new template = writing C# code, recompiling</li>
+      <li>Non-programmers can't author templates</li>
+      <li>Harder to visualize the full "story" of a template at a glance</li>
+    </ul></div>
+  </div>
+</div>
+
+<hr style="border-color:#333;margin:2rem 0">
+
+<div class="section">
+  <h3>Approach B: Data-Driven — JSON/YAML Configs</h3>
+  <p class="subtitle">Templates are config files. An interpreter engine runs them. Events are named operations.</p>
+
+  <div class="mockup">
+    <div class="mockup-header">File structure</div>
+    <div class="mockup-body" style="font-family:monospace;font-size:13px;white-space:pre;color:#ccc;line-height:1.5">src/simulation/actions/
+  engine/
+    ActionEngine.cs              # Interprets template configs
+    EventRegistry.cs             # Maps event names to handlers
+    TraceEmitter.cs
+  handlers/                      # C# handlers for each event type
+    ForcedEntryHandler.cs
+    MovementHandler.cs
+    ViolenceHandler.cs
+data/templates/                  # JSON config files
+  break-in-murder.json
+  burglary.json
+  date-visit.json
+  daily-routine.json</div>
+  </div>
+
+  <div class="mockup" style="margin-top:1rem">
+    <div class="mockup-header">data/templates/break-in-murder.json</div>
+    <div class="mockup-body" style="font-family:monospace;font-size:13px;white-space:pre;color:#ccc;line-height:1.5">{
+  "name": "break_in_murder",
+  "steps": [
+    {
+      "event": "forced_entry",
+      "target": "victim.home",
+      "params": { "prefer": "window" }
+    },
+    {
+      "event": "move_to",
+      "target": "victim.current_room"
+    },
+    {
+      "if": { "chance": 0.6 },
+      "then": [
+        { "event": "fight", "target": "victim", "location": "current_room" },
+        {
+          "if": { "chance": 0.4, "condition": "victim.is_alive" },
+          "then": [
+            { "event": "chase", "from": "current_room", "to": "adjacent_room" },
+            { "event": "fight", "target": "victim", "location": "current_room" }
+          ]
+        }
+      ]
+    },
+    {
+      "event": "kill",
+      "target": "victim"
+    },
+    {
+      "if": { "chance": 0.2 },
+      "then": [
+        { "event": "search", "target": "victim.home", "for": "valuables" }
+      ]
+    },
+    { "event": "move_to", "target": "entry_point" },
+    { "event": "exit" }
+  ]
+}</div>
+  </div>
+
+  <div class="pros-cons">
+    <div class="pros"><h4>Pros</h4><ul>
+      <li>Templates are data — easy to read, diff, review</li>
+      <li>Could hot-reload without recompiling</li>
+      <li>Clear separation: engine logic vs. template authoring</li>
+      <li>Could build a visual editor someday</li>
+    </ul></div>
+    <div class="cons"><h4>Cons</h4><ul>
+      <li>You're building a scripting language — conditionals, references, expressions</li>
+      <li>Debugging is painful (stack traces point to engine, not template)</li>
+      <li>Limited expressiveness — complex logic needs engine extensions</li>
+      <li>No type safety on template configs until runtime</li>
+      <li>Significant upfront engine investment</li>
+    </ul></div>
+  </div>
+</div>
+
+<hr style="border-color:#333;margin:2rem 0">
+
+<div class="section">
+  <h3>Approach C: Hybrid — C# Event Primitives + Fluent Builder API</h3>
+  <p class="subtitle">Events are C# primitives. Templates compose them via a readable fluent API. Best of both?</p>
+
+  <div class="mockup">
+    <div class="mockup-header">File structure</div>
+    <div class="mockup-body" style="font-family:monospace;font-size:13px;white-space:pre;color:#ccc;line-height:1.5">src/simulation/actions/
+  events/                        # Same reusable primitives as Approach A
+    ForcedEntry.cs
+    Movement.cs
+    Violence.cs
+    Social.cs
+    Search.cs
+  templates/                     # Templates using fluent builder
+    BreakInMurderTemplate.cs
+    BurglaryTemplate.cs
+    DateVisitTemplate.cs
+  ActionSequence.cs              # Fluent builder for composing events
+  ActionContext.cs
+  TraceEmitter.cs</div>
+  </div>
+
+  <div class="mockup" style="margin-top:1rem">
+    <div class="mockup-header">ActionSequence.cs (the builder)</div>
+    <div class="mockup-body" style="font-family:monospace;font-size:13px;white-space:pre;color:#ccc;line-height:1.5">public class ActionSequence
+{
+    public ActionSequence Do(Action&lt;ActionContext&gt; action) { ... }
+    public ActionSequence MoveTo(string target) { ... }
+    public ActionSequence Maybe(float chance, Action&lt;ActionSequence&gt; branch) { ... }
+    public ActionSequence If(Func&lt;ActionContext, bool&gt; cond, Action&lt;ActionSequence&gt; then) { ... }
+    public ActionSequence OneOf(params (float weight, Action&lt;ActionSequence&gt; branch)[] options) { ... }
+    public ActionResult Execute(ActionContext ctx) { ... }
+}</div>
+  </div>
+
+  <div class="mockup" style="margin-top:1rem">
+    <div class="mockup-header">templates/BreakInMurderTemplate.cs</div>
+    <div class="mockup-body" style="font-family:monospace;font-size:13px;white-space:pre;color:#ccc;line-height:1.5">public class BreakInMurderTemplate : IActionTemplate
+{
+    public ActionResult Execute(ActionContext ctx)
+    {
+        var victim = ctx.GetTarget&lt;Person&gt;();
+
+        return new ActionSequence()
+            .Do(ForcedEntry.Enter)
+            .MoveTo("victim.current_room")
+            .Maybe(0.6f, s =&gt; s
+                .Do(c =&gt; Violence.Fight(c, victim))
+                .If(c =&gt; victim.IsAlive, s2 =&gt; s2
+                    .Maybe(0.4f, s3 =&gt; s3
+                        .Do(c =&gt; Movement.ChaseTo(c, victim, "adjacent_room"))
+                        .Do(c =&gt; Violence.Fight(c, victim))
+                    )
+                )
+            )
+            .Do(c =&gt; Violence.Kill(c, victim))
+            .Maybe(0.2f, s =&gt; s
+                .Do(c =&gt; Search.SearchFor(c, "valuables"))
+            )
+            .MoveTo("entry_point")
+            .Do(ForcedEntry.Exit)
+            .Execute(ctx);
+    }
+}</div>
+  </div>
+
+  <div class="pros-cons">
+    <div class="pros"><h4>Pros</h4><ul>
+      <li>Reads like a script — the "story" is visible at a glance</li>
+      <li>Full C# power when you need it (lambdas, conditions)</li>
+      <li>Same reusable event primitives as Approach A</li>
+      <li>Type-safe, debuggable, IDE-friendly</li>
+      <li>Builder API is thin — not building a scripting language</li>
+      <li>Easy to add new control flow (OneOf for weighted random, Repeat, etc.)</li>
+    </ul></div>
+    <div class="cons"><h4>Cons</h4><ul>
+      <li>Still requires recompilation for new templates</li>
+      <li>Fluent API has a learning curve (lambdas within lambdas)</li>
+      <li>Builder needs to handle time accumulation, trace collection, context threading</li>
+    </ul></div>
+  </div>
+</div>
