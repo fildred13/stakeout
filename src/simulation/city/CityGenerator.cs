@@ -569,6 +569,9 @@ public class CityGenerator
 
                 if (!fits) continue;
 
+                // At least one cell in the footprint must be adjacent to a road
+                if (!FootprintTouchesRoad(grid, x, y, w, h)) continue;
+
                 // Place all cells
                 for (int dy = 0; dy < h; dy++)
                     for (int dx = 0; dx < w; dx++)
@@ -576,12 +579,13 @@ public class CityGenerator
             }
         }
 
-        // Pass 2: fill remaining Empty cells with 1x1 types
+        // Pass 2: fill remaining Empty cells with 1x1 types (only if adjacent to a road)
         for (int y = top; y <= bottom; y++)
         {
             for (int x = left; x <= right; x++)
             {
                 if (grid.GetCell(x, y).PlotType != PlotType.Empty) continue;
+                if (!FootprintTouchesRoad(grid, x, y, 1, 1)) continue;
 
                 PlotType chosen = PickWeighted(smallWeights, smallTotal, SmallBuildingTypes);
                 SetPlotType(grid, x, y, chosen);
@@ -606,6 +610,27 @@ public class CityGenerator
         var cell = grid.GetCell(x, y);
         cell.PlotType = type;
         grid.SetCell(x, y, cell);
+    }
+
+    /// <summary>
+    /// Returns true if at least one cell in the footprint (x,y)-(x+w-1,y+h-1)
+    /// has an adjacent road cell (4-directional). Ensures buildings can attach to a road.
+    /// </summary>
+    private static bool FootprintTouchesRoad(CityGrid grid, int x, int y, int w, int h)
+    {
+        for (int dy = 0; dy < h; dy++)
+        {
+            for (int dx = 0; dx < w; dx++)
+            {
+                int cx = x + dx, cy = y + dy;
+                // Only check outward-facing edges of the footprint
+                if (dx == 0 && cx > 0 && grid.GetCell(cx - 1, cy).PlotType == PlotType.Road) return true;
+                if (dx == w - 1 && cx + 1 < grid.Width && grid.GetCell(cx + 1, cy).PlotType == PlotType.Road) return true;
+                if (dy == 0 && cy > 0 && grid.GetCell(cx, cy - 1).PlotType == PlotType.Road) return true;
+                if (dy == h - 1 && cy + 1 < grid.Height && grid.GetCell(cx, cy + 1).PlotType == PlotType.Road) return true;
+            }
+        }
+        return false;
     }
 
     private void ResolveFacingAndCreateAddresses(CityGrid grid, SimulationState state)

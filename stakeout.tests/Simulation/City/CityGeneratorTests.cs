@@ -219,6 +219,31 @@ public class CityGeneratorTests
     }
 
     [Fact]
+    public void Generate_AllBuildingsAdjacentToRoad()
+    {
+        var state = new SimulationState();
+        var grid = new CityGenerator(seed: 42).Generate(state);
+
+        foreach (var address in state.Addresses.Values)
+        {
+            var cells = grid.GetCellsForAddress(address.Id);
+            bool touchesRoad = cells.Any(pos =>
+            {
+                foreach (var (dx, dy) in new[] { (0, 1), (0, -1), (1, 0), (-1, 0) })
+                {
+                    int nx = pos.X + dx, ny = pos.Y + dy;
+                    if (grid.IsInBounds(nx, ny) && grid.GetCell(nx, ny).PlotType == PlotType.Road)
+                        return true;
+                }
+                return false;
+            });
+
+            Assert.True(touchesRoad,
+                $"Address {address.Id} ({address.Type}) at ({address.GridX},{address.GridY}) has no cell adjacent to a road");
+        }
+    }
+
+    [Fact]
     public void Generate_BuildingAnchorCellsFaceARoad()
     {
         var state = new SimulationState();
