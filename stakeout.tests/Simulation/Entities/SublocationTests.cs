@@ -42,3 +42,29 @@ public class SublocationTests
         Assert.Equal(ConnectionType.OpenPassage, conn.Type);
     }
 }
+
+// New SubLocation tests (Task 1) — in this file because Windows filesystem is
+// case-insensitive and SubLocationTests.cs == SublocationTests.cs on disk.
+public class SubLocationTests
+{
+    [Fact]
+    public void HasTag_ReturnsTrueForPresentTag()
+    {
+        var sub = new SubLocation { Tags = new[] { "bedroom" } };
+        Assert.True(sub.HasTag("bedroom"));
+    }
+
+    [Fact]
+    public void HasTag_ReturnsFalseForMissingTag()
+    {
+        var sub = new SubLocation { Tags = new[] { "bedroom" } };
+        Assert.False(sub.HasTag("kitchen"));
+    }
+
+    [Fact]
+    public void AccessPoints_EmptyByDefault()
+    {
+        var sub = new SubLocation();
+        Assert.Empty(sub.AccessPoints);
+    }
+}

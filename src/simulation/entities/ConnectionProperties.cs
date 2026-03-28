@@ -2,13 +2,7 @@ using System.Collections.Generic;
 
 namespace Stakeout.Simulation.Entities;
 
-public enum LockMechanism
-{
-    Key,
-    Combination,
-    Keypad,
-    Electronic
-}
+// LockMechanism moved to AccessPoint.cs
 
 public enum ConcealmentMethod
 {

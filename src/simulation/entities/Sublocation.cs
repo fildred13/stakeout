@@ -1,6 +1,9 @@
 using System;
+using System.Collections.Generic;
 
 namespace Stakeout.Simulation.Entities;
+
+// --- Legacy classes (to be removed in Task 9) ---
 
 public enum ConnectionType
 {
@@ -39,6 +42,19 @@ public class SublocationConnection
     public TransparentProperty Transparent { get; set; }
     public BreakableProperty Breakable { get; set; }
     public FingerprintSurface Fingerprints { get; set; }
+
+    public bool HasTag(string tag) => Array.IndexOf(Tags, tag) >= 0;
+}
+
+// --- New SubLocation class (Task 1) ---
+
+public class SubLocation
+{
+    public int Id { get; set; }
+    public int LocationId { get; set; }
+    public string Name { get; set; }
+    public string[] Tags { get; set; } = Array.Empty<string>();
+    public List<AccessPoint> AccessPoints { get; } = new();
 
     public bool HasTag(string tag) => Array.IndexOf(Tags, tag) >= 0;
 }
