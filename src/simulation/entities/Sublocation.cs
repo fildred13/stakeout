@@ -46,7 +46,9 @@ public class SublocationConnection
     public bool HasTag(string tag) => Array.IndexOf(Tags, tag) >= 0;
 }
 
-// --- New SubLocation class (Task 1) ---
+// SubLocation lives in this file because Windows is case-insensitive (SubLocation.cs == Sublocation.cs).
+// When the legacy Sublocation/SublocationConnection classes above are deleted in Task 9,
+// rename this file to SubLocation.cs.
 
 public class SubLocation
 {
