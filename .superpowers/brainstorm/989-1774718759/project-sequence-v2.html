@@ -1,0 +1,192 @@
+<h2>Simulation Overhaul — Revised Project Sequence</h2>
+<p class="subtitle">Sequential, no parallelization. Unified NPC brain + action templates. Player UI included.</p>
+
+<div class="section" style="padding:1.5rem;border:1px solid #555;border-radius:8px;margin-bottom:2rem">
+  <h3>Key Revision: Intents = Action Templates</h3>
+  <p style="color:#ccc;line-height:1.8">
+    There is no separate "intent" layer and "action template" layer. <strong>Everything an NPC does is an action template being executed.</strong> The NPC brain selects which action to run. Actions can push sub-actions (that's the stack). The "routine" is the brain's default action selection logic — not a separate data structure.
+  </p>
+  <div style="font-family:monospace;font-size:13px;color:#ccc;line-height:1.6;padding:1rem;border:1px solid #444;border-radius:8px;margin-top:1rem">
+NPC Brain (selector)
+  "What should I do right now?"
+  → evaluates: obligations, drives, defaults, interrupts
+  → picks an action template
+       │
+Action Template (executor)
+  "How do I do it?"
+  → runs composable steps, emits traces
+  → can push sub-actions onto the stack
+  → completes → brain selects next action
+       │
+Action Library (catalog)
+  Simple:   IdleAtHome, Sleep, GoForARun, EatAtDiner
+  Moderate: BuyDrugs, GoOnDate, Commute, WorkShift
+  Complex:  BreakInMurder, Heist, Burglary
+
+  All use the same machinery. "Go for a run" and "do a heist"
+  differ in complexity, not in kind.
+  </div>
+</div>
+
+<hr style="border-color:#333;margin:2rem 0">
+
+<div class="section">
+  <h3>Revised Project Sequence</h3>
+  <p class="subtitle">Each project gets: design spec → implementation plan → implementation. All sequential.</p>
+
+  <div style="display:flex;flex-direction:column;gap:1.5rem">
+
+    <div style="padding:1.5rem;border:1px solid #555;border-radius:8px;position:relative">
+      <div style="position:absolute;top:-12px;left:16px;background:#1a1a2e;padding:0 8px;color:#f0c040;font-weight:bold;font-size:14px">Project 1</div>
+      <h3 style="margin-top:4px">Location Hierarchy &amp; Address Templates</h3>
+      <p style="color:#ccc;line-height:1.6">Replace the sublocation graph with Address → Location → Sub-Location. Composable address type templates. Doors/access points as location properties. Migrate all generators.</p>
+      <div class="label" style="margin-top:0.5rem">Delivers</div>
+      <ul style="color:#aaa;font-size:13px">
+        <li>New Address, Location, SubLocation entities with tag system</li>
+        <li>Door/AccessPoint as mutable objects on locations</li>
+        <li>Address type template system (composable location types)</li>
+        <li>Migrated generators: SuburbanHome, Apartment, Diner, Office, Park, DiveBar</li>
+        <li>Remove: SublocationGraph, SublocationConnection, BFS pathfinding, TraversalContext</li>
+      </ul>
+      <div class="label" style="margin-top:0.5rem">Why first</div>
+      <p style="color:#aaa;font-size:13px">Everything references locations. This is the data model everything else builds on.</p>
+    </div>
+
+    <div style="text-align:center;color:#555;font-size:20px">↓</div>
+
+    <div style="padding:1.5rem;border:1px solid #555;border-radius:8px;position:relative">
+      <div style="position:absolute;top:-12px;left:16px;background:#1a1a2e;padding:0 8px;color:#f0c040;font-weight:bold;font-size:14px">Project 2</div>
+      <h3 style="margin-top:4px">Fixtures &amp; Trace System</h3>
+      <p style="color:#ccc;line-height:1.6">Fixtures (stable objects from templates, can contain traces) and traces (dynamic evidence from events). Trace decay. TraceEmitter API. Investigation query merging both systems.</p>
+      <div class="label" style="margin-top:0.5rem">Delivers</div>
+      <ul style="color:#aaa;font-size:13px">
+        <li>Fixture entity with container semantics</li>
+        <li>Fixture definitions in address type templates</li>
+        <li>Redesigned Trace entity (marks, items, sightings, records, fingerprints)</li>
+        <li>Trace decay over time</li>
+        <li>TraceEmitter API (what action templates will call)</li>
+        <li>Investigation query interface (merged fixture + trace discovery)</li>
+        <li>Remove: FingerprintService</li>
+      </ul>
+      <div class="label" style="margin-top:0.5rem">Why second</div>
+      <p style="color:#aaa;font-size:13px">The trace system is what actions produce. Need the output system before building the action engine.</p>
+    </div>
+
+    <div style="text-align:center;color:#555;font-size:20px">↓</div>
+
+    <div style="padding:1.5rem;border:1px solid #555;border-radius:8px;position:relative">
+      <div style="position:absolute;top:-12px;left:16px;background:#1a1a2e;padding:0 8px;color:#f0c040;font-weight:bold;font-size:14px">Project 3</div>
+      <h3 style="margin-top:4px">NPC Brain &amp; Action Engine</h3>
+      <p style="color:#ccc;line-height:1.6">The unified NPC brain: action selection (obligations + drives + defaults) and action execution (fluent builder, composable event primitives, sub-action stacking). The action library of reusable templates. Event log for history. This is the big rewrite.</p>
+      <div class="label" style="margin-top:0.5rem">Delivers</div>
+      <ul style="color:#aaa;font-size:13px">
+        <li>Action stack (push/pop sub-actions, priority-based interruption)</li>
+        <li>Brain: obligation/drive/default evaluation → action selection</li>
+        <li>ActionSequence fluent builder (Do, MoveTo, Maybe, If, OneOf)</li>
+        <li>ActionContext (state bag threaded through events)</li>
+        <li>Event primitives: ForcedEntry, Movement, Violence, Social, Search</li>
+        <li>Initial action library: Sleep, IdleAtHome, Commute, WorkShift, EatOut, GoForARun</li>
+        <li>NPC travel between addresses (triggered by action, not pre-scheduled)</li>
+        <li>Fast-forward (routine NPCs as time→location, active NPCs step-through)</li>
+        <li>Event log for history/investigation</li>
+        <li>Trait → drive mapping (initial set: runner, addict, devout, etc.)</li>
+        <li>Remove: ScheduleBuilder, ObjectiveResolver, DailySchedule, PersonBehavior, TaskResolver, all decomposition strategies</li>
+      </ul>
+      <div class="label" style="margin-top:0.5rem">Why third</div>
+      <p style="color:#aaa;font-size:13px">The brain is the core engine. Needs locations (P1) and traces (P2) as foundations. Everything after this builds on the brain.</p>
+    </div>
+
+    <div style="text-align:center;color:#555;font-size:20px">↓</div>
+
+    <div style="padding:1.5rem;border:1px solid #555;border-radius:8px;position:relative">
+      <div style="position:absolute;top:-12px;left:16px;background:#1a1a2e;padding:0 8px;color:#f0c040;font-weight:bold;font-size:14px">Project 4</div>
+      <h3 style="margin-top:4px">Business Entities &amp; Staffing</h3>
+      <p style="color:#ccc;line-height:1.6">Businesses as first-class entities. Operating hours, shift definitions, day-of-week variation. NPC generation fills shifts. Job obligations feed into the brain's action selection.</p>
+      <div class="label" style="margin-top:0.5rem">Delivers</div>
+      <ul style="color:#aaa;font-size:13px">
+        <li>Business entity (operating hours, shift slots, staffing rules)</li>
+        <li>Business type templates (diner, bar, office, bank, etc.)</li>
+        <li>Shift ↔ NPC assignment during generation</li>
+        <li>Business ↔ Address linkage</li>
+        <li>Day-of-week and shift variation</li>
+        <li>Job obligation integration with NPC brain (shifts → work action selection)</li>
+      </ul>
+      <div class="label" style="margin-top:0.5rem">Why fourth</div>
+      <p style="color:#aaa;font-size:13px">Businesses provide the data that job obligations consume. Brain (P3) must exist first so we can wire shifts into action selection.</p>
+    </div>
+
+    <div style="text-align:center;color:#555;font-size:20px">↓</div>
+
+    <div style="padding:1.5rem;border:1px solid #555;border-radius:8px;position:relative">
+      <div style="position:absolute;top:-12px;left:16px;background:#1a1a2e;padding:0 8px;color:#f0c040;font-weight:bold;font-size:14px">Project 5</div>
+      <h3 style="margin-top:4px">Groups &amp; Coordinated Actions</h3>
+      <p style="color:#ccc;line-height:1.6">Group entity with shared action. Members join/leave. Split/Regroup for parallel sub-actions. Same system for a date and a heist.</p>
+      <div class="label" style="margin-top:0.5rem">Delivers</div>
+      <ul style="color:#aaa;font-size:13px">
+        <li>Group entity (members, shared state, shared vehicle/loot)</li>
+        <li>Group action (shared action pushed onto all members' stacks)</li>
+        <li>Join/Leave/Disband lifecycle</li>
+        <li>Split/Regroup for parallel sub-actions</li>
+        <li>Member interruption handling</li>
+        <li>Group action templates: GoOnDate, CriminalMeeting</li>
+      </ul>
+      <div class="label" style="margin-top:0.5rem">Why fifth</div>
+      <p style="color:#aaa;font-size:13px">Groups are a coordination layer on top of the brain + action engine.</p>
+    </div>
+
+    <div style="text-align:center;color:#555;font-size:20px">↓</div>
+
+    <div style="padding:1.5rem;border:1px solid #555;border-radius:8px;position:relative">
+      <div style="position:absolute;top:-12px;left:16px;background:#1a1a2e;padding:0 8px;color:#f0c040;font-weight:bold;font-size:14px">Project 6</div>
+      <h3 style="margin-top:4px">History Backfill &amp; NPC Spawning</h3>
+      <p style="color:#ccc;line-height:1.6">New NPCs spawn with plausible history. Routine-based trace backfill for general population. Event-level backfill for crime NPCs.</p>
+      <div class="label" style="margin-top:0.5rem">Delivers</div>
+      <ul style="color:#aaa;font-size:13px">
+        <li>Routine-based backfill (derive traces from routine over N days)</li>
+        <li>Event-level backfill for crime NPCs (planted history)</li>
+        <li>Late-spawning NPC integration</li>
+      </ul>
+      <div class="label" style="margin-top:0.5rem">Why sixth</div>
+      <p style="color:#aaa;font-size:13px">Backfill uses routines (P3), traces (P2), and optionally groups (P5).</p>
+    </div>
+
+    <div style="text-align:center;color:#555;font-size:20px">↓</div>
+
+    <div style="padding:1.5rem;border:1px solid #555;border-radius:8px;position:relative">
+      <div style="position:absolute;top:-12px;left:16px;background:#1a1a2e;padding:0 8px;color:#f0c040;font-weight:bold;font-size:14px">Project 7</div>
+      <h3 style="margin-top:4px">Crime Templates &amp; Scenarios</h3>
+      <p style="color:#ccc;line-height:1.6">Rebuild the crime system on the new engine. Crime scenarios use action templates, groups, and trace generation. Start with murder, expand from there.</p>
+      <div class="label" style="margin-top:0.5rem">Delivers</div>
+      <ul style="color:#aaa;font-size:13px">
+        <li>Crime scenario system (replaces CrimeGenerator + ICrimeTemplate)</li>
+        <li>Murder scenario with variable methods and rich trace generation</li>
+        <li>Crime NPC casting from population</li>
+        <li>Drive injection (crime gives NPCs new drives)</li>
+        <li>Group integration for multi-person crimes</li>
+      </ul>
+      <div class="label" style="margin-top:0.5rem">Why seventh</div>
+      <p style="color:#aaa;font-size:13px">Crimes exercise the full stack: locations, traces, brain, actions, groups, backfill.</p>
+    </div>
+
+    <div style="text-align:center;color:#555;font-size:20px">↓</div>
+
+    <div style="padding:1.5rem;border:1px solid #555;border-radius:8px;position:relative">
+      <div style="position:absolute;top:-12px;left:16px;background:#1a1a2e;padding:0 8px;color:#f0c040;font-weight:bold;font-size:14px">Project 8</div>
+      <h3 style="margin-top:4px">Player Interaction UI</h3>
+      <p style="color:#ccc;line-height:1.6">The player-facing screens that bring it all together. Address navigation (enter, investigate, break in). Investigation mechanic (timed evidence discovery). Stakeout event stream with trigger conditions. Fixture interaction (hack computer, search filing cabinet). Evidence board integration.</p>
+      <div class="label" style="margin-top:0.5rem">Delivers</div>
+      <ul style="color:#aaa;font-size:13px">
+        <li>Address screen (exterior view, action options based on address type/state)</li>
+        <li>Interior navigation (location list, sublocation list for applicable locations)</li>
+        <li>Door interaction (knock, try keys, pick lock, break down, dust for prints)</li>
+        <li>Investigation mechanic (timed discovery of fixtures + traces, difficulty-weighted)</li>
+        <li>Fixture interaction screens (computer hacking, searching containers, etc.)</li>
+        <li>Stakeout event stream with trigger conditions and auto-realtime</li>
+        <li>Evidence board integration (right-click to add, red/white text coloring)</li>
+      </ul>
+      <div class="label" style="margin-top:0.5rem">Why last</div>
+      <p style="color:#aaa;font-size:13px">The UI consumes everything: locations, fixtures, traces, NPC presence, event streams. It's the capstone that makes it all playable.</p>
+    </div>
+
+  </div>
+</div>
