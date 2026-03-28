@@ -18,28 +18,6 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 mouse_filter = 2
 
-[node name="MapBackground" type="ColorRect" parent="CityMap"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-color = Color(0.3, 0.3, 0.3, 1)
-mouse_filter = 2
-
-[node name="LocationIcons" type="Control" parent="CityMap"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-mouse_filter = 2
-
-[node name="EntityDots" type="Control" parent="CityMap"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-mouse_filter = 2
-
 [node name="HoverLabel" type="Label" parent="."]
 visible = false
 layout_mode = 0
