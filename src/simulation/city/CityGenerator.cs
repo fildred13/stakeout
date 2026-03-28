@@ -33,6 +33,7 @@ public class CityGenerator
         PlaceArterialRoads(grid);
         SubdivideSuperBlocks(grid);
         AssignStreetNames(grid, state);
+        AssignPlotTypes(grid);
         return grid;
     }
 
@@ -381,6 +382,212 @@ public class CityGenerator
         }
 
         return $"{baseName} {suffix}";
+    }
+
+    private float ComputeUrbanness(float cx, float cy)
+    {
+        float dist = NumericsVector2.Distance(new NumericsVector2(cx, cy), Center);
+        return 1.0f - Math.Clamp(dist / MaxDist, 0f, 1f);
+    }
+
+    private void AssignPlotTypes(CityGrid grid)
+    {
+        // Collect all non-road rectangular sub-blocks from the grid.
+        // A sub-block is a maximal contiguous rectangle of non-road cells bounded by road rows/columns.
+        // We scan the road rows/columns to find block boundaries, then process each block interior.
+        var hBoundaries = new List<int>();
+        var vBoundaries = new List<int>();
+
+        for (int y = 0; y < GridSize; y++)
+        {
+            bool fullRow = true;
+            for (int x = 0; x < GridSize; x++)
+            {
+                if (grid.GetCell(x, y).PlotType != PlotType.Road) { fullRow = false; break; }
+            }
+            if (fullRow) hBoundaries.Add(y);
+        }
+
+        for (int x = 0; x < GridSize; x++)
+        {
+            bool fullCol = true;
+            for (int y = 0; y < GridSize; y++)
+            {
+                if (grid.GetCell(x, y).PlotType != PlotType.Road) { fullCol = false; break; }
+            }
+            if (fullCol) vBoundaries.Add(x);
+        }
+
+        hBoundaries.Sort();
+        vBoundaries.Sort();
+
+        // Process each super-block (between full road rows/cols)
+        for (int hi = 0; hi < hBoundaries.Count - 1; hi++)
+        {
+            int blockTop = hBoundaries[hi] + 1;
+            int blockBottom = hBoundaries[hi + 1] - 1;
+            if (blockTop > blockBottom) continue;
+
+            for (int vi = 0; vi < vBoundaries.Count - 1; vi++)
+            {
+                int blockLeft = vBoundaries[vi] + 1;
+                int blockRight = vBoundaries[vi + 1] - 1;
+                if (blockLeft > blockRight) continue;
+
+                // Within this super-block there may be secondary roads.
+                // Find sub-blocks by scanning for road rows/cols within the super-block.
+                FillSubBlocks(grid, blockLeft, blockTop, blockRight, blockBottom);
+            }
+        }
+    }
+
+    private void FillSubBlocks(CityGrid grid, int left, int top, int right, int bottom)
+    {
+        // Find internal road rows within [top, bottom]
+        var internalHRoads = new List<int>();
+        for (int y = top; y <= bottom; y++)
+        {
+            bool isRoadRow = true;
+            for (int x = left; x <= right; x++)
+            {
+                if (grid.GetCell(x, y).PlotType != PlotType.Road) { isRoadRow = false; break; }
+            }
+            if (isRoadRow) internalHRoads.Add(y);
+        }
+
+        // Find internal road columns within [left, right]
+        var internalVRoads = new List<int>();
+        for (int x = left; x <= right; x++)
+        {
+            bool isRoadCol = true;
+            for (int y = top; y <= bottom; y++)
+            {
+                if (grid.GetCell(x, y).PlotType != PlotType.Road) { isRoadCol = false; break; }
+            }
+            if (isRoadCol) internalVRoads.Add(x);
+        }
+
+        // Build row and column boundary lists for sub-block detection
+        var rowBounds = new List<int> { top - 1 };
+        rowBounds.AddRange(internalHRoads);
+        rowBounds.Add(bottom + 1);
+
+        var colBounds = new List<int> { left - 1 };
+        colBounds.AddRange(internalVRoads);
+        colBounds.Add(right + 1);
+
+        rowBounds.Sort();
+        colBounds.Sort();
+
+        for (int ri = 0; ri < rowBounds.Count - 1; ri++)
+        {
+            int subTop = rowBounds[ri] + 1;
+            int subBottom = rowBounds[ri + 1] - 1;
+            if (subTop > subBottom) continue;
+
+            for (int ci = 0; ci < colBounds.Count - 1; ci++)
+            {
+                int subLeft = colBounds[ci] + 1;
+                int subRight = colBounds[ci + 1] - 1;
+                if (subLeft > subRight) continue;
+
+                FillBlock(grid, subLeft, subTop, subRight, subBottom);
+            }
+        }
+    }
+
+    // Weight tables: [ApartmentBuilding, Office, Park] for 2x2; [SuburbanHome, Diner, DiveBar, Empty] for 1x1
+    private static readonly (PlotType Type, float Urban, float Suburban)[] TwoByTwoTypes =
+    {
+        (PlotType.ApartmentBuilding, 30f, 5f),
+        (PlotType.Office,            25f, 5f),
+        (PlotType.Park,              10f, 10f),
+    };
+
+    private static readonly (PlotType Type, float Urban, float Suburban)[] OneByOneTypes =
+    {
+        (PlotType.SuburbanHome, 5f,  40f),
+        (PlotType.Diner,        5f,   5f),
+        (PlotType.DiveBar,      5f,   3f),
+        (PlotType.Empty,        5f,  20f),
+    };
+
+    private void FillBlock(CityGrid grid, int left, int top, int right, int bottom)
+    {
+        float centerX = (left + right) / 2f;
+        float centerY = (top + bottom) / 2f;
+        float urbanness = ComputeUrbanness(centerX, centerY);
+
+        // Compute interpolated weights for 2x2 types
+        float[] twoByTwoWeights = new float[TwoByTwoTypes.Length];
+        float twoByTwoTotal = 0f;
+        for (int i = 0; i < TwoByTwoTypes.Length; i++)
+        {
+            var (_, u, s) = TwoByTwoTypes[i];
+            twoByTwoWeights[i] = u * urbanness + s * (1f - urbanness);
+            twoByTwoTotal += twoByTwoWeights[i];
+        }
+
+        // Compute interpolated weights for 1x1 types
+        float[] oneByOneWeights = new float[OneByOneTypes.Length];
+        float oneByOneTotal = 0f;
+        for (int i = 0; i < OneByOneTypes.Length; i++)
+        {
+            var (_, u, s) = OneByOneTypes[i];
+            oneByOneWeights[i] = u * urbanness + s * (1f - urbanness);
+            oneByOneTotal += oneByOneWeights[i];
+        }
+
+        // Pass 1: place 2x2 buildings in empty 2x2 openings
+        for (int y = top; y <= bottom - 1; y++)
+        {
+            for (int x = left; x <= right - 1; x++)
+            {
+                if (grid.GetCell(x, y).PlotType != PlotType.Empty) continue;
+                if (grid.GetCell(x + 1, y).PlotType != PlotType.Empty) continue;
+                if (grid.GetCell(x, y + 1).PlotType != PlotType.Empty) continue;
+                if (grid.GetCell(x + 1, y + 1).PlotType != PlotType.Empty) continue;
+
+                PlotType chosen = PickWeighted(twoByTwoWeights, twoByTwoTotal, TwoByTwoTypes);
+
+                // Place all 4 cells
+                SetPlotType(grid, x,     y,     chosen);
+                SetPlotType(grid, x + 1, y,     chosen);
+                SetPlotType(grid, x,     y + 1, chosen);
+                SetPlotType(grid, x + 1, y + 1, chosen);
+            }
+        }
+
+        // Pass 2: fill remaining Empty cells with 1x1 types
+        for (int y = top; y <= bottom; y++)
+        {
+            for (int x = left; x <= right; x++)
+            {
+                if (grid.GetCell(x, y).PlotType != PlotType.Empty) continue;
+
+                PlotType chosen = PickWeighted(oneByOneWeights, oneByOneTotal, OneByOneTypes);
+                SetPlotType(grid, x, y, chosen);
+            }
+        }
+    }
+
+    private PlotType PickWeighted(float[] weights, float total, (PlotType Type, float Urban, float Suburban)[] types)
+    {
+        float roll = (float)(_rng.NextDouble() * total);
+        float cumulative = 0f;
+        for (int i = 0; i < weights.Length - 1; i++)
+        {
+            cumulative += weights[i];
+            if (roll < cumulative) return types[i].Type;
+        }
+        return types[weights.Length - 1].Type;
+    }
+
+    private static void SetPlotType(CityGrid grid, int x, int y, PlotType type)
+    {
+        var cell = grid.GetCell(x, y);
+        cell.PlotType = type;
+        grid.SetCell(x, y, cell);
     }
 
     // Expose arterial positions for later pipeline stages

@@ -137,6 +137,89 @@ public class CityGeneratorTests
     }
 
     [Fact]
+    public void Generate_HasBuildingPlots()
+    {
+        var state = new SimulationState();
+        var grid = new CityGenerator(seed: 42).Generate(state);
+
+        int buildings = 0;
+        for (int x = 0; x < grid.Width; x++)
+            for (int y = 0; y < grid.Height; y++)
+                if (grid.GetCell(x, y).PlotType.IsBuilding())
+                    buildings++;
+
+        Assert.True(buildings > 100, $"Expected >100 building plots, got {buildings}");
+    }
+
+    [Fact]
+    public void Generate_UrbanCenterHasMoreApartmentsAndOffices()
+    {
+        var state = new SimulationState();
+        var grid = new CityGenerator(seed: 42).Generate(state);
+
+        int centerUrban = 0, edgeUrban = 0;
+        int centerTotal = 0, edgeTotal = 0;
+
+        for (int x = 0; x < grid.Width; x++)
+        {
+            for (int y = 0; y < grid.Height; y++)
+            {
+                var type = grid.GetCell(x, y).PlotType;
+                if (type == PlotType.Road) continue;
+
+                bool isCenter = x >= 30 && x < 70 && y >= 30 && y < 70;
+                bool isUrbanType = type == PlotType.ApartmentBuilding || type == PlotType.Office;
+
+                if (isCenter) { centerTotal++; if (isUrbanType) centerUrban++; }
+                else { edgeTotal++; if (isUrbanType) edgeUrban++; }
+            }
+        }
+
+        float centerRatio = centerTotal > 0 ? (float)centerUrban / centerTotal : 0;
+        float edgeRatio = edgeTotal > 0 ? (float)edgeUrban / edgeTotal : 0;
+        Assert.True(centerRatio > edgeRatio,
+            $"Center urban ratio ({centerRatio:F3}) should exceed edge ({edgeRatio:F3})");
+    }
+
+    [Fact]
+    public void Generate_MultiPlotBuildingsOccupy2x2()
+    {
+        var state = new SimulationState();
+        var grid = new CityGenerator(seed: 42).Generate(state);
+
+        // Find an apartment building cell — all 4 cells in the 2x2 should be ApartmentBuilding
+        for (int x = 0; x < grid.Width - 1; x++)
+        {
+            for (int y = 0; y < grid.Height - 1; y++)
+            {
+                var cell = grid.GetCell(x, y);
+                if (cell.PlotType == PlotType.ApartmentBuilding)
+                {
+                    Assert.Equal(PlotType.ApartmentBuilding, grid.GetCell(x + 1, y).PlotType);
+                    Assert.Equal(PlotType.ApartmentBuilding, grid.GetCell(x, y + 1).PlotType);
+                    Assert.Equal(PlotType.ApartmentBuilding, grid.GetCell(x + 1, y + 1).PlotType);
+                    return;
+                }
+            }
+        }
+        Assert.Fail("No 2x2 apartment building found in generated city");
+    }
+
+    [Fact]
+    public void Generate_NoBuildingsOnRoads()
+    {
+        var state = new SimulationState();
+        var grid = new CityGenerator(seed: 42).Generate(state);
+
+        var roads = grid.GetPlotsByType(PlotType.Road);
+        foreach (var (x, y) in roads)
+        {
+            Assert.Equal(PlotType.Road, grid.GetCell(x, y).PlotType);
+            Assert.Null(grid.GetCell(x, y).AddressId);
+        }
+    }
+
+    [Fact]
     public void Generate_UrbanCenterHasSmallerBlocks()
     {
         var state = new SimulationState();
