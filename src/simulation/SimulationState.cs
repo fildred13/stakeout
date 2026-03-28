@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using Stakeout.Simulation.City;
 using Stakeout.Simulation.Entities;
 using Stakeout.Simulation.Events;
 using Stakeout.Simulation.Crimes;
@@ -24,6 +25,7 @@ public class SimulationState
     public Dictionary<int, Item> Items { get; } = new();
     public Dictionary<int, Sublocation> Sublocations { get; } = new();
     public List<SublocationConnection> SublocationConnections { get; } = new();
+    public CityGrid CityGrid { get; set; }
 
     private int _nextEntityId = 1;
 

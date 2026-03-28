@@ -40,8 +40,8 @@ public class LocationGeneratorTests
 
         var address = generator.GenerateAddress(state, AddressType.SuburbanHome);
 
-        Assert.InRange(address.Position.X, config.MinX, config.MaxX);
-        Assert.InRange(address.Position.Y, config.MinY, config.MaxY);
+        Assert.InRange(address.Position.X, 0f, config.MapWidth);
+        Assert.InRange(address.Position.Y, 0f, config.MapHeight);
     }
 
     [Fact]

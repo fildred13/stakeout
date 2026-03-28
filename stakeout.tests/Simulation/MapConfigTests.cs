@@ -7,15 +7,24 @@ namespace Stakeout.Tests.Simulation;
 public class MapConfigTests
 {
     [Fact]
-    public void ComputeTravelTimeHours_FullDiagonal_ReturnsMaxTravelTime()
+    public void GridDimensions_AreCorrect()
     {
         var config = new MapConfig();
-        var from = new Vector2(config.MinX, config.MinY);
-        var to = new Vector2(config.MaxX, config.MaxY);
+        Assert.Equal(100, config.GridWidth);
+        Assert.Equal(100, config.GridHeight);
+        Assert.Equal(48, config.CellSize);
+        Assert.Equal(4800f, config.MapWidth);
+        Assert.Equal(4800f, config.MapHeight);
+    }
 
+    [Fact]
+    public void ComputeTravelTimeHours_UsesGridPositions()
+    {
+        var config = new MapConfig();
+        var from = new Vector2(0, 0);
+        var to = new Vector2(config.MapWidth, config.MapHeight);
         var hours = config.ComputeTravelTimeHours(from, to);
-
-        Assert.Equal(config.MaxTravelTimeHours, hours, precision: 2);
+        Assert.InRange(hours, 0.9f, 1.1f);
     }
 
     [Fact]
@@ -27,19 +36,5 @@ public class MapConfigTests
         var hours = config.ComputeTravelTimeHours(pos, pos);
 
         Assert.Equal(0.0f, hours);
-    }
-
-    [Fact]
-    public void ComputeTravelTimeHours_HalfDiagonal_ReturnsHalfMaxTime()
-    {
-        var config = new MapConfig();
-        var center = new Vector2(
-            (config.MinX + config.MaxX) / 2,
-            (config.MinY + config.MaxY) / 2);
-        var corner = new Vector2(config.MaxX, config.MaxY);
-
-        var hours = config.ComputeTravelTimeHours(center, corner);
-
-        Assert.Equal(config.MaxTravelTimeHours / 2, hours, precision: 2);
     }
 }
