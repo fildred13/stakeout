@@ -26,6 +26,7 @@ public partial class SimulationManager : Node
     private readonly LocationGenerator _locationGenerator;
     private readonly PersonBehavior _personBehavior;
 
+    private readonly Random _random = new(42);
     private readonly CrimeGenerator _crimeGenerator = new();
     public CrimeGenerator CrimeGenerator => _crimeGenerator;
 
@@ -53,20 +54,12 @@ public partial class SimulationManager : Node
         // Generate 5 people (they pick addresses from the grid)
         for (var i = 0; i < 5; i++)
         {
-            var knownAddressIds = new HashSet<int>(State.Addresses.Keys);
             var person = _personGenerator.GeneratePerson(State);
-
-            // Notify listeners of any newly resolved addresses
-            foreach (var address in State.Addresses.Values)
-            {
-                if (!knownAddressIds.Contains(address.Id))
-                    AddressAdded?.Invoke(address);
-            }
             PersonAdded?.Invoke(person);
         }
 
         // Create player at an unresolved suburban home from the grid
-        var playerHome = PickAndResolveAddress(State, AddressType.SuburbanHome);
+        var playerHome = LocationGenerator.PickAndResolveAddress(State, AddressType.SuburbanHome, _random);
 
         State.Player = new Player
         {
@@ -77,20 +70,6 @@ public partial class SimulationManager : Node
         };
         PlayerCreated?.Invoke();
         CreatePlayerKey(State);
-    }
-
-    private static Address PickAndResolveAddress(SimulationState state, AddressType type)
-    {
-        var plotType = type.ToPlotType();
-        var unresolvedIds = state.CityGrid.GetUnresolvedAddressIdsByType(plotType, state.Addresses);
-        if (unresolvedIds.Count == 0)
-            throw new InvalidOperationException($"No unresolved {type} addresses available on the city grid");
-
-        var rng = new Random();
-        var addressId = unresolvedIds[rng.Next(unresolvedIds.Count)];
-        var address = state.Addresses[addressId];
-        LocationGenerator.ResolveAddressInterior(address, state);
-        return address;
     }
 
     public override void _Process(double delta)

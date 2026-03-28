@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Stakeout.Simulation.Actions;
-using Stakeout.Simulation.City;
 using Stakeout.Simulation.Data;
 using Stakeout.Simulation.Entities;
 using Stakeout.Simulation.Events;
@@ -170,15 +169,7 @@ public class PersonGenerator
 
     private Address PickAndResolveAddress(SimulationState state, AddressType type)
     {
-        var plotType = type.ToPlotType();
-        var unresolvedIds = state.CityGrid.GetUnresolvedAddressIdsByType(plotType, state.Addresses);
-        if (unresolvedIds.Count == 0)
-            throw new InvalidOperationException($"No unresolved {type} addresses available on the city grid");
-
-        var addressId = unresolvedIds[_random.Next(unresolvedIds.Count)];
-        var address = state.Addresses[addressId];
-        LocationGenerator.ResolveAddressInterior(address, state, _random);
-        return address;
+        return LocationGenerator.PickAndResolveAddress(state, type, _random);
     }
 
     private Address FindApartmentBuilding(SimulationState state)

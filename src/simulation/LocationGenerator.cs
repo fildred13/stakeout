@@ -1,5 +1,6 @@
 using System;
 using Godot;
+using Stakeout.Simulation.City;
 using Stakeout.Simulation.Data;
 using Stakeout.Simulation.Entities;
 using CityEntity = Stakeout.Simulation.Entities.City;
@@ -79,6 +80,24 @@ public class LocationGenerator
         random ??= new Random();
         var sublocationGenerator = SublocationGeneratorRegistry.Get(address.Type);
         sublocationGenerator?.Generate(address, state, random);
+    }
+
+    /// <summary>
+    /// Picks a random unresolved address of the given type from the city grid
+    /// and generates its interior. Used by PersonGenerator and SimulationManager
+    /// to claim addresses for people and the player.
+    /// </summary>
+    public static Address PickAndResolveAddress(SimulationState state, AddressType type, Random random)
+    {
+        var plotType = type.ToPlotType();
+        var unresolvedIds = state.CityGrid.GetUnresolvedAddressIdsByType(plotType, state.Addresses);
+        if (unresolvedIds.Count == 0)
+            throw new InvalidOperationException($"No unresolved {type} addresses available on the city grid");
+
+        var addressId = unresolvedIds[random.Next(unresolvedIds.Count)];
+        var address = state.Addresses[addressId];
+        ResolveAddressInterior(address, state, random);
+        return address;
     }
 
     private Street FindOrCreateStreet(SimulationState state, int cityId)
