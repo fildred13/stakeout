@@ -10,7 +10,7 @@ public class SimulationStateQueryTests
     private SimulationState CreateStateWithAddress()
     {
         var state = new SimulationState();
-        var city = new City { Id = 1, Name = "Boston", CountryName = "USA" };
+        var city = new Stakeout.Simulation.Entities.City { Id = 1, Name = "Boston", CountryName = "USA" };
         state.Cities[1] = city;
 
         var addr = new Address { Id = 10, CityId = 1, Type = AddressType.SuburbanHome };

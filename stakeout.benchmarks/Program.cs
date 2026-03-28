@@ -1,10 +1,10 @@
 using System;
 using System.Diagnostics;
 using Stakeout.Simulation;
+using Stakeout.Simulation.Addresses;
 using Stakeout.Simulation.City;
-using Stakeout.Simulation.Sublocations;
 using Stakeout.Simulation.Entities;
-using Stakeout.Simulation.Scheduling;
+using CityEntity = Stakeout.Simulation.Entities.City;
 
 namespace Stakeout.Benchmarks;
 
@@ -12,7 +12,7 @@ class Program
 {
     static void Main(string[] args)
     {
-        SublocationGeneratorRegistry.RegisterAll();
+        AddressTemplateRegistry.RegisterAll();
 
         var dayProfileNpcCount = 1000;
         if (args.Length > 0 && int.TryParse(args[0], out var parsed) && parsed > 0)
@@ -41,20 +41,24 @@ class Program
         RunDayProfile(dayProfileNpcCount, 500);
     }
 
-    static (SimulationState state, PersonBehavior behavior) CreateSimulation(int npcCount, DateTime? clockStart = null)
+    static SimulationState CreateSimulation(int npcCount, DateTime? clockStart = null)
     {
         var clock = new GameClock(clockStart);
         var state = new SimulationState(clock);
         var mapConfig = new MapConfig();
-        var locationGenerator = new LocationGenerator(mapConfig);
         var personGenerator = new PersonGenerator(mapConfig);
-        var behavior = new PersonBehavior(mapConfig);
 
-        locationGenerator.GenerateCityScaffolding(state);
+        var city = new CityEntity
+        {
+            Id = state.GenerateEntityId(),
+            Name = "Boston",
+            CountryName = "United States"
+        };
+        state.Cities[city.Id] = city;
 
         // Generate city grid so PersonGenerator can pick addresses
         var cityGen = new CityGenerator(seed: 42);
-        state.CityGrid = cityGen.Generate(state);
+        state.CityGrids[city.Id] = cityGen.Generate(state, city);
 
         Console.Error.Write($"  Generating {npcCount} NPCs...");
         Console.Error.Flush();
@@ -65,12 +69,12 @@ class Program
         Console.Error.WriteLine(" done");
         Console.Error.Flush();
 
-        return (state, behavior);
+        return state;
     }
 
     static void RunFrameBudget(int npcCount)
     {
-        var (state, behavior) = CreateSimulation(npcCount);
+        var state = CreateSimulation(npcCount);
 
         var tickCount = 0;
         var totalMs = 0.0;
@@ -91,7 +95,7 @@ class Program
             foreach (var person in state.People.Values)
             {
                 if (!person.IsAlive) continue;
-                behavior.Update(person, state);
+                // TODO: Project 3 — person behavior update will be rebuilt
             }
 
             sw.Stop();
@@ -116,7 +120,7 @@ class Program
     static void RunDayProfile(int npcCount, int simHours)
     {
         var midnight = new DateTime(1980, 1, 1, 0, 0, 0);
-        var (state, behavior) = CreateSimulation(npcCount, midnight);
+        var state = CreateSimulation(npcCount, midnight);
 
         Console.WriteLine($"Day Profile ({npcCount} NPCs, {simHours} game-hours, 1s tick delta)");
         Console.WriteLine(new string('-', 60));
@@ -146,7 +150,7 @@ class Program
                 foreach (var person in state.People.Values)
                 {
                     if (!person.IsAlive) continue;
-                    behavior.Update(person, state);
+                    // TODO: Project 3 — person behavior update will be rebuilt
                 }
 
                 sw.Stop();

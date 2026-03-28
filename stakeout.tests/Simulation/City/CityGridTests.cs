@@ -67,8 +67,8 @@ public class CityGridTests
             [10] = new Address { Id = 10, Type = AddressType.SuburbanHome },
             [20] = new Address { Id = 20, Type = AddressType.SuburbanHome }
         };
-        // Address 20 has a sublocation (resolved interior)
-        addresses[20].Sublocations[1] = new Sublocation { Id = 1 };
+        // Address 20 has a location (resolved interior)
+        addresses[20].LocationIds.Add(1);
 
         grid.SetCell(1, 1, new Cell { PlotType = PlotType.SuburbanHome, AddressId = 10 });
         grid.SetCell(2, 2, new Cell { PlotType = PlotType.SuburbanHome, AddressId = 20 });

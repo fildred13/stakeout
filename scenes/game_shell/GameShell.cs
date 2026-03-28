@@ -416,11 +416,7 @@ public partial class GameShell : Control
             var addr = state.Addresses.GetValueOrDefault(person.CurrentAddressId.Value);
             var street = addr != null ? state.Streets.GetValueOrDefault(addr.StreetId) : null;
             var locationText = $"At: {addr?.Number} {street?.Name ?? "Unknown"} ({addr?.Type})";
-            if (person.CurrentSublocationId.HasValue &&
-                addr != null && addr.Sublocations.TryGetValue(person.CurrentSublocationId.Value, out var subloc))
-            {
-                locationText += $" → {subloc.Name}";
-            }
+            // TODO: Project 8 (Player UI) — show Location/SubLocation name from new hierarchy
             locationLines.Add(locationText);
         }
         locationLines.Add($"Position: ({person.CurrentPosition.X:F0}, {person.CurrentPosition.Y:F0})");
@@ -483,13 +479,11 @@ public partial class GameShell : Control
                     var desc = item.ItemType.ToString();
                     if (item.ItemType == ItemType.Key && item.Data.TryGetValue("TargetConnectionId", out var connIdObj))
                     {
-                        var connId = (int)connIdObj;
                         var homeAddr = state.Addresses.GetValueOrDefault(person.HomeAddressId);
-                        var conn = homeAddr?.Connections.FirstOrDefault(c => c.Id == connId);
-                        if (conn != null && homeAddr != null)
+                        if (homeAddr != null)
                         {
                             var street = state.Streets.GetValueOrDefault(homeAddr.StreetId);
-                            desc = $"Key: {conn.Name} at {homeAddr.Number} {street?.Name ?? "Unknown"}";
+                            desc = $"Key: {homeAddr.Number} {street?.Name ?? "Unknown"}";
                         }
                     }
                     inventoryLines.Add(desc);
@@ -559,8 +553,7 @@ public partial class GameShell : Control
             {
                 var group = groups[gi];
                 var groupIndex = gi;
-                var hasChildren = group.Children.Count > 1 ||
-                    (group.Children.Count == 1 && group.Children[0].TargetSublocationId.HasValue);
+                var hasChildren = group.Children.Count > 1;
                 var isExpanded = expandedSet.Contains(groupIndex);
                 var arrow = hasChildren ? (isExpanded ? "▼ " : "▶ ") : "  ";
                 var groupText = $"{arrow}[{group.StartTime:hh\\:mm}-{group.EndTime:hh\\:mm}] {group.Action}";
@@ -582,15 +575,8 @@ public partial class GameShell : Control
                 {
                     foreach (var child in group.Children)
                     {
-                        var sublocationName = ResolveSublocationName(child.TargetSublocationId, child.TargetAddressId, state);
                         var childText = $"    [{child.StartTime:hh\\:mm}-{child.EndTime:hh\\:mm}] {child.Action}";
-                        if (sublocationName != null)
-                        {
-                            childText += $" → {sublocationName}";
-                            var conn = ResolveConnection(child.ViaConnectionId, child.TargetAddressId, state);
-                            if (conn?.Name != null && conn.Type != ConnectionType.OpenPassage)
-                                childText += $" (via {conn.Name})";
-                        }
+                        childText += FormatAddressString(child.TargetAddressId, child.FromAddressId, state);
 
                         var childLabel = new Label { Text = childText };
                         childLabel.AddThemeFontOverride("font", font);
@@ -629,14 +615,7 @@ public partial class GameShell : Control
     {
         var text = $"[{e.StartTime:hh\\:mm}-{e.EndTime:hh\\:mm}] {e.Action}";
         text += FormatAddressString(e.TargetAddressId, e.FromAddressId, state);
-        var sublocationName = ResolveSublocationName(e.TargetSublocationId, e.TargetAddressId, state);
-        if (sublocationName != null)
-        {
-            text += $" → {sublocationName}";
-            var conn = ResolveConnection(e.ViaConnectionId, e.TargetAddressId, state);
-            if (conn?.Name != null && conn.Type != ConnectionType.OpenPassage)
-                text += $" (via {conn.Name})";
-        }
+        // TODO: Project 8 (Player UI) — show Location/SubLocation and AccessPoint info
         return text;
     }
 
@@ -651,17 +630,8 @@ public partial class GameShell : Control
 
     private string ResolveSublocationName(int? sublocationId, int? addressId, SimulationState state)
     {
-        if (!sublocationId.HasValue || !addressId.HasValue) return null;
-        if (!state.Addresses.TryGetValue(addressId.Value, out var addr)) return null;
-        if (!addr.Sublocations.TryGetValue(sublocationId.Value, out var subloc)) return null;
-        return subloc.Name;
-    }
-
-    private SublocationConnection ResolveConnection(int? connectionId, int? addressId, SimulationState state)
-    {
-        if (!connectionId.HasValue || !addressId.HasValue) return null;
-        if (!state.Addresses.TryGetValue(addressId.Value, out var addr)) return null;
-        return addr.Connections.FirstOrDefault(c => c.Id == connectionId.Value);
+        // TODO: Project 8 (Player UI) — will be rebuilt with new Location/SubLocation hierarchy
+        return null;
     }
 
     private void ShowAddToEvidenceBoardMenu(Vector2 pos, EvidenceEntityType entityType, int entityId)

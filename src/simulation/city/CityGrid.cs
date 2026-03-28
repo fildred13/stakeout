@@ -78,7 +78,7 @@ public class CityGrid
                 var cell = _cells[x, y];
                 if (cell.PlotType == type && cell.AddressId.HasValue && seen.Add(cell.AddressId.Value))
                 {
-                    if (addresses.TryGetValue(cell.AddressId.Value, out var addr) && addr.Sublocations.Count == 0)
+                    if (addresses.TryGetValue(cell.AddressId.Value, out var addr) && addr.LocationIds.Count == 0)
                         result.Add(cell.AddressId.Value);
                 }
             }

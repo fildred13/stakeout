@@ -13,7 +13,7 @@ public class Item
     public ItemType ItemType { get; set; }
     public int? HeldByEntityId { get; set; }
     public int? LocationAddressId { get; set; }
-    public int? LocationSublocationId { get; set; }
+    public int? LocationId { get; set; }
     public Dictionary<string, object> Data { get; set; } = new();
-    public FingerprintSurface Fingerprints { get; set; }
+    // TODO: Project 2 (Traces) — fingerprint tracking will be rebuilt
 }

@@ -2,13 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Godot;
+using Stakeout.Simulation.Addresses;
 using Stakeout.Simulation.City;
 using Stakeout.Simulation.Crimes;
 using Stakeout.Simulation.Entities;
 using Stakeout.Simulation.Events;
-using Stakeout.Simulation.Objectives;
-using Stakeout.Simulation.Scheduling;
-using Stakeout.Simulation.Sublocations;
+using CityEntity = Stakeout.Simulation.Entities.City;
 
 namespace Stakeout.Simulation;
 
@@ -24,7 +23,6 @@ public partial class SimulationManager : Node
     public MapConfig MapConfig => _mapConfig;
     private readonly PersonGenerator _personGenerator;
     private readonly LocationGenerator _locationGenerator;
-    private readonly PersonBehavior _personBehavior;
 
     private readonly Random _random = new(42);
     private readonly CrimeGenerator _crimeGenerator = new();
@@ -35,35 +33,57 @@ public partial class SimulationManager : Node
         State = state;
         _locationGenerator = new LocationGenerator(_mapConfig);
         _personGenerator = new PersonGenerator(_mapConfig);
-        _personBehavior = new PersonBehavior(_mapConfig);
     }
 
     public override void _Ready()
     {
-        SublocationGeneratorRegistry.RegisterAll();
-        _locationGenerator.GenerateCityScaffolding(State);
+        AddressTemplateRegistry.RegisterAll();
 
-        // Generate the city grid (creates streets, plots, and Address entities)
-        var cityGenerator = new CityGenerator(seed: 42);
-        State.CityGrid = cityGenerator.Generate(State);
+        var country = new Country { Name = "United States" };
+        State.Countries.Add(country);
 
-        // Notify listeners of all addresses created by the city generator
+        // Generate Boston
+        var boston = new CityEntity
+        {
+            Id = State.GenerateEntityId(),
+            Name = "Boston",
+            CountryName = country.Name
+        };
+        State.Cities[boston.Id] = boston;
+
+        var bostonCityGen = new CityGenerator(seed: 42);
+        State.CityGrids[boston.Id] = bostonCityGen.Generate(State, boston);
+
+        // Generate New York City
+        var nyc = new CityEntity
+        {
+            Id = State.GenerateEntityId(),
+            Name = "New York City",
+            CountryName = country.Name
+        };
+        State.Cities[nyc.Id] = nyc;
+
+        var nycCityGen = new CityGenerator(seed: 84);
+        State.CityGrids[nyc.Id] = nycCityGen.Generate(State, nyc);
+
+        // Notify listeners of all addresses created by the city generators
         foreach (var address in State.Addresses.Values)
             AddressAdded?.Invoke(address);
 
-        // Generate 5 people (they pick addresses from the grid)
+        // Generate 5 people (they pick addresses from the first city grid)
         for (var i = 0; i < 5; i++)
         {
             var person = _personGenerator.GeneratePerson(State);
             PersonAdded?.Invoke(person);
         }
 
-        // Create player at an unresolved suburban home from the grid
-        var playerHome = LocationGenerator.PickAndResolveAddress(State, AddressType.SuburbanHome, _random);
+        // Create player at an unresolved suburban home from the first city grid
+        var playerHome = LocationGenerator.PickAndResolveAddress(State, AddressType.SuburbanHome, _random, boston.Id);
 
         State.Player = new Player
         {
             Id = State.GenerateEntityId(),
+            CurrentCityId = boston.Id,
             HomeAddressId = playerHome.Id,
             CurrentAddressId = playerHome.Id,
             CurrentPosition = playerHome.Position
@@ -79,29 +99,29 @@ public partial class SimulationManager : Node
 
         State.Clock.Tick(scaledDelta);
 
-        foreach (var person in State.People.Values)
-        {
-            if (!person.IsAlive) continue;
-            _personBehavior.Update(person, State);
-        }
+        // TODO: Project 3 — person behavior update will be rebuilt
+        // foreach (var person in State.People.Values)
+        // {
+        //     if (!person.IsAlive) continue;
+        //     _personBehavior.Update(person, State);
+        // }
 
-        // Check for schedule rebuilds
-        foreach (var person in State.People.Values)
-        {
-            if (person.NeedsScheduleRebuild)
-            {
-                RebuildSchedule(person);
-                person.NeedsScheduleRebuild = false;
-            }
-        }
+        // TODO: Project 3 — schedule rebuild will be rebuilt
+        // foreach (var person in State.People.Values)
+        // {
+        //     if (person.NeedsScheduleRebuild)
+        //     {
+        //         RebuildSchedule(person);
+        //         person.NeedsScheduleRebuild = false;
+        //     }
+        // }
 
         UpdatePlayerTravel(State);
     }
 
+    // TODO: Project 3 — schedule rebuild will be rebuilt
     public void RebuildSchedule(Person person)
     {
-        var tasks = ObjectiveResolver.ResolveTasks(person.Objectives, State);
-        person.Schedule = ScheduleBuilder.BuildFromTasks(tasks, State, _mapConfig);
     }
 
     public static void UpdatePlayerTravel(SimulationState state)
@@ -176,10 +196,17 @@ public partial class SimulationManager : Node
         var player = state.Player;
         var homeAddress = state.Addresses[player.HomeAddressId];
 
-        var entranceConn = homeAddress.Connections
-            .FirstOrDefault(c => c.Tags != null && c.Tags.Contains("entrance"));
+        // Find the main entrance AccessPoint on the first Location with "entrance" tag
+        AccessPoint entranceAP = null;
+        foreach (var locId in homeAddress.LocationIds)
+        {
+            var loc = state.Locations[locId];
+            if (!loc.HasTag("entrance")) continue;
+            entranceAP = loc.AccessPoints.FirstOrDefault(ap => ap.HasTag("main_entrance"));
+            if (entranceAP != null) break;
+        }
 
-        if (entranceConn?.Lockable == null) return;
+        if (entranceAP == null || entranceAP.LockMechanism == null) return;
 
         var key = new Item
         {
@@ -188,11 +215,11 @@ public partial class SimulationManager : Node
             HeldByEntityId = player.Id,
             Data = new Dictionary<string, object>
             {
-                ["TargetConnectionId"] = entranceConn.Id
+                ["TargetAccessPointId"] = entranceAP.Id
             }
         };
         state.Items[key.Id] = key;
         player.InventoryItemIds.Add(key.Id);
-        entranceConn.Lockable.KeyItemId = key.Id;
+        entranceAP.KeyItemId = key.Id;
     }
 }

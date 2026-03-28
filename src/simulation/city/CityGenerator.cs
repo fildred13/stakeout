@@ -2,8 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Godot;
+using Stakeout.Simulation.Addresses;
 using Stakeout.Simulation.Data;
 using Stakeout.Simulation.Entities;
+using CityEntity = Stakeout.Simulation.Entities.City;
 using NumericsVector2 = System.Numerics.Vector2;
 
 namespace Stakeout.Simulation.City;
@@ -28,14 +30,15 @@ public class CityGenerator
         _rng = new Random(seed);
     }
 
-    public CityGrid Generate(SimulationState state)
+    public CityGrid Generate(SimulationState state, CityEntity city = null)
     {
         var grid = new CityGrid(GridSize, GridSize);
         PlaceArterialRoads(grid);
         SubdivideSuperBlocks(grid);
-        AssignStreetNames(grid, state);
+        AssignStreetNames(grid, state, city);
         AssignPlotTypes(grid);
-        ResolveFacingAndCreateAddresses(grid, state);
+        ResolveFacingAndCreateAddresses(grid, state, city);
+        PlaceAirport(grid, state, city);
         return grid;
     }
 
@@ -207,11 +210,13 @@ public class CityGenerator
         }
     }
 
-    private void AssignStreetNames(CityGrid grid, SimulationState state)
+    private void AssignStreetNames(CityGrid grid, SimulationState state, CityEntity city = null)
     {
-        int cityId = state.Cities.Count > 0 ? state.Cities.Keys.GetEnumerator().Current : 0;
-        // Get first city id properly
-        foreach (var k in state.Cities.Keys) { cityId = k; break; }
+        int cityId = city?.Id ?? 0;
+        if (cityId == 0)
+        {
+            foreach (var k in state.Cities.Keys) { cityId = k; break; }
+        }
 
         var usedNames = new HashSet<string>();
         var horizontalArterialSet = new HashSet<int>(_horizontalArterials);
@@ -640,7 +645,7 @@ public class CityGenerator
         return false;
     }
 
-    private void ResolveFacingAndCreateAddresses(CityGrid grid, SimulationState state)
+    private void ResolveFacingAndCreateAddresses(CityGrid grid, SimulationState state, CityEntity city = null)
     {
         // Step 1: Assign facing directions to all building cells
         for (int x = 0; x < GridSize; x++)
@@ -712,6 +717,7 @@ public class CityGenerator
                 var address = new Address
                 {
                     Id = state.GenerateEntityId(),
+                    CityId = city?.Id ?? 0,
                     Type = plotType.ToAddressType(),
                     GridX = x,
                     GridY = y,
@@ -720,6 +726,7 @@ public class CityGenerator
                 };
 
                 state.Addresses[address.Id] = address;
+                city?.AddressIds.Add(address.Id);
 
                 // Mark all cells as assigned and set AddressId
                 for (int dy = 0; dy < sizeH; dy++)
@@ -766,6 +773,120 @@ public class CityGenerator
                 sorted[i].Number = (i + 1) * 2;
             }
         }
+    }
+
+    private void PlaceAirport(CityGrid grid, SimulationState state, CityEntity city)
+    {
+        if (city == null) return;
+
+        // Find a suitable area along the grid edge for a 10x20 airport
+        int airportW = 10;
+        int airportH = 20;
+
+        // Try bottom edge first
+        int bestX = -1, bestY = -1;
+        for (int x = 0; x <= GridSize - airportW; x++)
+        {
+            int y = GridSize - airportH;
+            if (CanPlaceAirport(grid, x, y, airportW, airportH))
+            {
+                bestX = x;
+                bestY = y;
+                break;
+            }
+        }
+
+        // Try right edge if bottom didn't work
+        if (bestX < 0)
+        {
+            for (int y = 0; y <= GridSize - airportH; y++)
+            {
+                int x = GridSize - airportW;
+                if (CanPlaceAirport(grid, x, y, airportW, airportH))
+                {
+                    bestX = x;
+                    bestY = y;
+                    break;
+                }
+            }
+        }
+
+        // Fallback: force placement at bottom-right corner
+        if (bestX < 0)
+        {
+            bestX = GridSize - airportW;
+            bestY = GridSize - airportH;
+        }
+
+        // Clear and claim all cells for the airport
+        for (int dy = 0; dy < airportH; dy++)
+        {
+            for (int dx = 0; dx < airportW; dx++)
+            {
+                int cx = bestX + dx;
+                int cy = bestY + dy;
+
+                // Remove any existing address at this cell
+                var existingCell = grid.GetCell(cx, cy);
+                if (existingCell.AddressId.HasValue &&
+                    state.Addresses.TryGetValue(existingCell.AddressId.Value, out var existingAddr))
+                {
+                    state.Addresses.Remove(existingAddr.Id);
+                    city?.AddressIds.Remove(existingAddr.Id);
+                }
+
+                var cell = grid.GetCell(cx, cy);
+                cell.PlotType = PlotType.Airport;
+                cell.AddressId = null; // Will be set below
+                grid.SetCell(cx, cy, cell);
+            }
+        }
+
+        // Find facing street
+        int? facingStreetId = null;
+        for (int dx = 0; dx < airportW && !facingStreetId.HasValue; dx++)
+        {
+            var (_, sid) = grid.FindNearestRoad(bestX + dx, bestY);
+            if (sid.HasValue) facingStreetId = sid;
+        }
+
+        // Create airport address
+        var airport = new Address
+        {
+            Id = state.GenerateEntityId(),
+            CityId = city.Id,
+            Type = AddressType.Airport,
+            GridX = bestX,
+            GridY = bestY,
+            StreetId = facingStreetId ?? 0,
+            Number = 1
+        };
+        state.Addresses[airport.Id] = airport;
+        city.AddressIds.Add(airport.Id);
+        city.AirportAddressId = airport.Id;
+
+        // Set AddressId on all airport cells
+        for (int dy = 0; dy < airportH; dy++)
+            for (int dx = 0; dx < airportW; dx++)
+            {
+                var cell = grid.GetCell(bestX + dx, bestY + dy);
+                cell.AddressId = airport.Id;
+                grid.SetCell(bestX + dx, bestY + dy, cell);
+            }
+
+        // Generate airport interior
+        new AirportTemplate().Generate(airport, state, _rng);
+    }
+
+    private static bool CanPlaceAirport(CityGrid grid, int x, int y, int w, int h)
+    {
+        for (int dy = 0; dy < h; dy++)
+            for (int dx = 0; dx < w; dx++)
+            {
+                int cx = x + dx, cy = y + dy;
+                if (cx >= grid.Width || cy >= grid.Height) return false;
+            }
+        return true;
     }
 
     // Expose arterial positions for later pipeline stages

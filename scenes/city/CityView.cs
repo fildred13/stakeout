@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Godot;
 using Stakeout;
 using Stakeout.Evidence;
@@ -111,7 +112,7 @@ public partial class CityView : Control, IContentView
     public override void _Draw()
     {
         var state = _simulationManager.State;
-        var grid = state.CityGrid;
+        var grid = state.CityGrids.Values.FirstOrDefault();
         if (grid == null) return;
 
         // Compute visible grid range for culling
@@ -255,7 +256,7 @@ public partial class CityView : Control, IContentView
         // Draw driveway only if it would connect to a road
         if (cell.AddressId.HasValue)
         {
-            var grid = _simulationManager.State.CityGrid;
+            var grid = _simulationManager.State.CityGrids.Values.FirstOrDefault();
             var addr = _simulationManager.State.Addresses[cell.AddressId.Value];
             int checkX = addr.GridX, checkY = addr.GridY;
             // Offset to the edge of the building in the facing direction
@@ -341,7 +342,7 @@ public partial class CityView : Control, IContentView
         if (fontSize < 4) return; // Too small to read
 
         // Determine if this is a horizontal or vertical road segment
-        var grid = state.CityGrid;
+        var grid = state.CityGrids.Values.FirstOrDefault();
         bool isHorizontal = (grid.IsInBounds(gx - 1, gy) && grid.GetCell(gx - 1, gy).PlotType == PlotType.Road) ||
                             (grid.IsInBounds(gx + 1, gy) && grid.GetCell(gx + 1, gy).PlotType == PlotType.Road);
 
@@ -500,7 +501,7 @@ public partial class CityView : Control, IContentView
     private void HandleClick(Vector2 screenPos)
     {
         var (gx, gy) = ScreenToGrid(screenPos);
-        var grid = _simulationManager.State.CityGrid;
+        var grid = _simulationManager.State.CityGrids.Values.FirstOrDefault();
         if (grid == null) return;
 
         if (grid.IsInBounds(gx, gy))
@@ -522,7 +523,7 @@ public partial class CityView : Control, IContentView
     private void HandleRightClick(Vector2 screenPos, Vector2 globalPos)
     {
         var (gx, gy) = ScreenToGrid(screenPos);
-        var grid = _simulationManager.State.CityGrid;
+        var grid = _simulationManager.State.CityGrids.Values.FirstOrDefault();
         if (grid == null) return;
 
         if (grid.IsInBounds(gx, gy))
@@ -692,7 +693,7 @@ public partial class CityView : Control, IContentView
         var mousePos = GetLocalMousePosition();
         var (gx, gy) = ScreenToGrid(mousePos);
         var state = _simulationManager.State;
-        var grid = state.CityGrid;
+        var grid = state.CityGrids.Values.FirstOrDefault();
         var lines = new List<string>();
 
         // Check player dot hover

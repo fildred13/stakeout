@@ -1,10 +1,10 @@
 using System;
 using Godot;
+using Stakeout.Simulation.Addresses;
 using Stakeout.Simulation.City;
 using Stakeout.Simulation.Data;
 using Stakeout.Simulation.Entities;
 using CityEntity = Stakeout.Simulation.Entities.City;
-using Stakeout.Simulation.Sublocations;
 
 namespace Stakeout.Simulation;
 
@@ -45,6 +45,7 @@ public class LocationGenerator
         var address = new Address
         {
             Id = state.GenerateEntityId(),
+            CityId = cityId,
             Number = GenerateAddressNumber(),
             StreetId = street.Id,
             Type = type,
@@ -53,37 +54,40 @@ public class LocationGenerator
         };
         state.Addresses[address.Id] = address;
 
-        var sublocationGenerator = SublocationGeneratorRegistry.Get(address.Type);
-        if (sublocationGenerator != null)
+        var template = AddressTemplateRegistry.Get(address.Type);
+        if (template != null)
         {
-            sublocationGenerator.Generate(address, state, _random);
+            template.Generate(address, state, _random);
         }
 
         return address;
     }
 
     /// <summary>
-    /// Generates the interior (sublocations) for an address that was placed on the city grid
+    /// Generates the interior (locations) for an address that was placed on the city grid
     /// but hasn't had its interior resolved yet. No-op if already resolved.
     /// </summary>
     public static void ResolveAddressInterior(Address address, SimulationState state, Random random = null)
     {
-        if (address.Sublocations.Count > 0) return;
+        if (address.LocationIds.Count > 0) return;
 
         random ??= new Random();
-        var sublocationGenerator = SublocationGeneratorRegistry.Get(address.Type);
-        sublocationGenerator?.Generate(address, state, random);
+        var template = AddressTemplateRegistry.Get(address.Type);
+        template?.Generate(address, state, random);
     }
 
     /// <summary>
-    /// Picks a random unresolved address of the given type from the city grid
+    /// Picks a random unresolved address of the given type from the specified city grid
     /// and generates its interior. Used by PersonGenerator and SimulationManager
     /// to claim addresses for people and the player.
     /// </summary>
-    public static Address PickAndResolveAddress(SimulationState state, AddressType type, Random random)
+    public static Address PickAndResolveAddress(SimulationState state, AddressType type, Random random, int cityId)
     {
+        if (!state.CityGrids.TryGetValue(cityId, out var cityGrid))
+            throw new InvalidOperationException($"No city grid found for city {cityId}");
+
         var plotType = type.ToPlotType();
-        var unresolvedIds = state.CityGrid.GetUnresolvedAddressIdsByType(plotType, state.Addresses);
+        var unresolvedIds = cityGrid.GetUnresolvedAddressIdsByType(plotType, state.Addresses);
         if (unresolvedIds.Count == 0)
             throw new InvalidOperationException($"No unresolved {type} addresses available on the city grid");
 
@@ -91,6 +95,16 @@ public class LocationGenerator
         var address = state.Addresses[addressId];
         ResolveAddressInterior(address, state, random);
         return address;
+    }
+
+    /// <summary>
+    /// Overload that picks the first available city grid. For backward compatibility.
+    /// </summary>
+    public static Address PickAndResolveAddress(SimulationState state, AddressType type, Random random)
+    {
+        int cityId = 0;
+        foreach (var key in state.CityGrids.Keys) { cityId = key; break; }
+        return PickAndResolveAddress(state, type, random, cityId);
     }
 
     private Street FindOrCreateStreet(SimulationState state, int cityId)
