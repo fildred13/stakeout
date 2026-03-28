@@ -13,11 +13,13 @@ public class Person
     public string FirstName { get; set; }
     public string LastName { get; set; }
     public DateTime CreatedAt { get; set; }
+    public int? CurrentCityId { get; set; }
     public int HomeAddressId { get; set; }
-    public string HomeUnitTag { get; set; }
+    public int? HomeLocationId { get; set; }
     public int JobId { get; set; }
     public int? CurrentAddressId { get; set; }
-    public int? CurrentSublocationId { get; set; }
+    public int? CurrentLocationId { get; set; }
+    public int? CurrentSubLocationId { get; set; }
     public Vector2 CurrentPosition { get; set; }
     public ActionType CurrentAction { get; set; }
     public TravelInfo TravelInfo { get; set; }
