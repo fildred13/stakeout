@@ -10,19 +10,12 @@ namespace Stakeout.Simulation;
 
 public class LocationGenerator
 {
-    private static bool _registryInitialized = false;
-
     private readonly Random _random = new();
     private readonly MapConfig _mapConfig;
 
     public LocationGenerator(MapConfig mapConfig)
     {
         _mapConfig = mapConfig;
-        if (!_registryInitialized)
-        {
-            SublocationGeneratorRegistry.RegisterAll();
-            _registryInitialized = true;
-        }
     }
 
     public void GenerateCityScaffolding(SimulationState state)

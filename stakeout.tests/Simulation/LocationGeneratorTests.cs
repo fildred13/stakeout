@@ -1,5 +1,6 @@
 using Stakeout.Simulation;
 using Stakeout.Simulation.Entities;
+using Stakeout.Simulation.Sublocations;
 using Xunit;
 
 namespace Stakeout.Tests.Simulation;
@@ -20,6 +21,7 @@ public class LocationGeneratorTests
     [Fact]
     public void GenerateAddress_CreatesAddressInState()
     {
+        SublocationGeneratorRegistry.RegisterAll();
         var state = new SimulationState();
         var generator = new LocationGenerator(new MapConfig());
         generator.GenerateCityScaffolding(state);
@@ -33,6 +35,7 @@ public class LocationGeneratorTests
     [Fact]
     public void GenerateAddress_PositionWithinMapBounds()
     {
+        SublocationGeneratorRegistry.RegisterAll();
         var state = new SimulationState();
         var config = new MapConfig();
         var generator = new LocationGenerator(config);
@@ -47,6 +50,7 @@ public class LocationGeneratorTests
     [Fact]
     public void GenerateAddress_CreatesSublocationsinState()
     {
+        SublocationGeneratorRegistry.RegisterAll();
         var state = new SimulationState();
         var generator = new LocationGenerator(new MapConfig());
         generator.GenerateCityScaffolding(state);
