@@ -20,7 +20,8 @@ public class PersonBehaviorFingerprintTests
         var address = new Address
         {
             Id = state.GenerateEntityId(),
-            Position = new Vector2(100, 100),
+            GridX = 2,
+            GridY = 2,
             Type = AddressType.SuburbanHome,
             Number = 1,
             StreetId = 1
@@ -81,7 +82,8 @@ public class PersonBehaviorFingerprintTests
         var home = new Address
         {
             Id = state.GenerateEntityId(),
-            Position = new Vector2(100, 100),
+            GridX = 2,
+            GridY = 2,
             Type = AddressType.SuburbanHome,
             Number = 1,
             StreetId = 1
@@ -89,7 +91,8 @@ public class PersonBehaviorFingerprintTests
         var work = new Address
         {
             Id = state.GenerateEntityId(),
-            Position = new Vector2(600, 100),
+            GridX = 12,
+            GridY = 2,
             Type = AddressType.Office,
             Number = 2,
             StreetId = 1
@@ -171,7 +174,8 @@ public class PersonBehaviorFingerprintTests
         var home = new Address
         {
             Id = state.GenerateEntityId(),
-            Position = new Vector2(100, 100),
+            GridX = 2,
+            GridY = 2,
             Type = AddressType.SuburbanHome,
             Number = 1,
             StreetId = 1
@@ -249,7 +253,8 @@ public class PersonBehaviorFingerprintTests
         var home = new Address
         {
             Id = state.GenerateEntityId(),
-            Position = new Vector2(100, 100),
+            GridX = 2,
+            GridY = 2,
             Type = AddressType.SuburbanHome,
             Number = 1,
             StreetId = 1
@@ -258,7 +263,8 @@ public class PersonBehaviorFingerprintTests
         var work = new Address
         {
             Id = state.GenerateEntityId(),
-            Position = new Vector2(600, 100),
+            GridX = 12,
+            GridY = 2,
             Type = AddressType.Office,
             Number = 2,
             StreetId = 1

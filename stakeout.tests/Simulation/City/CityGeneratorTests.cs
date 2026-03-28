@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Stakeout.Simulation.City;
 using Stakeout.Simulation;
+using Stakeout.Simulation.Entities;
 using Xunit;
 
 namespace Stakeout.Tests.Simulation.City;
@@ -216,6 +217,77 @@ public class CityGeneratorTests
         {
             Assert.Equal(PlotType.Road, grid.GetCell(x, y).PlotType);
             Assert.Null(grid.GetCell(x, y).AddressId);
+        }
+    }
+
+    [Fact]
+    public void Generate_BuildingAnchorCellsFaceARoad()
+    {
+        var state = new SimulationState();
+        var grid = new CityGenerator(seed: 42).Generate(state);
+
+        var checkedAddresses = new HashSet<int>();
+
+        foreach (var address in state.Addresses.Values)
+        {
+            if (!checkedAddresses.Add(address.Id)) continue;
+
+            int x = address.GridX, y = address.GridY;
+            var cell = grid.GetCell(x, y);
+
+            var cells = grid.GetCellsForAddress(address.Id);
+            bool anyFacesRoad = cells.Any(pos =>
+            {
+                var c = grid.GetCell(pos.X, pos.Y);
+                var (dx, dy) = c.FacingDirection switch
+                {
+                    FacingDirection.North => (0, -1),
+                    FacingDirection.South => (0, 1),
+                    FacingDirection.East => (1, 0),
+                    FacingDirection.West => (-1, 0),
+                    _ => (0, 0)
+                };
+                int nx = pos.X + dx, ny = pos.Y + dy;
+                return grid.IsInBounds(nx, ny) &&
+                       grid.GetCell(nx, ny).PlotType == PlotType.Road;
+            });
+
+            Assert.True(anyFacesRoad,
+                $"Address {address.Id} at ({x},{y}) has no cell facing a road");
+        }
+    }
+
+    [Fact]
+    public void Generate_CreatesAddressesInSimulationState()
+    {
+        var state = new SimulationState();
+        var grid = new CityGenerator(seed: 42).Generate(state);
+
+        Assert.NotEmpty(state.Addresses);
+        foreach (var address in state.Addresses.Values)
+        {
+            Assert.True(address.GridX >= 0 && address.GridX < 100);
+            Assert.True(address.GridY >= 0 && address.GridY < 100);
+            Assert.True(address.Number > 0);
+            Assert.True(address.StreetId > 0);
+        }
+    }
+
+    [Fact]
+    public void Generate_AddressStreetNumbersIncreaseAlongStreet()
+    {
+        var state = new SimulationState();
+        var grid = new CityGenerator(seed: 42).Generate(state);
+
+        var byStreet = state.Addresses.Values.GroupBy(a => a.StreetId);
+        foreach (var group in byStreet)
+        {
+            var sorted = group.OrderBy(a => a.GridX).ThenBy(a => a.GridY).ToList();
+            for (int i = 1; i < sorted.Count; i++)
+            {
+                Assert.True(sorted[i].Number >= sorted[i - 1].Number,
+                    $"Street {group.Key}: address numbers should increase along street");
+            }
         }
     }
 

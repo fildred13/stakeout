@@ -46,16 +46,16 @@ public class LocationGenerator
 
         var street = FindOrCreateStreet(state, cityId);
 
+        float pixelX = (float)(_random.NextDouble() * (_mapConfig.MaxX - _mapConfig.MinX) + _mapConfig.MinX);
+        float pixelY = (float)(_random.NextDouble() * (_mapConfig.MaxY - _mapConfig.MinY) + _mapConfig.MinY);
         var address = new Address
         {
             Id = state.GenerateEntityId(),
             Number = GenerateAddressNumber(),
             StreetId = street.Id,
             Type = type,
-            Position = new Vector2(
-                (float)(_random.NextDouble() * (_mapConfig.MaxX - _mapConfig.MinX) + _mapConfig.MinX),
-                (float)(_random.NextDouble() * (_mapConfig.MaxY - _mapConfig.MinY) + _mapConfig.MinY)
-            )
+            GridX = (int)(pixelX / Address.CellSize),
+            GridY = (int)(pixelY / Address.CellSize)
         };
         state.Addresses[address.Id] = address;
 

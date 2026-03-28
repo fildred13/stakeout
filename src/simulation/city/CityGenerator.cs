@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Godot;
 using Stakeout.Simulation.Data;
 using Stakeout.Simulation.Entities;
@@ -34,6 +35,7 @@ public class CityGenerator
         SubdivideSuperBlocks(grid);
         AssignStreetNames(grid, state);
         AssignPlotTypes(grid);
+        ResolveFacingAndCreateAddresses(grid, state);
         return grid;
     }
 
@@ -588,6 +590,146 @@ public class CityGenerator
         var cell = grid.GetCell(x, y);
         cell.PlotType = type;
         grid.SetCell(x, y, cell);
+    }
+
+    private void ResolveFacingAndCreateAddresses(CityGrid grid, SimulationState state)
+    {
+        // Step 1: Assign facing directions to all building cells
+        for (int x = 0; x < GridSize; x++)
+        {
+            for (int y = 0; y < GridSize; y++)
+            {
+                var cell = grid.GetCell(x, y);
+                if (cell.PlotType == PlotType.Road || cell.PlotType == PlotType.Empty)
+                    continue;
+
+                var (dir, streetId) = grid.FindAdjacentRoad(x, y);
+                cell.FacingDirection = dir;
+                grid.SetCell(x, y, cell);
+            }
+        }
+
+        // Step 2: Create Address entities, grouping 2x2 buildings
+        // Track which cells have already been assigned to an address
+        var assigned = new bool[GridSize, GridSize];
+
+        // Collect addresses grouped by street for street numbering
+        var addressesByStreet = new Dictionary<int, List<Address>>();
+
+        for (int y = 0; y < GridSize; y++)
+        {
+            for (int x = 0; x < GridSize; x++)
+            {
+                if (assigned[x, y]) continue;
+
+                var cell = grid.GetCell(x, y);
+                if (cell.PlotType == PlotType.Road || cell.PlotType == PlotType.Empty)
+                    continue;
+
+                PlotType plotType = cell.PlotType;
+                var (sizeW, sizeH) = plotType.GetSize();
+
+                bool is2x2 = sizeW == 2 && sizeH == 2;
+                bool topLeft = false;
+
+                if (is2x2)
+                {
+                    // Only create one address per 2x2 group, at the top-left corner
+                    topLeft = x + 1 < GridSize && y + 1 < GridSize
+                        && grid.GetCell(x + 1, y).PlotType == plotType
+                        && grid.GetCell(x, y + 1).PlotType == plotType
+                        && grid.GetCell(x + 1, y + 1).PlotType == plotType
+                        && !assigned[x + 1, y] && !assigned[x, y + 1] && !assigned[x + 1, y + 1];
+
+                    if (!topLeft) continue; // Part of a 2x2 but not the top-left — skip
+                }
+
+                // Determine which street this address faces
+                int? facingStreetId = null;
+
+                if (is2x2)
+                {
+                    // Check all 4 cells for a road neighbor; use first found
+                    (int cx, int cy)[] corners = { (x, y), (x + 1, y), (x, y + 1), (x + 1, y + 1) };
+                    foreach (var (cx, cy) in corners)
+                    {
+                        var (_, sid) = grid.FindAdjacentRoad(cx, cy);
+                        if (sid.HasValue) { facingStreetId = sid; break; }
+                    }
+                }
+                else
+                {
+                    var (_, sid) = grid.FindAdjacentRoad(x, y);
+                    facingStreetId = sid;
+                }
+
+                if (!facingStreetId.HasValue) continue; // No adjacent road — skip
+
+                var address = new Address
+                {
+                    Id = state.GenerateEntityId(),
+                    Type = plotType.ToAddressType(),
+                    GridX = x,
+                    GridY = y,
+                    StreetId = facingStreetId.Value,
+                    Number = 0 // Will be filled in during street numbering pass
+                };
+
+                state.Addresses[address.Id] = address;
+
+                // Mark cells as assigned and set AddressId on them
+                if (is2x2)
+                {
+                    (int cx, int cy)[] cells2x2 = { (x, y), (x + 1, y), (x, y + 1), (x + 1, y + 1) };
+                    foreach (var (cx, cy) in cells2x2)
+                    {
+                        assigned[cx, cy] = true;
+                        var c = grid.GetCell(cx, cy);
+                        c.AddressId = address.Id;
+                        grid.SetCell(cx, cy, c);
+                    }
+                }
+                else
+                {
+                    assigned[x, y] = true;
+                    cell.AddressId = address.Id;
+                    grid.SetCell(x, y, cell);
+                }
+
+                if (!addressesByStreet.TryGetValue(facingStreetId.Value, out var list))
+                {
+                    list = new List<Address>();
+                    addressesByStreet[facingStreetId.Value] = list;
+                }
+                list.Add(address);
+            }
+        }
+
+        // Step 3: Assign street numbers — sort by position along street, number sequentially
+        foreach (var (streetId, addresses) in addressesByStreet)
+        {
+            if (!state.Streets.TryGetValue(streetId, out var street))
+                continue;
+
+            // Determine street orientation from its road cells
+            bool isHorizontal = false;
+            if (street.RoadCells.Count >= 2)
+            {
+                // If x changes more than y, it's horizontal
+                int dxRange = street.RoadCells.Max(c => c.X) - street.RoadCells.Min(c => c.X);
+                int dyRange = street.RoadCells.Max(c => c.Y) - street.RoadCells.Min(c => c.Y);
+                isHorizontal = dxRange >= dyRange;
+            }
+
+            List<Address> sorted = isHorizontal
+                ? addresses.OrderBy(a => a.GridX).ThenBy(a => a.GridY).ToList()
+                : addresses.OrderBy(a => a.GridY).ThenBy(a => a.GridX).ToList();
+
+            for (int i = 0; i < sorted.Count; i++)
+            {
+                sorted[i].Number = (i + 1) * 2;
+            }
+        }
     }
 
     // Expose arterial positions for later pipeline stages

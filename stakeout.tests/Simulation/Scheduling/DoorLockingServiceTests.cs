@@ -23,7 +23,8 @@ public class DoorLockingServiceTests
         {
             Id = state.GenerateEntityId(),
             Type = AddressType.SuburbanHome,
-            Position = new Godot.Vector2(100, 100),
+            GridX = 2,
+            GridY = 2,
             Number = 1,
             StreetId = 1
         };

@@ -30,8 +30,8 @@ public class PlayerTravelTests
     public void PlayerTravel_InterpolatesPosition()
     {
         var state = new SimulationState(new GameClock(new DateTime(1980, 1, 1, 8, 0, 0)));
-        var from = new Address { Id = state.GenerateEntityId(), Position = new Vector2(100, 100), Type = AddressType.SuburbanHome, Number = 1, StreetId = 1 };
-        var to = new Address { Id = state.GenerateEntityId(), Position = new Vector2(500, 100), Type = AddressType.Office, Number = 2, StreetId = 1 };
+        var from = new Address { Id = state.GenerateEntityId(), GridX = 2, GridY = 2, Type = AddressType.SuburbanHome, Number = 1, StreetId = 1 };
+        var to = new Address { Id = state.GenerateEntityId(), GridX = 10, GridY = 2, Type = AddressType.Office, Number = 2, StreetId = 1 };
         state.Addresses[from.Id] = from;
         state.Addresses[to.Id] = to;
 
@@ -69,8 +69,8 @@ public class PlayerTravelTests
     public void PlayerTravel_ArrivesAtDestination()
     {
         var state = new SimulationState(new GameClock(new DateTime(1980, 1, 1, 8, 0, 0)));
-        var from = new Address { Id = state.GenerateEntityId(), Position = new Vector2(100, 100), Type = AddressType.SuburbanHome, Number = 1, StreetId = 1 };
-        var to = new Address { Id = state.GenerateEntityId(), Position = new Vector2(500, 100), Type = AddressType.Office, Number = 2, StreetId = 1 };
+        var from = new Address { Id = state.GenerateEntityId(), GridX = 2, GridY = 2, Type = AddressType.SuburbanHome, Number = 1, StreetId = 1 };
+        var to = new Address { Id = state.GenerateEntityId(), GridX = 10, GridY = 2, Type = AddressType.Office, Number = 2, StreetId = 1 };
         state.Addresses[from.Id] = from;
         state.Addresses[to.Id] = to;
 
@@ -113,8 +113,8 @@ public class PlayerTravelTests
     public void StartPlayerTravel_LogsDepartedAddressEvent()
     {
         var state = new SimulationState(new GameClock(new DateTime(1980, 1, 1, 8, 0, 0)));
-        var from = new Address { Id = state.GenerateEntityId(), Position = new Vector2(100, 100), Type = AddressType.SuburbanHome, Number = 1, StreetId = 1 };
-        var to = new Address { Id = state.GenerateEntityId(), Position = new Vector2(500, 100), Type = AddressType.Office, Number = 2, StreetId = 1 };
+        var from = new Address { Id = state.GenerateEntityId(), GridX = 2, GridY = 2, Type = AddressType.SuburbanHome, Number = 1, StreetId = 1 };
+        var to = new Address { Id = state.GenerateEntityId(), GridX = 10, GridY = 2, Type = AddressType.Office, Number = 2, StreetId = 1 };
         state.Addresses[from.Id] = from;
         state.Addresses[to.Id] = to;
 
@@ -141,9 +141,9 @@ public class PlayerTravelTests
     public void PlayerTravel_CanBeInterrupted()
     {
         var state = new SimulationState(new GameClock(new DateTime(1980, 1, 1, 8, 0, 0)));
-        var from = new Address { Id = state.GenerateEntityId(), Position = new Vector2(100, 100), Type = AddressType.SuburbanHome, Number = 1, StreetId = 1 };
-        var to = new Address { Id = state.GenerateEntityId(), Position = new Vector2(500, 100), Type = AddressType.Office, Number = 2, StreetId = 1 };
-        var newDest = new Address { Id = state.GenerateEntityId(), Position = new Vector2(100, 500), Type = AddressType.Diner, Number = 3, StreetId = 1 };
+        var from = new Address { Id = state.GenerateEntityId(), GridX = 2, GridY = 2, Type = AddressType.SuburbanHome, Number = 1, StreetId = 1 };
+        var to = new Address { Id = state.GenerateEntityId(), GridX = 10, GridY = 2, Type = AddressType.Office, Number = 2, StreetId = 1 };
+        var newDest = new Address { Id = state.GenerateEntityId(), GridX = 2, GridY = 10, Type = AddressType.Diner, Number = 3, StreetId = 1 };
         state.Addresses[from.Id] = from;
         state.Addresses[to.Id] = to;
         state.Addresses[newDest.Id] = newDest;
