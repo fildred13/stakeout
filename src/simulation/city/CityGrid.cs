@@ -106,4 +106,51 @@ public class CityGrid
 
         return (FacingDirection.South, null);
     }
+
+    /// <summary>
+    /// Searches outward from (x,y) in all four cardinal directions to find the nearest road.
+    /// Returns the direction toward that road and its StreetId.
+    /// Used for interior building cells that don't directly border a road.
+    /// </summary>
+    public (FacingDirection Direction, int? StreetId) FindNearestRoad(int x, int y)
+    {
+        // First try immediate neighbors (fast path)
+        var adjacent = FindAdjacentRoad(x, y);
+        if (adjacent.StreetId.HasValue)
+            return adjacent;
+
+        // Search outward in each direction, find closest road
+        int bestDist = int.MaxValue;
+        FacingDirection bestDir = FacingDirection.South;
+        int? bestStreetId = null;
+
+        (int dx, int dy, FacingDirection dir)[] directions =
+        {
+            (0, 1, FacingDirection.South),
+            (1, 0, FacingDirection.East),
+            (0, -1, FacingDirection.North),
+            (-1, 0, FacingDirection.West)
+        };
+
+        foreach (var (dx, dy, dir) in directions)
+        {
+            for (int dist = 2; dist < Width && dist < Height; dist++)
+            {
+                int nx = x + dx * dist, ny = y + dy * dist;
+                if (!IsInBounds(nx, ny)) break;
+                if (_cells[nx, ny].PlotType == PlotType.Road)
+                {
+                    if (dist < bestDist)
+                    {
+                        bestDist = dist;
+                        bestDir = dir;
+                        bestStreetId = _cells[nx, ny].StreetId;
+                    }
+                    break;
+                }
+            }
+        }
+
+        return (bestDir, bestStreetId);
+    }
 }

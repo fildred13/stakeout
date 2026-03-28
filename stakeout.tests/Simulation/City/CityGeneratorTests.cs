@@ -233,8 +233,9 @@ public class CityGeneratorTests
             if (!checkedAddresses.Add(address.Id)) continue;
 
             int x = address.GridX, y = address.GridY;
-            var cell = grid.GetCell(x, y);
 
+            // Verify that at least one cell of the address has a facing direction
+            // that eventually reaches a road (not necessarily immediately adjacent)
             var cells = grid.GetCellsForAddress(address.Id);
             bool anyFacesRoad = cells.Any(pos =>
             {
@@ -247,13 +248,20 @@ public class CityGeneratorTests
                     FacingDirection.West => (-1, 0),
                     _ => (0, 0)
                 };
+                // Walk in the facing direction until we hit a road or go out of bounds
                 int nx = pos.X + dx, ny = pos.Y + dy;
-                return grid.IsInBounds(nx, ny) &&
-                       grid.GetCell(nx, ny).PlotType == PlotType.Road;
+                while (grid.IsInBounds(nx, ny))
+                {
+                    if (grid.GetCell(nx, ny).PlotType == PlotType.Road)
+                        return true;
+                    nx += dx;
+                    ny += dy;
+                }
+                return false;
             });
 
             Assert.True(anyFacesRoad,
-                $"Address {address.Id} at ({x},{y}) has no cell facing a road");
+                $"Address {address.Id} at ({x},{y}) has no cell facing toward a road");
         }
     }
 

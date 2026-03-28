@@ -252,10 +252,24 @@ public partial class CityView : Control, IContentView
         // Draw building rect
         DrawRect(new Rect2(screenPos + new Vector2(inset, inset), new Vector2(totalW, totalH)), BuildingColor);
 
-        // Draw driveway
+        // Draw driveway only if it would connect to a road
         if (cell.AddressId.HasValue)
         {
-            DrawDriveway(screenPos, scaledCell, sizeW, sizeH, cell.FacingDirection);
+            var grid = _simulationManager.State.CityGrid;
+            var addr = _simulationManager.State.Addresses[cell.AddressId.Value];
+            int checkX = addr.GridX, checkY = addr.GridY;
+            // Offset to the edge of the building in the facing direction
+            switch (cell.FacingDirection)
+            {
+                case FacingDirection.South: checkY += sizeH; break;
+                case FacingDirection.North: checkY -= 1; break;
+                case FacingDirection.East: checkX += sizeW; break;
+                case FacingDirection.West: checkX -= 1; break;
+            }
+            if (grid.IsInBounds(checkX, checkY) && grid.GetCell(checkX, checkY).PlotType == PlotType.Road)
+            {
+                DrawDriveway(screenPos, scaledCell, sizeW, sizeH, cell.FacingDirection);
+            }
         }
     }
 
@@ -352,11 +366,12 @@ public partial class CityView : Control, IContentView
     private void DrawEntityDots(SimulationState state, int minGX, int maxGX, int minGY, int maxGY)
     {
         var dotRadius = EntityDotSize / 2 * _zoom;
+        var halfCell = new Vector2(CellSize / 2f, CellSize / 2f);
 
         // Draw person dots
         foreach (var person in state.People.Values)
         {
-            var screenPos = WorldToScreen(person.CurrentPosition);
+            var screenPos = WorldToScreen(person.CurrentPosition + halfCell);
 
             Color color;
             if (!person.IsAlive)
@@ -372,7 +387,7 @@ public partial class CityView : Control, IContentView
         // Draw player dot on top
         if (state.Player != null)
         {
-            var screenPos = WorldToScreen(state.Player.CurrentPosition);
+            var screenPos = WorldToScreen(state.Player.CurrentPosition + halfCell);
             DrawCircle(screenPos, dotRadius, PlayerDotColor);
         }
     }

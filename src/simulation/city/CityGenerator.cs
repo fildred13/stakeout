@@ -603,7 +603,7 @@ public class CityGenerator
                 if (cell.PlotType == PlotType.Road || cell.PlotType == PlotType.Empty)
                     continue;
 
-                var (dir, streetId) = grid.FindAdjacentRoad(x, y);
+                var (dir, streetId) = grid.FindNearestRoad(x, y);
                 cell.FacingDirection = dir;
                 grid.SetCell(x, y, cell);
             }
@@ -649,21 +649,21 @@ public class CityGenerator
 
                 if (is2x2)
                 {
-                    // Check all 4 cells for a road neighbor; use first found
+                    // Check all 4 cells for the nearest road; use first found
                     (int cx, int cy)[] corners = { (x, y), (x + 1, y), (x, y + 1), (x + 1, y + 1) };
                     foreach (var (cx, cy) in corners)
                     {
-                        var (_, sid) = grid.FindAdjacentRoad(cx, cy);
+                        var (_, sid) = grid.FindNearestRoad(cx, cy);
                         if (sid.HasValue) { facingStreetId = sid; break; }
                     }
                 }
                 else
                 {
-                    var (_, sid) = grid.FindAdjacentRoad(x, y);
+                    var (_, sid) = grid.FindNearestRoad(x, y);
                     facingStreetId = sid;
                 }
 
-                if (!facingStreetId.HasValue) continue; // No adjacent road — skip
+                if (!facingStreetId.HasValue) continue; // No road found — skip
 
                 var address = new Address
                 {
