@@ -19,13 +19,13 @@ public class SimulationState
     public Dictionary<int, CityEntity> Cities { get; } = new();
     public Dictionary<int, Street> Streets { get; } = new();
     public Dictionary<int, Address> Addresses { get; } = new();
+    public Dictionary<int, Location> Locations { get; } = new();
+    public Dictionary<int, SubLocation> SubLocations { get; } = new();
     public EventJournal Journal { get; } = new();
     public Dictionary<int, Crime> Crimes { get; } = new();
     public Dictionary<int, Trace> Traces { get; } = new();
     public Dictionary<int, Item> Items { get; } = new();
-    public Dictionary<int, Sublocation> Sublocations { get; } = new();
-    public List<SublocationConnection> SublocationConnections { get; } = new();
-    public CityGrid CityGrid { get; set; }
+    public Dictionary<int, CityGrid> CityGrids { get; } = new();
 
     private int _nextEntityId = 1;
 
@@ -42,5 +42,41 @@ public class SimulationState
             .Where(p => p.CurrentAddressId.HasValue && p.CurrentAddressId.Value == address.Id)
             .Select(p => p.FullName)
             .ToList();
+    }
+
+    // Query helpers
+
+    public List<Location> GetLocationsForAddress(int addressId)
+    {
+        var addr = Addresses[addressId];
+        return addr.LocationIds.Select(id => Locations[id]).ToList();
+    }
+
+    public List<SubLocation> GetSubLocationsForLocation(int locationId)
+    {
+        var loc = Locations[locationId];
+        return loc.SubLocationIds.Select(id => SubLocations[id]).ToList();
+    }
+
+    public Location FindLocationByTag(int addressId, string tag)
+    {
+        return GetLocationsForAddress(addressId).FirstOrDefault(l => l.HasTag(tag));
+    }
+
+    public SubLocation FindSubLocationByTag(int locationId, string tag)
+    {
+        return GetSubLocationsForLocation(locationId).FirstOrDefault(s => s.HasTag(tag));
+    }
+
+    public List<Address> GetAddressesForCity(int cityId)
+    {
+        var city = Cities[cityId];
+        return city.AddressIds.Select(id => Addresses[id]).ToList();
+    }
+
+    public CityEntity GetCityForAddress(int addressId)
+    {
+        var addr = Addresses[addressId];
+        return Cities[addr.CityId];
     }
 }
