@@ -11,9 +11,9 @@ Gives each Person an AI "brain" that follows a daily schedule derived from prior
 | `src/simulation/objectives/Task.cs` | SimTask class — schedulable item with ActionType, priority, time window, target address |
 | `src/simulation/actions/ActionType.cs` | ActionType enum (Idle, Work, Sleep, TravelByCar, KillPerson) |
 | `src/simulation/actions/ActionExecutor.cs` | Executes actions on task boundaries — modifies world state, produces Traces |
-| `src/simulation/scheduling/ScheduleBuilder.cs` | Converts List\<SimTask\> → DailySchedule — minute-by-minute priority resolution, block merging, travel insertion, sublocation decomposition |
-| `src/simulation/scheduling/DailySchedule.cs` | DailySchedule (list of ScheduleEntry/ScheduleGroup) and ScheduleEntry (ActionType, time window, target/from address, sublocation, ViaConnectionId) |
-| `src/simulation/scheduling/decomposition/*Decomposition.cs` | Per-activity strategies that expand a ScheduleEntry into sublocation-level stops (e.g., entrance → work area → break room → entrance) |
+| `src/simulation/scheduling/ScheduleBuilder.cs` | Converts List\<SimTask\> → DailySchedule — currently gutted (TODO for future scheduling project) |
+| `src/simulation/scheduling/DailySchedule.cs` | DailySchedule (list of ScheduleEntry/ScheduleGroup) and ScheduleEntry — currently gutted (TODO) |
+| `src/simulation/scheduling/decomposition/*Decomposition.cs` | Per-activity strategies — currently gutted (TODO for future scheduling project) |
 | `src/simulation/scheduling/SleepScheduleCalculator.cs` | Pure function: computes sleep/wake times from job shift + commute |
 | `src/simulation/scheduling/PersonBehavior.cs` | Per-frame updater: compares current action to schedule, triggers transitions, executes actions (e.g., KillPerson), deposits traversal fingerprints, triggers door locking/unlocking, skips dead NPCs |
 | `src/simulation/scheduling/DoorLockingService.cs` | Static service — locks exterior doors when leaving home or sleeping (10% forget chance per door), unlocks on arrival; deposits key fingerprints via FingerprintService |
@@ -37,6 +37,6 @@ When Objectives change (crime injected, step advances), `Person.NeedsScheduleReb
 
 ## Connection Points
 - **Reads from:** SimulationState (Jobs, Addresses, People, MapConfig, Crimes)
-- **Writes to:** Person (CurrentAction, Position, AddressId, TravelInfo, IsAlive), SimulationState (Traces), EventJournal, FingerprintSurface (on connections and items via FingerprintService), LockableProperty (via DoorLockingService)
+- **Writes to:** Person (CurrentAction, Position, AddressId, TravelInfo, IsAlive), SimulationState (Traces), EventJournal — fingerprint and door-locking services currently gutted (TODO)
 - **Called by:** SimulationManager._Process() invokes PersonBehavior.Update() each frame; SimulationManager.RebuildSchedule() re-derives schedules
 - **Built by:** PersonGenerator creates CoreNeed Objectives and builds initial schedule; CrimeGenerator injects crime Objectives
