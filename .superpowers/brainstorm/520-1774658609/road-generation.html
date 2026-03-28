@@ -1,0 +1,169 @@
+<h2>Road Network Generation</h2>
+<p class="subtitle">How should roads be laid out to form city blocks?</p>
+
+<div class="cards">
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding: 16px; background: #1a1a2e;">
+      <svg viewBox="0 0 300 300" style="width:100%;height:260px;">
+        <!-- Option A: Regular grid with variation -->
+        <!-- Roads as gray lines -->
+        <rect x="0" y="0" width="300" height="300" fill="#2d5a1e"/>
+
+        <!-- Horizontal roads - evenly spaced with slight variation -->
+        <rect x="0" y="28" width="300" height="8" fill="#555" opacity="0.9"/>
+        <rect x="0" y="72" width="300" height="8" fill="#555" opacity="0.9"/>
+        <rect x="0" y="118" width="300" height="8" fill="#555" opacity="0.9"/>
+        <rect x="0" y="160" width="300" height="8" fill="#555" opacity="0.9"/>
+        <rect x="0" y="208" width="300" height="8" fill="#555" opacity="0.9"/>
+        <rect x="0" y="258" width="300" height="8" fill="#555" opacity="0.9"/>
+
+        <!-- Vertical roads - evenly spaced with slight variation -->
+        <rect x="30" y="0" width="8" height="300" fill="#555" opacity="0.9"/>
+        <rect x="75" y="0" width="8" height="300" fill="#555" opacity="0.9"/>
+        <rect x="120" y="0" width="8" height="300" fill="#555" opacity="0.9"/>
+        <rect x="168" y="0" width="8" height="300" fill="#555" opacity="0.9"/>
+        <rect x="215" y="0" width="8" height="300" fill="#555" opacity="0.9"/>
+        <rect x="260" y="0" width="8" height="300" fill="#555" opacity="0.9"/>
+
+        <!-- Building blocks in center (urban) - gray rectangles -->
+        <rect x="38" y="36" width="30" height="28" fill="#666" rx="1"/>
+        <rect x="83" y="36" width="30" height="28" fill="#666" rx="1"/>
+        <rect x="128" y="36" width="33" height="28" fill="#666" rx="1"/>
+        <rect x="176" y="36" width="32" height="28" fill="#666" rx="1"/>
+
+        <rect x="38" y="80" width="30" height="30" fill="#666" rx="1"/>
+        <rect x="83" y="80" width="30" height="30" fill="#666" rx="1"/>
+        <rect x="128" y="80" width="33" height="30" fill="#666" rx="1"/>
+        <rect x="176" y="80" width="32" height="30" fill="#666" rx="1"/>
+
+        <!-- Suburban blocks at edges - smaller, more green -->
+        <rect x="223" y="36" width="30" height="28" fill="#3a7a2e" rx="1"/>
+        <rect x="223" y="80" width="30" height="30" fill="#3a7a2e" rx="1"/>
+        <rect x="38" y="216" width="30" height="34" fill="#3a7a2e" rx="1"/>
+        <rect x="83" y="216" width="30" height="34" fill="#3a7a2e" rx="1"/>
+
+        <!-- Label -->
+        <text x="150" y="290" text-anchor="middle" fill="white" font-size="11" font-family="monospace">Regular grid — all roads span full map</text>
+      </svg>
+    </div>
+    <div class="card-body">
+      <h3>A: Full-Span Grid</h3>
+      <p>Every road runs the entire width or height of the map. Perfectly regular grid creates uniform rectangular blocks. Simple to generate — just pick spacing for each road.</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Pros</h4><ul><li>Simplest algorithm</li><li>All roads guaranteed connected</li><li>Very predictable block shapes</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Looks like graph paper</li><li>No dead ends, no character</li><li>Every block perfectly rectangular</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding: 16px; background: #1a1a2e;">
+      <svg viewBox="0 0 300 300" style="width:100%;height:260px;">
+        <rect x="0" y="0" width="300" height="300" fill="#2d5a1e"/>
+
+        <!-- Main arterial roads - full span -->
+        <rect x="0" y="75" width="300" height="8" fill="#777" opacity="0.9"/>
+        <rect x="0" y="150" width="300" height="8" fill="#777" opacity="0.9"/>
+        <rect x="0" y="225" width="300" height="8" fill="#777" opacity="0.9"/>
+        <rect x="75" y="0" width="8" height="300" fill="#777" opacity="0.9"/>
+        <rect x="150" y="0" width="8" height="300" fill="#777" opacity="0.9"/>
+        <rect x="225" y="0" width="8" height="300" fill="#777" opacity="0.9"/>
+
+        <!-- Secondary roads - partial, only within some blocks -->
+        <!-- Urban center: more subdivisions -->
+        <rect x="75" y="112" width="75" height="6" fill="#555" opacity="0.8"/>
+        <rect x="112" y="75" width="6" height="75" fill="#555" opacity="0.8"/>
+        <rect x="150" y="112" width="75" height="6" fill="#555" opacity="0.8"/>
+        <rect x="187" y="75" width="6" height="75" fill="#555" opacity="0.8"/>
+
+        <rect x="75" y="187" width="75" height="6" fill="#555" opacity="0.8"/>
+        <rect x="112" y="150" width="6" height="75" fill="#555" opacity="0.8"/>
+        <rect x="150" y="187" width="75" height="6" fill="#555" opacity="0.8"/>
+
+        <!-- Suburban: fewer subdivisions -->
+        <rect x="0" y="37" width="75" height="6" fill="#555" opacity="0.7"/>
+        <rect x="37" y="0" width="6" height="75" fill="#555" opacity="0.7"/>
+
+        <!-- Buildings in urban subdivided blocks -->
+        <rect x="83" y="83" width="22" height="22" fill="#666" rx="1"/>
+        <rect x="118" y="83" width="25" height="22" fill="#666" rx="1"/>
+        <rect x="83" y="118" width="22" height="25" fill="#666" rx="1"/>
+        <rect x="118" y="118" width="25" height="25" fill="#666" rx="1"/>
+
+        <rect x="158" y="83" width="22" height="22" fill="#666" rx="1"/>
+        <rect x="193" y="83" width="25" height="22" fill="#666" rx="1"/>
+
+        <!-- Suburban areas - larger blocks, more green -->
+        <rect x="8" y="8" width="22" height="22" fill="#3a7a2e" rx="1"/>
+        <rect x="43" y="8" width="22" height="22" fill="#3a7a2e" rx="1"/>
+        <rect x="8" y="43" width="22" height="22" fill="#3a7a2e" rx="1"/>
+        <rect x="43" y="43" width="22" height="22" fill="#3a7a2e" rx="1"/>
+
+        <!-- Large undivided suburban block -->
+        <rect x="233" y="8" width="58" height="60" fill="#3a7a2e" rx="1"/>
+        <rect x="233" y="158" width="58" height="60" fill="#3a7a2e" rx="1"/>
+
+        <text x="150" y="290" text-anchor="middle" fill="white" font-size="11" font-family="monospace">Arterials + secondary roads, denser in center</text>
+      </svg>
+    </div>
+    <div class="card-body">
+      <h3>B: Hierarchical Grid</h3>
+      <p>Major arterial roads span the full map creating large super-blocks. Secondary roads subdivide those blocks — more subdivisions in urban center, fewer at edges. Suburban blocks stay large; urban blocks get chopped small.</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Pros</h4><ul><li>Natural urban/suburban density difference</li><li>Major roads give navigational landmarks</li><li>Block size varies organically</li><li>Still guaranteed connected (arterials span full map)</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Slightly more complex generation</li><li>Need to decide subdivision rules</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding: 16px; background: #1a1a2e;">
+      <svg viewBox="0 0 300 300" style="width:100%;height:260px;">
+        <rect x="0" y="0" width="300" height="300" fill="#2d5a1e"/>
+
+        <!-- Organic-ish roads that don't all span full map -->
+        <!-- Some horizontal -->
+        <rect x="20" y="40" width="260" height="7" fill="#555" opacity="0.9"/>
+        <rect x="0" y="95" width="200" height="7" fill="#555" opacity="0.9"/>
+        <rect x="160" y="105" width="140" height="7" fill="#555" opacity="0.9"/>
+        <rect x="40" y="155" width="220" height="7" fill="#555" opacity="0.9"/>
+        <rect x="0" y="200" width="180" height="7" fill="#555" opacity="0.9"/>
+        <rect x="140" y="210" width="160" height="7" fill="#555" opacity="0.9"/>
+        <rect x="30" y="260" width="250" height="7" fill="#555" opacity="0.9"/>
+
+        <!-- Some vertical -->
+        <rect x="35" y="0" width="7" height="200" fill="#555" opacity="0.9"/>
+        <rect x="85" y="40" width="7" height="220" fill="#555" opacity="0.9"/>
+        <rect x="135" y="0" width="7" height="260" fill="#555" opacity="0.9"/>
+        <rect x="175" y="40" width="7" height="170" fill="#555" opacity="0.9"/>
+        <rect x="210" y="95" width="7" height="170" fill="#555" opacity="0.9"/>
+        <rect x="260" y="0" width="7" height="267" fill="#555" opacity="0.9"/>
+
+        <!-- Connector segments -->
+        <rect x="200" y="95" width="7" height="17" fill="#555" opacity="0.7"/>
+        <rect x="175" y="200" width="42" height="7" fill="#555" opacity="0.7"/>
+
+        <!-- Various sized blocks -->
+        <rect x="43" y="48" width="35" height="40" fill="#666" rx="1"/>
+        <rect x="92" y="48" width="36" height="40" fill="#666" rx="1"/>
+        <rect x="143" y="48" width="25" height="40" fill="#666" rx="1"/>
+
+        <rect x="43" y="102" width="35" height="46" fill="#666" rx="1"/>
+        <rect x="92" y="102" width="36" height="46" fill="#666" rx="1"/>
+
+        <rect x="43" y="162" width="35" height="31" fill="#3a7a2e" rx="1"/>
+        <rect x="8" y="207" width="20" height="46" fill="#3a7a2e" rx="1"/>
+
+        <text x="150" y="290" text-anchor="middle" fill="white" font-size="11" font-family="monospace">Organic — roads don't all span full map</text>
+      </svg>
+    </div>
+    <div class="card-body">
+      <h3>C: Organic / Partial Roads</h3>
+      <p>Roads don't all run the full width/height. Some terminate, some offset, creating irregular block shapes and T-intersections. More realistic but harder to guarantee connectivity.</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Pros</h4><ul><li>Most realistic-looking</li><li>Interesting irregular blocks</li><li>T-intersections add character</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Hardest to generate correctly</li><li>Connectivity not guaranteed — needs validation</li><li>Addressing gets complex</li><li>May create unusable block shapes</li></ul></div>
+      </div>
+    </div>
+  </div>
+</div>
