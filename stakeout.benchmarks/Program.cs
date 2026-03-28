@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using Stakeout.Simulation;
+using Stakeout.Simulation.City;
 using Stakeout.Simulation.Sublocations;
 using Stakeout.Simulation.Entities;
 using Stakeout.Simulation.Scheduling;
@@ -46,10 +47,14 @@ class Program
         var state = new SimulationState(clock);
         var mapConfig = new MapConfig();
         var locationGenerator = new LocationGenerator(mapConfig);
-        var personGenerator = new PersonGenerator(locationGenerator, mapConfig);
+        var personGenerator = new PersonGenerator(mapConfig);
         var behavior = new PersonBehavior(mapConfig);
 
         locationGenerator.GenerateCityScaffolding(state);
+
+        // Generate city grid so PersonGenerator can pick addresses
+        var cityGen = new CityGenerator(seed: 42);
+        state.CityGrid = cityGen.Generate(state);
 
         Console.Error.Write($"  Generating {npcCount} NPCs...");
         Console.Error.Flush();

@@ -1,26 +1,21 @@
 using System;
 using Godot;
+using Stakeout.Simulation.City;
 using Stakeout.Simulation.Data;
 using Stakeout.Simulation.Entities;
+using CityEntity = Stakeout.Simulation.Entities.City;
 using Stakeout.Simulation.Sublocations;
 
 namespace Stakeout.Simulation;
 
 public class LocationGenerator
 {
-    private static bool _registryInitialized = false;
-
     private readonly Random _random = new();
     private readonly MapConfig _mapConfig;
 
     public LocationGenerator(MapConfig mapConfig)
     {
         _mapConfig = mapConfig;
-        if (!_registryInitialized)
-        {
-            SublocationGeneratorRegistry.RegisterAll();
-            _registryInitialized = true;
-        }
     }
 
     public void GenerateCityScaffolding(SimulationState state)
@@ -28,7 +23,7 @@ public class LocationGenerator
         var country = new Country { Name = "United States" };
         state.Countries.Add(country);
 
-        var city = new City
+        var city = new CityEntity
         {
             Id = state.GenerateEntityId(),
             Name = "Boston",
@@ -45,16 +40,16 @@ public class LocationGenerator
 
         var street = FindOrCreateStreet(state, cityId);
 
+        int gridX = _random.Next(1, _mapConfig.GridWidth - 1);
+        int gridY = _random.Next(1, _mapConfig.GridHeight - 1);
         var address = new Address
         {
             Id = state.GenerateEntityId(),
             Number = GenerateAddressNumber(),
             StreetId = street.Id,
             Type = type,
-            Position = new Vector2(
-                (float)(_random.NextDouble() * (_mapConfig.MaxX - _mapConfig.MinX) + _mapConfig.MinX),
-                (float)(_random.NextDouble() * (_mapConfig.MaxY - _mapConfig.MinY) + _mapConfig.MinY)
-            )
+            GridX = gridX,
+            GridY = gridY
         };
         state.Addresses[address.Id] = address;
 
@@ -64,6 +59,37 @@ public class LocationGenerator
             sublocationGenerator.Generate(address, state, _random);
         }
 
+        return address;
+    }
+
+    /// <summary>
+    /// Generates the interior (sublocations) for an address that was placed on the city grid
+    /// but hasn't had its interior resolved yet. No-op if already resolved.
+    /// </summary>
+    public static void ResolveAddressInterior(Address address, SimulationState state, Random random = null)
+    {
+        if (address.Sublocations.Count > 0) return;
+
+        random ??= new Random();
+        var sublocationGenerator = SublocationGeneratorRegistry.Get(address.Type);
+        sublocationGenerator?.Generate(address, state, random);
+    }
+
+    /// <summary>
+    /// Picks a random unresolved address of the given type from the city grid
+    /// and generates its interior. Used by PersonGenerator and SimulationManager
+    /// to claim addresses for people and the player.
+    /// </summary>
+    public static Address PickAndResolveAddress(SimulationState state, AddressType type, Random random)
+    {
+        var plotType = type.ToPlotType();
+        var unresolvedIds = state.CityGrid.GetUnresolvedAddressIdsByType(plotType, state.Addresses);
+        if (unresolvedIds.Count == 0)
+            throw new InvalidOperationException($"No unresolved {type} addresses available on the city grid");
+
+        var addressId = unresolvedIds[random.Next(unresolvedIds.Count)];
+        var address = state.Addresses[addressId];
+        ResolveAddressInterior(address, state, random);
         return address;
     }
 

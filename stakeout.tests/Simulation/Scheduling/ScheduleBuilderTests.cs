@@ -18,8 +18,8 @@ public class ScheduleBuilderTests
 
     private static (Address home, Address work) CreateAddresses(float distance = 500f)
     {
-        var home = new Address { Id = 1, Position = new Vector2(100, 100), Type = AddressType.SuburbanHome };
-        var work = new Address { Id = 2, Position = new Vector2(100 + distance, 100), Type = AddressType.Office };
+        var home = new Address { Id = 1, GridX = 2, GridY = 2, Type = AddressType.SuburbanHome };
+        var work = new Address { Id = 2, GridX = (int)((100 + distance) / Address.CellSize), GridY = 2, Type = AddressType.Office };
         return (home, work);
     }
 
@@ -105,8 +105,8 @@ public class ScheduleBuilderTests
     public void BuildFromTasks_WithSublocations_EntriesHaveSublocationIds()
     {
         var state = new SimulationState();
-        var home = new Address { Id = 1, Position = new Vector2(100, 100), Type = AddressType.SuburbanHome };
-        var work = new Address { Id = 2, Position = new Vector2(600, 100), Type = AddressType.Office };
+        var home = new Address { Id = 1, GridX = 2, GridY = 2, Type = AddressType.SuburbanHome };
+        var work = new Address { Id = 2, GridX = 12, GridY = 2, Type = AddressType.Office };
         state.Addresses[1] = home;
         state.Addresses[2] = work;
 
@@ -130,8 +130,8 @@ public class ScheduleBuilderTests
     public void BuildFromTasks_ApartmentWithUnitTag_SublocationEntriesUseCorrectUnit()
     {
         var state = new SimulationState();
-        var home = new Address { Id = 1, Position = new Vector2(100, 100), Type = AddressType.ApartmentBuilding };
-        var work = new Address { Id = 2, Position = new Vector2(600, 100), Type = AddressType.Office };
+        var home = new Address { Id = 1, GridX = 2, GridY = 2, Type = AddressType.ApartmentBuilding };
+        var work = new Address { Id = 2, GridX = 12, GridY = 2, Type = AddressType.Office };
         state.Addresses[1] = home;
         state.Addresses[2] = work;
 
@@ -178,9 +178,9 @@ public class ScheduleBuilderTests
     [Fact]
     public void BuildFromTasks_ThirdAddress_KillPersonAppears()
     {
-        var home = new Address { Id = 1, Position = new Vector2(100, 100), Type = AddressType.SuburbanHome };
-        var work = new Address { Id = 2, Position = new Vector2(600, 100), Type = AddressType.Office };
-        var crimeScene = new Address { Id = 3, Position = new Vector2(400, 300), Type = AddressType.SuburbanHome };
+        var home = new Address { Id = 1, GridX = 2, GridY = 2, Type = AddressType.SuburbanHome };
+        var work = new Address { Id = 2, GridX = 12, GridY = 2, Type = AddressType.Office };
+        var crimeScene = new Address { Id = 3, GridX = 8, GridY = 6, Type = AddressType.SuburbanHome };
         var addresses = new Dictionary<int, Address>
             { { 1, home }, { 2, work }, { 3, crimeScene } };
         var tasks = new List<SimTask>
@@ -212,8 +212,8 @@ public class ScheduleBuilderTests
         // The idle gap between work-end and sleep-start is only 15 minutes.
         // If travel time > 15 minutes, the travel overflows the idle block,
         // creating a broken entry with StartTime > EndTime.
-        var home = new Address { Id = 1, Position = new Vector2(100, 100), Type = AddressType.SuburbanHome };
-        var work = new Address { Id = 2, Position = new Vector2(800, 100), Type = AddressType.Office };
+        var home = new Address { Id = 1, GridX = 2, GridY = 2, Type = AddressType.SuburbanHome };
+        var work = new Address { Id = 2, GridX = 16, GridY = 2, Type = AddressType.Office };
         var addresses = new Dictionary<int, Address> { { 1, home }, { 2, work } };
 
         var tasks = new List<SimTask>

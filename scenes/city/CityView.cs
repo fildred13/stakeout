@@ -1,10 +1,11 @@
+using System;
 using System.Collections.Generic;
-using System.Linq;
 using Godot;
 using Stakeout;
 using Stakeout.Evidence;
 using Stakeout.Simulation;
 using Stakeout.Simulation.Actions;
+using Stakeout.Simulation.City;
 using Stakeout.Simulation.Entities;
 
 public partial class CityView : Control, IContentView
@@ -13,29 +14,51 @@ public partial class CityView : Control, IContentView
     private SimulationManager _simulationManager;
     private GameShell _gameShell;
     private Label _hoverLabel;
-    private Control _locationIcons;
-    private Control _entityDots;
 
-    private const float LocationIconSize = 12f;
+    // Pan/zoom state (modeled after EvidenceBoardScene)
+    private Vector2 _panOffset = Vector2.Zero;
+    private float _zoom = 1.0f;
+    private bool _isPanning;
+    private Vector2 _panStartMouse;
+    private Vector2 _panStartOffset;
+    private const float MinZoom = 0.25f;
+    private const float MaxZoom = 2.0f;
+    private const float ZoomStep = 0.1f;
+
+    // Grid constants
+    private const int CellSize = 48;
+    private const int GridWidth = 100;
+    private const int GridHeight = 100;
+    private const float BuildingInset = 4f; // (48-40)/2
+    private const float BuildingSize = 40f;
     private const float EntityDotSize = 8f;
-    private const float HoverDistance = 10f;
-    private const int IconBorderWidth = 2;
-    private const int DotBorderWidth = 1;
+    private const float HoverDistance = 15f;
 
-    private readonly Dictionary<int, Panel> _addressNodes = [];
-    private readonly Dictionary<int, Panel> _personNodes = [];
-    private Panel _playerNode;
+    // Selection state
+    private int? _selectedAddressId;
     private bool _wasPlayerTraveling;
+    private bool _didDrag;
+    private const float DragThreshold = 4f;
 
-    private static readonly Color SuburbanHomeColor = new(0.2f, 0.8f, 0.2f);
-    private static readonly Color DinerColor = new(0.9f, 0.9f, 0.2f);
-    private static readonly Color DiveBarColor = new(0.9f, 0.2f, 0.2f);
-    private static readonly Color OfficeColor = new(0.2f, 0.7f, 0.9f);
+    // Colors
+    private static readonly Color RoadColor = new(0.6f, 0.6f, 0.6f);
+    private static readonly Color BuildingColor = new(0.33f, 0.33f, 0.33f);
+    private static readonly Color ParkColor = new(0.29f, 0.54f, 0.2f);
+    private static readonly Color ParkTreeColor = new(0.15f, 0.35f, 0.1f);
+    private static readonly Color EmptyColor = new(0.23f, 0.42f, 0.14f);
+    private static readonly Color DrivewayColor = new(0.5f, 0.5f, 0.5f);
+    private static readonly Color PlayerLocationColor = new(0.23f, 0.48f, 0.8f);
+    private static readonly Color EvidenceBoardColor = new(0.54f, 0.2f, 0.2f);
+    private static readonly Color SelectionOutlineColor = new(1f, 1f, 1f);
     private static readonly Color PersonColor = new(1f, 1f, 1f);
     private static readonly Color SleepingPersonColor = new(0.5f, 0.5f, 0.5f);
     private static readonly Color DeadPersonColor = new(1f, 0f, 0f);
-    private static readonly Color PlayerColor = new(0.3f, 0.5f, 1f);
-    private static readonly Color BorderColor = new(0f, 0f, 0f);
+    private static readonly Color PlayerDotColor = new(0.3f, 0.5f, 1f);
+    private static readonly Color StreetLabelColor = new(0.85f, 0.85f, 0.85f);
+
+    // Font for street labels
+    private Font _font;
+    private const int FontSize = 10;
 
     public void SetGameShell(GameShell shell)
     {
@@ -46,23 +69,485 @@ public partial class CityView : Control, IContentView
     public override void _Ready()
     {
         _hoverLabel = GetNode<Label>("HoverLabel");
-        _locationIcons = GetNode<Control>("CityMap/LocationIcons");
-        _entityDots = GetNode<Control>("CityMap/EntityDots");
 
         _gameManager = GetNode<GameManager>("/root/GameManager");
         _simulationManager = _gameManager.SimulationManager;
 
-        _simulationManager.AddressAdded += OnAddressAdded;
-        _simulationManager.PersonAdded += OnPersonAdded;
-        _simulationManager.PlayerCreated += OnPlayerCreated;
+        _font = GD.Load<Font>("res://fonts/exepixelperfect/EXEPixelPerfect.ttf");
 
-        foreach (var address in _simulationManager.State.Addresses.Values)
-            OnAddressAdded(address);
-        foreach (var person in _simulationManager.State.People.Values)
-            OnPersonAdded(person);
-        if (_simulationManager.State.Player != null)
-            OnPlayerCreated();
+        // Center viewport on the middle of the grid
+        CenterViewport();
     }
+
+    private void CenterViewport()
+    {
+        var localSize = Size;
+        var gridPixelSize = new Vector2(GridWidth * CellSize, GridHeight * CellSize);
+        _panOffset = (localSize - gridPixelSize * _zoom) / 2;
+    }
+
+    /// <summary>
+    /// Converts a viewport-space position (from InputEvent.Position) to this Control's local space.
+    /// CityView may be offset within the viewport (e.g., by a sidebar).
+    /// </summary>
+    private Vector2 ToLocal(Vector2 viewportPos)
+    {
+        return viewportPos - GlobalPosition;
+    }
+
+    public override void _Process(double delta)
+    {
+        // Refresh menu on travel state change
+        var player = _simulationManager.State.Player;
+        var isTraveling = player?.TravelInfo != null;
+        if (_wasPlayerTraveling && !isTraveling)
+            UpdateMenuItems();
+        _wasPlayerTraveling = isTraveling;
+
+        UpdateHoverLabel();
+        QueueRedraw();
+    }
+
+    public override void _Draw()
+    {
+        var state = _simulationManager.State;
+        var grid = state.CityGrid;
+        if (grid == null) return;
+
+        // Compute visible grid range for culling
+        var localSize = Size;
+        int minGX = Math.Max(0, (int)((-_panOffset.X) / (_zoom * CellSize)));
+        int maxGX = Math.Min(GridWidth - 1, (int)((-_panOffset.X + localSize.X) / (_zoom * CellSize)));
+        int minGY = Math.Max(0, (int)((-_panOffset.Y) / (_zoom * CellSize)));
+        int maxGY = Math.Min(GridHeight - 1, (int)((-_panOffset.Y + localSize.Y) / (_zoom * CellSize)));
+
+        // Collect highlight sets
+        var playerCells = new HashSet<(int, int)>();
+        var evidenceCells = new HashSet<(int, int)>();
+        var selectedCells = new HashSet<(int, int)>();
+
+        // Player location cells
+        var player = state.Player;
+        if (player != null && player.TravelInfo == null && player.CurrentAddressId > 0)
+        {
+            foreach (var cell in grid.GetCellsForAddress(player.CurrentAddressId))
+                playerCells.Add(cell);
+        }
+
+        // Evidence board address cells
+        if (_gameManager.EvidenceBoard != null)
+        {
+            foreach (var item in _gameManager.EvidenceBoard.Items.Values)
+            {
+                if (item.EntityType == EvidenceEntityType.Address)
+                {
+                    foreach (var cell in grid.GetCellsForAddress(item.EntityId))
+                        evidenceCells.Add(cell);
+                }
+            }
+        }
+
+        // Selected address cells
+        if (_selectedAddressId.HasValue)
+        {
+            foreach (var cell in grid.GetCellsForAddress(_selectedAddressId.Value))
+                selectedCells.Add(cell);
+        }
+
+        // Track drawn multi-cell buildings to avoid redrawing
+        var drawnAddresses = new HashSet<int>();
+
+        // Track street label positions to avoid overlap
+        var labelPositions = new List<Vector2>();
+
+        // Draw grid cells
+        for (int gx = minGX; gx <= maxGX; gx++)
+        {
+            for (int gy = minGY; gy <= maxGY; gy++)
+            {
+                var cell = grid.GetCell(gx, gy);
+                var screenPos = GridToScreen(gx, gy);
+                var scaledCell = CellSize * _zoom;
+
+                // Draw base cell
+                switch (cell.PlotType)
+                {
+                    case PlotType.Road:
+                        DrawRect(new Rect2(screenPos, new Vector2(scaledCell, scaledCell)), RoadColor);
+                        break;
+
+                    case PlotType.Empty:
+                        DrawRect(new Rect2(screenPos, new Vector2(scaledCell, scaledCell)), EmptyColor);
+                        break;
+
+                    case PlotType.Park:
+                        if (cell.AddressId.HasValue && !drawnAddresses.Contains(cell.AddressId.Value))
+                        {
+                            drawnAddresses.Add(cell.AddressId.Value);
+                            DrawPark(screenPos, scaledCell, cell);
+                        }
+                        else if (!cell.AddressId.HasValue)
+                        {
+                            // Standalone park cell
+                            DrawRect(new Rect2(screenPos, new Vector2(scaledCell, scaledCell)), ParkColor);
+                        }
+                        break;
+
+                    default:
+                        if (cell.PlotType.IsBuilding())
+                        {
+                            if (cell.AddressId.HasValue && !drawnAddresses.Contains(cell.AddressId.Value))
+                            {
+                                drawnAddresses.Add(cell.AddressId.Value);
+                                DrawBuilding(screenPos, scaledCell, cell);
+                            }
+                            else if (!cell.AddressId.HasValue)
+                            {
+                                // Fallback: draw single building cell
+                                var inset = BuildingInset * _zoom;
+                                var bSize = BuildingSize * _zoom;
+                                DrawRect(new Rect2(screenPos + new Vector2(inset, inset), new Vector2(bSize, bSize)), BuildingColor);
+                            }
+                        }
+                        break;
+                }
+
+                // Draw highlight overlays
+                var key = (gx, gy);
+                if (playerCells.Contains(key))
+                    DrawRect(new Rect2(screenPos, new Vector2(scaledCell, scaledCell)), new Color(PlayerLocationColor, 0.5f));
+                else if (evidenceCells.Contains(key))
+                    DrawRect(new Rect2(screenPos, new Vector2(scaledCell, scaledCell)), new Color(EvidenceBoardColor, 0.5f));
+
+                // Draw selection outline
+                if (selectedCells.Contains(key))
+                {
+                    var outlineWidth = 2f * _zoom;
+                    DrawRect(new Rect2(screenPos, new Vector2(scaledCell, scaledCell)), SelectionOutlineColor, false, outlineWidth);
+                }
+
+                // Street labels (every ~8 cells on road)
+                if (cell.PlotType == PlotType.Road && cell.StreetId.HasValue && (gx % 8 == 0 || gy % 8 == 0))
+                {
+                    DrawStreetLabel(gx, gy, cell, screenPos, scaledCell, labelPositions);
+                }
+            }
+        }
+
+        // Draw entity dots on top
+        DrawEntityDots(state, minGX, maxGX, minGY, maxGY);
+    }
+
+    private void DrawBuilding(Vector2 screenPos, float scaledCell, Cell cell)
+    {
+        var (sizeW, sizeH) = cell.PlotType.GetSize();
+        var inset = BuildingInset * _zoom;
+        // For multi-cell buildings, span across cells with gap accounting
+        var totalW = (sizeW * CellSize - BuildingInset * 2) * _zoom;
+        var totalH = (sizeH * CellSize - BuildingInset * 2) * _zoom;
+
+        // Draw empty/green background behind building
+        DrawRect(new Rect2(screenPos, new Vector2(sizeW * scaledCell, sizeH * scaledCell)), EmptyColor);
+
+        // Draw building rect
+        DrawRect(new Rect2(screenPos + new Vector2(inset, inset), new Vector2(totalW, totalH)), BuildingColor);
+
+        // Draw driveway only if it would connect to a road
+        if (cell.AddressId.HasValue)
+        {
+            var grid = _simulationManager.State.CityGrid;
+            var addr = _simulationManager.State.Addresses[cell.AddressId.Value];
+            int checkX = addr.GridX, checkY = addr.GridY;
+            // Offset to the edge of the building in the facing direction
+            switch (cell.FacingDirection)
+            {
+                case FacingDirection.South: checkY += sizeH; break;
+                case FacingDirection.North: checkY -= 1; break;
+                case FacingDirection.East: checkX += sizeW; break;
+                case FacingDirection.West: checkX -= 1; break;
+            }
+            if (grid.IsInBounds(checkX, checkY) && grid.GetCell(checkX, checkY).PlotType == PlotType.Road)
+            {
+                DrawDriveway(screenPos, scaledCell, sizeW, sizeH, cell.FacingDirection);
+            }
+        }
+    }
+
+    private void DrawPark(Vector2 screenPos, float scaledCell, Cell cell)
+    {
+        var (sizeW, sizeH) = cell.PlotType.GetSize();
+
+        // Draw park background
+        DrawRect(new Rect2(screenPos, new Vector2(sizeW * scaledCell, sizeH * scaledCell)), ParkColor);
+
+        // Draw trees (small dark green circles)
+        var treeRadius = 4f * _zoom;
+        var centerX = screenPos.X + sizeW * scaledCell / 2;
+        var centerY = screenPos.Y + sizeH * scaledCell / 2;
+        DrawCircle(new Vector2(centerX - 12 * _zoom, centerY - 8 * _zoom), treeRadius, ParkTreeColor);
+        DrawCircle(new Vector2(centerX + 10 * _zoom, centerY + 6 * _zoom), treeRadius, ParkTreeColor);
+        DrawCircle(new Vector2(centerX + 2 * _zoom, centerY + 14 * _zoom), treeRadius, ParkTreeColor);
+    }
+
+    private void DrawDriveway(Vector2 buildingScreenPos, float scaledCell, int buildingW, int buildingH, FacingDirection facing)
+    {
+        var drivewayW = 8f * _zoom;
+        var drivewayH = 4f * _zoom;
+        Vector2 pos;
+
+        var bCenterX = buildingScreenPos.X + buildingW * scaledCell / 2;
+        var bCenterY = buildingScreenPos.Y + buildingH * scaledCell / 2;
+
+        switch (facing)
+        {
+            case FacingDirection.South:
+                pos = new Vector2(bCenterX - drivewayW / 2, buildingScreenPos.Y + buildingH * scaledCell - drivewayH);
+                DrawRect(new Rect2(pos, new Vector2(drivewayW, drivewayH)), DrivewayColor);
+                break;
+            case FacingDirection.North:
+                pos = new Vector2(bCenterX - drivewayW / 2, buildingScreenPos.Y);
+                DrawRect(new Rect2(pos, new Vector2(drivewayW, drivewayH)), DrivewayColor);
+                break;
+            case FacingDirection.East:
+                pos = new Vector2(buildingScreenPos.X + buildingW * scaledCell - drivewayH, bCenterY - drivewayW / 2);
+                DrawRect(new Rect2(pos, new Vector2(drivewayH, drivewayW)), DrivewayColor);
+                break;
+            case FacingDirection.West:
+                pos = new Vector2(buildingScreenPos.X, bCenterY - drivewayW / 2);
+                DrawRect(new Rect2(pos, new Vector2(drivewayH, drivewayW)), DrivewayColor);
+                break;
+        }
+    }
+
+    private void DrawStreetLabel(int gx, int gy, Cell cell, Vector2 screenPos, float scaledCell, List<Vector2> labelPositions)
+    {
+        if (!cell.StreetId.HasValue || _font == null) return;
+
+        var state = _simulationManager.State;
+        if (!state.Streets.TryGetValue(cell.StreetId.Value, out var street)) return;
+
+        var labelCenter = screenPos + new Vector2(scaledCell / 2, scaledCell / 2);
+
+        // Check distance from existing labels to avoid overlap
+        foreach (var existing in labelPositions)
+        {
+            if (labelCenter.DistanceTo(existing) < 80 * _zoom)
+                return;
+        }
+
+        labelPositions.Add(labelCenter);
+
+        var fontSize = (int)(FontSize * _zoom);
+        if (fontSize < 4) return; // Too small to read
+
+        // Determine if this is a horizontal or vertical road segment
+        var grid = state.CityGrid;
+        bool isHorizontal = (grid.IsInBounds(gx - 1, gy) && grid.GetCell(gx - 1, gy).PlotType == PlotType.Road) ||
+                            (grid.IsInBounds(gx + 1, gy) && grid.GetCell(gx + 1, gy).PlotType == PlotType.Road);
+
+        if (isHorizontal)
+        {
+            DrawString(_font, screenPos + new Vector2(2 * _zoom, scaledCell / 2 + fontSize / 2f),
+                street.Name, HorizontalAlignment.Left, -1, fontSize, StreetLabelColor);
+        }
+        else
+        {
+            // For vertical streets, draw with 90-degree rotation
+            var transform = Transform2D.Identity;
+            var textPos = screenPos + new Vector2(scaledCell / 2 - fontSize / 2f, scaledCell - 2 * _zoom);
+            transform = transform.Translated(textPos);
+            transform = transform.Rotated(-Mathf.Pi / 2);
+            DrawSetTransformMatrix(transform);
+            DrawString(_font, Vector2.Zero, street.Name, HorizontalAlignment.Left, -1, fontSize, StreetLabelColor);
+            DrawSetTransformMatrix(Transform2D.Identity);
+        }
+    }
+
+    private void DrawEntityDots(SimulationState state, int minGX, int maxGX, int minGY, int maxGY)
+    {
+        var dotRadius = EntityDotSize / 2 * _zoom;
+        var halfCell = new Vector2(CellSize / 2f, CellSize / 2f);
+
+        // Draw person dots
+        foreach (var person in state.People.Values)
+        {
+            var screenPos = WorldToScreen(person.CurrentPosition + halfCell);
+
+            Color color;
+            if (!person.IsAlive)
+                color = DeadPersonColor;
+            else if (person.CurrentAction == ActionType.Sleep)
+                color = SleepingPersonColor;
+            else
+                color = PersonColor;
+
+            DrawCircle(screenPos, dotRadius, color);
+        }
+
+        // Draw player dot on top
+        if (state.Player != null)
+        {
+            var screenPos = WorldToScreen(state.Player.CurrentPosition + halfCell);
+            DrawCircle(screenPos, dotRadius, PlayerDotColor);
+        }
+    }
+
+    // --- Input handling ---
+
+    public override void _UnhandledInput(InputEvent @event)
+    {
+        if (@event is InputEventMouseButton mb)
+            HandleMouseButton(mb);
+        else if (@event is InputEventMouseMotion mm && _isPanning)
+            HandlePanMotion(mm);
+    }
+
+    private void HandleMouseButton(InputEventMouseButton mb)
+    {
+        var localPos = ToLocal(mb.Position);
+
+        if (mb.ButtonIndex == MouseButton.WheelUp && mb.Pressed)
+        {
+            Zoom(ZoomStep, localPos);
+            GetViewport().SetInputAsHandled();
+        }
+        else if (mb.ButtonIndex == MouseButton.WheelDown && mb.Pressed)
+        {
+            Zoom(-ZoomStep, localPos);
+            GetViewport().SetInputAsHandled();
+        }
+        else if (mb.ButtonIndex == MouseButton.Middle)
+        {
+            if (mb.Pressed)
+            {
+                _isPanning = true;
+                _panStartMouse = localPos;
+                _panStartOffset = _panOffset;
+                _didDrag = false;
+            }
+            else
+            {
+                _isPanning = false;
+            }
+            GetViewport().SetInputAsHandled();
+        }
+        else if (mb.ButtonIndex == MouseButton.Left)
+        {
+            if (mb.Pressed)
+            {
+                _isPanning = true;
+                _panStartMouse = localPos;
+                _panStartOffset = _panOffset;
+                _didDrag = false;
+            }
+            else
+            {
+                _isPanning = false;
+                if (!_didDrag)
+                {
+                    HandleClick(localPos);
+                }
+            }
+            GetViewport().SetInputAsHandled();
+        }
+        else if (mb.ButtonIndex == MouseButton.Right && mb.Pressed)
+        {
+            HandleRightClick(localPos, mb.GlobalPosition);
+            GetViewport().SetInputAsHandled();
+        }
+    }
+
+    private void HandlePanMotion(InputEventMouseMotion mm)
+    {
+        var localPos = ToLocal(mm.Position);
+        var delta = localPos - _panStartMouse;
+        if (delta.Length() > DragThreshold)
+            _didDrag = true;
+
+        _panOffset = _panStartOffset + delta;
+        GetViewport().SetInputAsHandled();
+    }
+
+    private void Zoom(float delta, Vector2 mousePos)
+    {
+        var oldZoom = _zoom;
+        _zoom = Mathf.Clamp(_zoom + delta, MinZoom, MaxZoom);
+        var zoomRatio = _zoom / oldZoom;
+        _panOffset = mousePos - (mousePos - _panOffset) * zoomRatio;
+    }
+
+    // --- Coordinate conversion ---
+
+    private Vector2 GridToScreen(int gridX, int gridY)
+    {
+        return _panOffset + new Vector2(gridX * CellSize, gridY * CellSize) * _zoom;
+    }
+
+    private Vector2 WorldToScreen(Vector2 worldPos)
+    {
+        return _panOffset + worldPos * _zoom;
+    }
+
+    private (int gridX, int gridY) ScreenToGrid(Vector2 screenPos)
+    {
+        var gx = (int)((screenPos.X - _panOffset.X) / (_zoom * CellSize));
+        var gy = (int)((screenPos.Y - _panOffset.Y) / (_zoom * CellSize));
+        return (gx, gy);
+    }
+
+    // --- Click handling ---
+
+    private void HandleClick(Vector2 screenPos)
+    {
+        var (gx, gy) = ScreenToGrid(screenPos);
+        var grid = _simulationManager.State.CityGrid;
+        if (grid == null) return;
+
+        if (grid.IsInBounds(gx, gy))
+        {
+            var cell = grid.GetCell(gx, gy);
+            if (cell.AddressId.HasValue)
+            {
+                _selectedAddressId = cell.AddressId.Value;
+                UpdateMenuItems();
+                return;
+            }
+        }
+
+        // Clicked on road/empty/out-of-bounds: deselect
+        _selectedAddressId = null;
+        UpdateMenuItems();
+    }
+
+    private void HandleRightClick(Vector2 screenPos, Vector2 globalPos)
+    {
+        var (gx, gy) = ScreenToGrid(screenPos);
+        var grid = _simulationManager.State.CityGrid;
+        if (grid == null) return;
+
+        if (grid.IsInBounds(gx, gy))
+        {
+            var cell = grid.GetCell(gx, gy);
+            if (cell.AddressId.HasValue)
+            {
+                ShowAddressContextMenu(globalPos, cell.AddressId.Value, _gameManager.EvidenceBoard);
+                return;
+            }
+        }
+
+        // Check if right-clicking near a person dot
+        foreach (var person in _simulationManager.State.People.Values)
+        {
+            var dotScreen = WorldToScreen(person.CurrentPosition);
+            if (screenPos.DistanceTo(dotScreen) <= HoverDistance * _zoom)
+            {
+                ShowPersonContextMenu(globalPos, person.Id, _gameManager.EvidenceBoard);
+                return;
+            }
+        }
+    }
+
+    // --- Menu items ---
 
     private void UpdateMenuItems()
     {
@@ -70,8 +555,44 @@ public partial class CityView : Control, IContentView
 
         var items = new Godot.Collections.Array<Godot.Collections.Dictionary>();
         var player = _simulationManager.State.Player;
+        var state = _simulationManager.State;
 
-        if (player?.TravelInfo == null && player?.CurrentAddressId > 0)
+        if (_selectedAddressId.HasValue && state.Addresses.TryGetValue(_selectedAddressId.Value, out var selectedAddr))
+        {
+            var street = state.Streets.GetValueOrDefault(selectedAddr.StreetId);
+            var streetName = street?.Name ?? "Unknown";
+
+            // Show selected address info as a disabled label item
+            var infoItem = new Godot.Collections.Dictionary
+            {
+                { "label", $"{selectedAddr.Number} {streetName} ({selectedAddr.Type})" },
+                { "callback", Callable.From(() => { }) }
+            };
+            items.Add(infoItem);
+
+            if (player != null && player.TravelInfo == null)
+            {
+                if (player.CurrentAddressId != _selectedAddressId.Value)
+                {
+                    var goItem = new Godot.Collections.Dictionary
+                    {
+                        { "label", "Go here" },
+                        { "callback", Callable.From(() => OnGoToAddress(_selectedAddressId.Value)) }
+                    };
+                    items.Add(goItem);
+                }
+                else
+                {
+                    var enterItem = new Godot.Collections.Dictionary
+                    {
+                        { "label", "Enter building" },
+                        { "callback", Callable.From(OnEnterLocation) }
+                    };
+                    items.Add(enterItem);
+                }
+            }
+        }
+        else if (player?.TravelInfo == null && player?.CurrentAddressId > 0)
         {
             var enterItem = new Godot.Collections.Dictionary
             {
@@ -91,51 +612,18 @@ public partial class CityView : Control, IContentView
         _gameShell.SetMenuItems(items);
     }
 
+    private void OnGoToAddress(int addressId)
+    {
+        SimulationManager.StartPlayerTravel(_simulationManager.State, addressId, _simulationManager.MapConfig);
+        UpdateMenuItems();
+    }
+
     private void OnEnterLocation()
     {
         _gameShell.LoadContentView("res://scenes/address/AddressView.tscn");
     }
 
-    public override void _ExitTree()
-    {
-        _simulationManager.AddressAdded -= OnAddressAdded;
-        _simulationManager.PersonAdded -= OnPersonAdded;
-        _simulationManager.PlayerCreated -= OnPlayerCreated;
-    }
-
-    public override void _UnhandledInput(InputEvent @event)
-    {
-        if (@event is InputEventMouseButton mb && mb.ButtonIndex == MouseButton.Right && mb.Pressed)
-        {
-            TryShowContextMenu(mb.GlobalPosition);
-        }
-    }
-
-    private void TryShowContextMenu(Vector2 mousePos)
-    {
-        var state = _simulationManager.State;
-        var board = _gameManager.EvidenceBoard;
-
-        foreach (var (addressId, icon) in _addressNodes)
-        {
-            var center = icon.GlobalPosition + new Vector2(LocationIconSize / 2, LocationIconSize / 2);
-            if (mousePos.DistanceTo(center) <= HoverDistance)
-            {
-                ShowAddressContextMenu(mousePos, addressId, board);
-                return;
-            }
-        }
-
-        foreach (var (personId, dot) in _personNodes)
-        {
-            var center = dot.GlobalPosition + new Vector2(EntityDotSize / 2, EntityDotSize / 2);
-            if (mousePos.DistanceTo(center) <= HoverDistance)
-            {
-                ShowPersonContextMenu(mousePos, personId, board);
-                return;
-            }
-        }
-    }
+    // --- Context menus ---
 
     private void ShowAddressContextMenu(Vector2 pos, int addressId, EvidenceBoard board)
     {
@@ -197,114 +685,42 @@ public partial class CityView : Control, IContentView
         menu.Popup();
     }
 
-    public override void _Process(double delta)
-    {
-        var size = new Vector2(EntityDotSize, EntityDotSize);
-        foreach (var (personId, dot) in _personNodes)
-        {
-            var person = _simulationManager.State.People[personId];
-            dot.Position = person.CurrentPosition - size / 2;
-
-            Color color;
-            if (!person.IsAlive)
-                color = DeadPersonColor;
-            else if (person.CurrentAction == ActionType.Sleep)
-                color = SleepingPersonColor;
-            else
-                color = PersonColor;
-            var radius = (int)(EntityDotSize / 2);
-            var style = new StyleBoxFlat
-            {
-                BgColor = color,
-                BorderColor = BorderColor,
-                BorderWidthLeft = DotBorderWidth,
-                BorderWidthRight = DotBorderWidth,
-                BorderWidthTop = DotBorderWidth,
-                BorderWidthBottom = DotBorderWidth,
-                CornerRadiusTopLeft = radius,
-                CornerRadiusTopRight = radius,
-                CornerRadiusBottomLeft = radius,
-                CornerRadiusBottomRight = radius
-            };
-            dot.AddThemeStyleboxOverride("panel", style);
-        }
-
-        if (_playerNode != null && _simulationManager.State.Player != null)
-        {
-            _playerNode.Position = _simulationManager.State.Player.CurrentPosition - size / 2;
-        }
-
-        // Refresh menu only on travel state change
-        var player = _simulationManager.State.Player;
-        var isTraveling = player?.TravelInfo != null;
-        if (_wasPlayerTraveling && !isTraveling)
-        {
-            UpdateMenuItems();
-        }
-        _wasPlayerTraveling = isTraveling;
-
-        UpdateHoverLabel();
-    }
-
-    private void OnAddressAdded(Address address)
-    {
-        var size = new Vector2(LocationIconSize, LocationIconSize);
-        var icon = CreateIconPanel(size, GetAddressColor(address.Type), BorderColor, IconBorderWidth);
-        icon.Position = address.Position - size / 2;
-        _locationIcons.AddChild(icon);
-        _addressNodes[address.Id] = icon;
-    }
-
-    private void OnPersonAdded(Person person)
-    {
-        var size = new Vector2(EntityDotSize, EntityDotSize);
-        var dot = CreateCirclePanel(size, PersonColor, BorderColor, DotBorderWidth);
-        dot.Position = person.CurrentPosition - size / 2;
-        _entityDots.AddChild(dot);
-        _personNodes[person.Id] = dot;
-    }
-
-    private void OnPlayerCreated()
-    {
-        var player = _simulationManager.State.Player;
-        var size = new Vector2(EntityDotSize, EntityDotSize);
-        _playerNode = CreateCirclePanel(size, PlayerColor, BorderColor, DotBorderWidth);
-        _playerNode.Position = player.CurrentPosition - size / 2;
-        _entityDots.AddChild(_playerNode);
-    }
+    // --- Hover label ---
 
     private void UpdateHoverLabel()
     {
-        var mousePos = GetGlobalMousePosition();
+        var mousePos = GetLocalMousePosition();
+        var (gx, gy) = ScreenToGrid(mousePos);
+        var state = _simulationManager.State;
+        var grid = state.CityGrid;
         var lines = new List<string>();
 
-        if (_playerNode != null)
+        // Check player dot hover
+        if (state.Player != null)
         {
-            var center = _playerNode.GlobalPosition + new Vector2(EntityDotSize / 2, EntityDotSize / 2);
-            if (mousePos.DistanceTo(center) <= HoverDistance)
+            var playerScreen = WorldToScreen(state.Player.CurrentPosition);
+            if (mousePos.DistanceTo(playerScreen) <= HoverDistance)
                 lines.Add("You");
         }
 
-        foreach (var (addressId, icon) in _addressNodes)
+        // Check grid cell hover for address info
+        if (grid != null && grid.IsInBounds(gx, gy))
         {
-            var center = icon.GlobalPosition + new Vector2(LocationIconSize / 2, LocationIconSize / 2);
-            if (mousePos.DistanceTo(center) <= HoverDistance)
+            var cell = grid.GetCell(gx, gy);
+            if (cell.AddressId.HasValue && state.Addresses.TryGetValue(cell.AddressId.Value, out var address))
             {
-                var address = _simulationManager.State.Addresses[addressId];
-                var street = _simulationManager.State.Streets[address.StreetId];
-                lines.Add($"{address.Number} {street.Name} ({address.Type})");
-
-                lines.AddRange(_simulationManager.State.GetEntityNamesAtAddress(address));
+                var street = state.Streets.GetValueOrDefault(address.StreetId);
+                lines.Add($"{address.Number} {street?.Name ?? "Unknown"} ({address.Type})");
+                lines.AddRange(state.GetEntityNamesAtAddress(address));
             }
         }
 
-        foreach (var (personId, dot) in _personNodes)
+        // Check person dot hover
+        foreach (var person in state.People.Values)
         {
-            var center = dot.GlobalPosition + new Vector2(EntityDotSize / 2, EntityDotSize / 2);
-            if (mousePos.DistanceTo(center) <= HoverDistance)
+            var dotScreen = WorldToScreen(person.CurrentPosition);
+            if (mousePos.DistanceTo(dotScreen) <= HoverDistance)
             {
-                var person = _simulationManager.State.People[personId];
-
                 string label;
                 if (!person.IsAlive)
                 {
@@ -331,7 +747,7 @@ public partial class CityView : Control, IContentView
         if (lines.Count > 0)
         {
             _hoverLabel.Text = string.Join("\n", lines);
-            _hoverLabel.GlobalPosition = mousePos + new Vector2(15, -10);
+            _hoverLabel.GlobalPosition = GetGlobalMousePosition() + new Vector2(15, -10);
             _hoverLabel.Visible = true;
         }
         else
@@ -346,7 +762,7 @@ public partial class CityView : Control, IContentView
         var toAddr = _simulationManager.State.Addresses.GetValueOrDefault(person.TravelInfo.ToAddressId);
         if (toAddr == null) return "TravelByCar";
         var street = _simulationManager.State.Streets.GetValueOrDefault(toAddr.StreetId);
-        return $"TravelByCar → {toAddr.Number} {street?.Name ?? "Unknown"}";
+        return $"TravelByCar -> {toAddr.Number} {street?.Name ?? "Unknown"}";
     }
 
     private string FormatWorkLabel(Person person)
@@ -357,54 +773,5 @@ public partial class CityView : Control, IContentView
         if (workAddr == null) return "Work";
         var street = _simulationManager.State.Streets.GetValueOrDefault(workAddr.StreetId);
         return $"Work at {workAddr.Number} {street?.Name ?? "Unknown"}";
-    }
-
-    private static Panel CreateCirclePanel(Vector2 size, Color fillColor, Color borderColor, int borderWidth)
-    {
-        var radius = (int)(size.X / 2);
-        var style = new StyleBoxFlat
-        {
-            BgColor = fillColor,
-            BorderColor = borderColor,
-            BorderWidthLeft = borderWidth,
-            BorderWidthRight = borderWidth,
-            BorderWidthTop = borderWidth,
-            BorderWidthBottom = borderWidth,
-            CornerRadiusTopLeft = radius,
-            CornerRadiusTopRight = radius,
-            CornerRadiusBottomLeft = radius,
-            CornerRadiusBottomRight = radius
-        };
-        var panel = new Panel { Size = size, MouseFilter = MouseFilterEnum.Ignore };
-        panel.AddThemeStyleboxOverride("panel", style);
-        return panel;
-    }
-
-    private static Panel CreateIconPanel(Vector2 size, Color fillColor, Color borderColor, int borderWidth)
-    {
-        var style = new StyleBoxFlat
-        {
-            BgColor = fillColor,
-            BorderColor = borderColor,
-            BorderWidthLeft = borderWidth,
-            BorderWidthRight = borderWidth,
-            BorderWidthTop = borderWidth,
-            BorderWidthBottom = borderWidth
-        };
-        var panel = new Panel { Size = size, MouseFilter = MouseFilterEnum.Ignore };
-        panel.AddThemeStyleboxOverride("panel", style);
-        return panel;
-    }
-
-    private static Color GetAddressColor(AddressType type)
-    {
-        return type switch
-        {
-            AddressType.SuburbanHome => SuburbanHomeColor,
-            AddressType.Diner => DinerColor,
-            AddressType.DiveBar => DiveBarColor,
-            AddressType.Office => OfficeColor,
-            _ => PersonColor
-        };
     }
 }

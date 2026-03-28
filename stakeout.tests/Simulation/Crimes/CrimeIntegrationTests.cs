@@ -24,11 +24,11 @@ public class CrimeIntegrationTests
         var street = new Street { Id = state.GenerateEntityId(), Name = "Oak St", CityId = 1 };
         state.Streets[street.Id] = street;
 
-        var homeA = new Address { Id = state.GenerateEntityId(), Position = new Vector2(100, 100),
+        var homeA = new Address { Id = state.GenerateEntityId(), GridX = 2, GridY = 2,
             Type = AddressType.SuburbanHome, Number = 10, StreetId = street.Id };
-        var homeB = new Address { Id = state.GenerateEntityId(), Position = new Vector2(500, 100),
+        var homeB = new Address { Id = state.GenerateEntityId(), GridX = 10, GridY = 2,
             Type = AddressType.SuburbanHome, Number = 20, StreetId = street.Id };
-        var work = new Address { Id = state.GenerateEntityId(), Position = new Vector2(300, 300),
+        var work = new Address { Id = state.GenerateEntityId(), GridX = 6, GridY = 6,
             Type = AddressType.Office, Number = 1, StreetId = street.Id };
         state.Addresses[homeA.Id] = homeA;
         state.Addresses[homeB.Id] = homeB;

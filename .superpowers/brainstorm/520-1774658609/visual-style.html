@@ -1,0 +1,165 @@
+<h2>City Map Visual Style</h2>
+<p class="subtitle">How should the top-down city map look at default zoom?</p>
+
+<div class="cards">
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding: 8px; background: #111;">
+      <svg viewBox="0 0 400 300" style="width:100%;height:280px;">
+        <!-- Option A: Simple colored blocks - clean, icon-like -->
+        <rect x="0" y="0" width="400" height="300" fill="#3a6b24"/>
+
+        <!-- Roads - light gray -->
+        <rect x="0" y="92" width="400" height="16" fill="#888"/>
+        <rect x="0" y="192" width="400" height="16" fill="#888"/>
+        <rect x="92" y="0" width="16" height="300" fill="#888"/>
+        <rect x="192" y="0" width="16" height="300" fill="#888"/>
+        <rect x="292" y="0" width="16" height="300" fill="#888"/>
+
+        <!-- Secondary road -->
+        <rect x="142" y="92" width="8" height="100" fill="#777"/>
+
+        <!-- Street name along horizontal road -->
+        <text x="50" y="103" fill="#ddd" font-size="9" font-family="monospace">MAPLE ST</text>
+        <text x="220" y="103" fill="#ddd" font-size="9" font-family="monospace">MAPLE ST</text>
+
+        <!-- Street name along vertical road -->
+        <text x="96" y="60" fill="#ddd" font-size="9" font-family="monospace" transform="rotate(90, 96, 60)">3RD AVE</text>
+
+        <!-- Urban block - apartments (gray rectangles, tight) -->
+        <rect x="112" y="8" width="28" height="28" fill="#666" stroke="#555" stroke-width="1"/>
+        <rect x="112" y="40" width="28" height="28" fill="#666" stroke="#555" stroke-width="1"/>
+        <rect x="112" y="72" width="28" height="16" fill="#666" stroke="#555" stroke-width="1"/>
+        <!-- Driveway stubs -->
+        <rect x="108" y="14" width="4" height="6" fill="#888"/>
+        <rect x="108" y="48" width="4" height="6" fill="#888"/>
+
+        <!-- Office block -->
+        <rect x="152" y="12" width="36" height="36" fill="#4a7ab5" stroke="#3a6a9a" stroke-width="1"/>
+        <rect x="152" y="52" width="36" height="36" fill="#4a7ab5" stroke="#3a6a9a" stroke-width="1"/>
+        <!-- Driveway -->
+        <rect x="155" y="92" width="6" height="4" fill="#888"/>
+
+        <!-- Suburban block - houses (small dark rects on green) -->
+        <rect x="8" y="8" width="20" height="16" fill="#4a3a2a" stroke="#3a2a1a" stroke-width="1"/>
+        <rect x="8" y="32" width="20" height="16" fill="#4a3a2a" stroke="#3a2a1a" stroke-width="1"/>
+        <rect x="8" y="56" width="20" height="16" fill="#4a3a2a" stroke="#3a2a1a" stroke-width="1"/>
+        <rect x="40" y="8" width="20" height="16" fill="#4a3a2a" stroke="#3a2a1a" stroke-width="1"/>
+        <rect x="40" y="32" width="20" height="16" fill="#4a3a2a" stroke="#3a2a1a" stroke-width="1"/>
+        <rect x="40" y="56" width="20" height="16" fill="#4a3a2a" stroke="#3a2a1a" stroke-width="1"/>
+        <!-- Driveways -->
+        <rect x="14" y="88" width="5" height="4" fill="#888"/>
+        <rect x="46" y="88" width="5" height="4" fill="#888"/>
+
+        <!-- Park (green with trees) -->
+        <rect x="210" y="8" width="78" height="78" fill="#4a8a34" stroke="#3a7a24" stroke-width="1"/>
+        <circle cx="230" cy="30" r="8" fill="#2d6b1e"/>
+        <circle cx="260" cy="50" r="10" fill="#2d6b1e"/>
+        <circle cx="240" cy="65" r="7" fill="#2d6b1e"/>
+        <circle cx="270" cy="28" r="6" fill="#2d6b1e"/>
+
+        <!-- Diner (yellow-ish) -->
+        <rect x="310" y="12" width="24" height="20" fill="#b89a3a" stroke="#a08a2a" stroke-width="1"/>
+        <rect x="316" y="88" width="5" height="4" fill="#888"/>
+
+        <!-- Person dots -->
+        <circle cx="120" cy="20" r="3" fill="white"/>
+        <circle cx="165" cy="30" r="3" fill="white"/>
+        <circle cx="22" cy="42" r="3" fill="#aaa"/>
+        <circle cx="250" cy="100" r="3" fill="#4a9aff"/>
+
+        <text x="200" y="290" text-anchor="middle" fill="#aaa" font-size="10" font-family="monospace">Clean blocks — solid colored rectangles</text>
+      </svg>
+    </div>
+    <div class="card-body">
+      <h3>A: Clean Blocks</h3>
+      <p>Solid colored rectangles for each building type. Roads are plain gray. Minimal detail — like a zoning map. Buildings are just colored shapes matching their type (brown houses, gray apartments, blue offices, yellow diners). Green background for grass. Trees are simple circles in parks.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding: 8px; background: #111;">
+      <svg viewBox="0 0 400 300" style="width:100%;height:280px;">
+        <!-- Option B: Slightly more detailed - outlines, roof lines, sidewalks -->
+        <rect x="0" y="0" width="400" height="300" fill="#3a6b24"/>
+
+        <!-- Roads with center line and sidewalk edges -->
+        <rect x="0" y="90" width="400" height="20" fill="#666"/>
+        <line x1="0" y1="100" x2="400" y2="100" stroke="#aa0" stroke-width="1" stroke-dasharray="8,6"/>
+        <rect x="0" y="90" width="400" height="2" fill="#999"/>
+        <rect x="0" y="108" width="400" height="2" fill="#999"/>
+
+        <rect x="0" y="190" width="400" height="20" fill="#666"/>
+        <line x1="0" y1="200" x2="400" y2="200" stroke="#aa0" stroke-width="1" stroke-dasharray="8,6"/>
+        <rect x="0" y="190" width="400" height="2" fill="#999"/>
+        <rect x="0" y="208" width="400" height="2" fill="#999"/>
+
+        <rect x="90" y="0" width="20" height="300" fill="#666"/>
+        <line x1="100" y1="0" x2="100" y2="300" stroke="#aa0" stroke-width="1" stroke-dasharray="8,6"/>
+        <rect x="90" y="0" width="2" height="300" fill="#999"/>
+        <rect x="108" y="0" width="2" height="300" fill="#999"/>
+
+        <rect x="190" y="0" width="20" height="300" fill="#666"/>
+        <rect x="290" y="0" width="20" height="300" fill="#666"/>
+
+        <!-- Street name -->
+        <text x="50" y="103" fill="#ddd" font-size="8" font-family="monospace" font-weight="bold">ELM STREET</text>
+
+        <!-- Houses with roof detail -->
+        <rect x="8" y="10" width="22" height="18" fill="#5a4a3a"/>
+        <polygon points="8,10 19,2 30,10" fill="#7a5a3a"/>
+        <rect x="14" y="18" width="6" height="10" fill="#3a3020"/>
+        <rect x="36" y="10" width="22" height="18" fill="#5a4a3a"/>
+        <polygon points="36,10 47,2 58,10" fill="#7a5a3a"/>
+
+        <rect x="8" y="40" width="22" height="18" fill="#5a4a3a"/>
+        <polygon points="8,40 19,32 30,40" fill="#7a5a3a"/>
+        <rect x="36" y="40" width="22" height="18" fill="#5a4a3a"/>
+        <polygon points="36,40 47,32 58,40" fill="#7a5a3a"/>
+
+        <!-- Driveways with detail -->
+        <rect x="15" y="86" width="8" height="6" fill="#777"/>
+        <rect x="43" y="86" width="8" height="6" fill="#777"/>
+
+        <!-- Apartment with windows -->
+        <rect x="112" y="8" width="34" height="34" fill="#666" stroke="#555" stroke-width="1"/>
+        <rect x="116" y="12" width="5" height="5" fill="#8ab" opacity="0.5"/>
+        <rect x="124" y="12" width="5" height="5" fill="#8ab" opacity="0.5"/>
+        <rect x="132" y="12" width="5" height="5" fill="#8ab" opacity="0.5"/>
+        <rect x="116" y="20" width="5" height="5" fill="#8ab" opacity="0.5"/>
+        <rect x="124" y="20" width="5" height="5" fill="#8ab" opacity="0.5"/>
+        <rect x="132" y="20" width="5" height="5" fill="#8ab" opacity="0.5"/>
+        <rect x="116" y="28" width="5" height="5" fill="#8ab" opacity="0.5"/>
+        <rect x="124" y="28" width="5" height="5" fill="#8ab" opacity="0.5"/>
+        <rect x="132" y="28" width="5" height="5" fill="#8ab" opacity="0.5"/>
+
+        <!-- Office with windows -->
+        <rect x="112" y="48" width="34" height="36" fill="#4a7ab5" stroke="#3a6a9a" stroke-width="1"/>
+        <rect x="116" y="52" width="26" height="4" fill="#7aaad5" opacity="0.4"/>
+        <rect x="116" y="60" width="26" height="4" fill="#7aaad5" opacity="0.4"/>
+        <rect x="116" y="68" width="26" height="4" fill="#7aaad5" opacity="0.4"/>
+
+        <!-- Park with detailed trees -->
+        <rect x="212" y="8" width="74" height="78" fill="#4a8a34" stroke="#3a7a24" stroke-width="1"/>
+        <circle cx="230" cy="30" r="9" fill="#2d6b1e"/>
+        <circle cx="230" cy="30" r="5" fill="#3a8025"/>
+        <circle cx="260" cy="50" r="11" fill="#2d6b1e"/>
+        <circle cx="260" cy="50" r="6" fill="#3a8025"/>
+        <circle cx="245" cy="68" r="7" fill="#2d6b1e"/>
+        <!-- Path through park -->
+        <line x1="212" y1="47" x2="286" y2="47" stroke="#6a5a3a" stroke-width="2" opacity="0.5"/>
+
+        <!-- Person dots with outlines -->
+        <circle cx="125" cy="22" r="3.5" fill="white" stroke="#333" stroke-width="0.5"/>
+        <circle cx="125" cy="65" r="3.5" fill="white" stroke="#333" stroke-width="0.5"/>
+        <circle cx="22" cy="48" r="3.5" fill="#aaa" stroke="#333" stroke-width="0.5"/>
+        <circle cx="250" cy="100" r="4" fill="#4a9aff" stroke="#333" stroke-width="0.5"/>
+
+        <text x="200" y="290" text-anchor="middle" fill="#aaa" font-size="10" font-family="monospace">Detailed — roofs, windows, center lines, sidewalks</text>
+      </svg>
+    </div>
+    <div class="card-body">
+      <h3>B: Detailed</h3>
+      <p>More visual detail: houses get roof triangles and doors, apartments get window grids, roads get center lines and sidewalk edges. More visually rich but more rendering work. Could slow down at full city scale.</p>
+    </div>
+  </div>
+</div>

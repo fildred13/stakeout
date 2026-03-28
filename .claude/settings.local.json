@@ -29,7 +29,10 @@
       "Bash(dotnet msbuild:*)",
       "Bash(timeout 30 dotnet run --project stakeout.benchmarks/ -c Release)",
       "Bash(bash \"C:/Users/fildr/.claude/plugins/marketplaces/superpowers-dev/skills/brainstorming/scripts/start-server.sh\" --project-dir \"h:/Dropbox/sean-tower/Documents/git/stakeout\")",
-      "Bash(bash \"C:/Users/fildr/.claude/plugins/marketplaces/superpowers-dev/skills/brainstorming/scripts/start-server.sh\" --project-dir \"h:/Dropbox/sean-tower/Documents/git/stakeout\" --port 8765)"
+      "Bash(bash \"C:/Users/fildr/.claude/plugins/marketplaces/superpowers-dev/skills/brainstorming/scripts/start-server.sh\" --project-dir \"h:/Dropbox/sean-tower/Documents/git/stakeout\" --port 8765)",
+      "Bash(bash \"C:\\\\Users\\\\fildr\\\\.claude\\\\plugins\\\\marketplaces\\\\superpowers-dev\\\\skills\\\\brainstorming\\\\scripts\\\\start-server.sh\" --project-dir \"h:/Dropbox/sean-tower/Documents/git/stakeout\")",
+      "Bash(wc -l /h/Dropbox/sean-tower/Documents/git/stakeout/src/simulation/entities/*.cs /h/Dropbox/sean-tower/Documents/git/stakeout/src/simulation/*.cs /h/Dropbox/sean-tower/Documents/git/stakeout/src/simulation/scheduling/*.cs /h/Dropbox/sean-tower/Documents/git/stakeout/scenes/city/*.cs /h/Dropbox/sean-tower/Documents/git/stakeout/scenes/evidence_board/*.cs)",
+      "Bash(bash \"C:\\\\Users\\\\fildr\\\\.claude\\\\plugins\\\\marketplaces\\\\superpowers-dev\\\\skills\\\\brainstorming\\\\scripts\\\\stop-server.sh\" \"h:/Dropbox/sean-tower/Documents/git/stakeout/.superpowers/brainstorm/1546-1774660957\")"
     ],
     "additionalDirectories": [
       "C:\\Users\\fildr\\.claude\\plugins\\cache\\superpowers-dev"

@@ -1,3 +1,5 @@
+using Stakeout.Simulation.City;
+
 namespace Stakeout.Simulation.Entities;
 
 public enum AddressType { SuburbanHome, Diner, DiveBar, Office, ApartmentBuilding, Park }
@@ -16,4 +18,15 @@ public static class AddressTypeExtensions
             _ => AddressCategory.Commercial
         };
     }
+
+    public static PlotType ToPlotType(this AddressType type) => type switch
+    {
+        AddressType.SuburbanHome => PlotType.SuburbanHome,
+        AddressType.ApartmentBuilding => PlotType.ApartmentBuilding,
+        AddressType.Office => PlotType.Office,
+        AddressType.Diner => PlotType.Diner,
+        AddressType.DiveBar => PlotType.DiveBar,
+        AddressType.Park => PlotType.Park,
+        _ => throw new System.InvalidOperationException($"{type} has no PlotType mapping")
+    };
 }

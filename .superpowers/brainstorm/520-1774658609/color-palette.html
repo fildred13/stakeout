@@ -1,0 +1,124 @@
+<h2>City Map Color Palette</h2>
+<p class="subtitle">Uniform building color with highlight states</p>
+
+<div class="mockup">
+  <div class="mockup-header">City Map — Default View</div>
+  <div class="mockup-body" style="padding: 0; overflow: hidden;">
+    <svg viewBox="0 0 576 432" style="width:100%;height:420px;display:block;">
+      <!-- Background green -->
+      <rect x="0" y="0" width="576" height="432" fill="#3a6b24"/>
+
+      <!-- Roads - light gray -->
+      <!-- Horizontal arterial -->
+      <rect x="0" y="144" width="576" height="16" fill="#999"/>
+      <rect x="0" y="304" width="576" height="16" fill="#999"/>
+      <!-- Vertical arterial -->
+      <rect x="144" y="0" width="16" height="432" fill="#999"/>
+      <rect x="304" y="0" width="16" height="432" fill="#999"/>
+      <rect x="464" y="0" width="16" height="432" fill="#999"/>
+      <!-- Secondary roads -->
+      <rect x="144" y="224" width="160" height="12" fill="#888"/>
+      <rect x="224" y="144" width="12" height="80" fill="#888"/>
+
+      <!-- Street names on roads -->
+      <text x="50" y="155" fill="#ddd" font-size="9" font-family="monospace" font-weight="bold">MAPLE AVE</text>
+      <text x="340" y="155" fill="#ddd" font-size="9" font-family="monospace" font-weight="bold">MAPLE AVE</text>
+      <text x="50" y="315" fill="#ddd" font-size="9" font-family="monospace" font-weight="bold">OAK BLVD</text>
+      <text x="148" y="60" fill="#ddd" font-size="8" font-family="monospace" font-weight="bold" transform="rotate(90, 148, 60)">3RD AVE</text>
+      <text x="308" y="60" fill="#ddd" font-size="8" font-family="monospace" font-weight="bold" transform="rotate(90, 308, 60)">RIVER ST</text>
+
+      <!-- NORMAL BUILDINGS - dark gray -->
+      <!-- Suburban homes (1x1 with green surround) - top left block -->
+      <rect x="10" y="10" width="26" height="22" fill="#555"/>
+      <rect x="14" y="140" width="6" height="4" fill="#999"/>
+      <rect x="42" y="10" width="26" height="22" fill="#555"/>
+      <rect x="74" y="10" width="26" height="22" fill="#555"/>
+      <rect x="106" y="10" width="26" height="22" fill="#555"/>
+      <rect x="10" y="42" width="26" height="22" fill="#555"/>
+      <rect x="42" y="42" width="26" height="22" fill="#555"/>
+      <rect x="74" y="42" width="26" height="22" fill="#555"/>
+      <rect x="106" y="42" width="26" height="22" fill="#555"/>
+      <rect x="10" y="74" width="26" height="22" fill="#555"/>
+      <rect x="42" y="74" width="26" height="22" fill="#555"/>
+      <rect x="74" y="74" width="26" height="22" fill="#555"/>
+      <rect x="106" y="74" width="26" height="22" fill="#555"/>
+      <rect x="10" y="106" width="26" height="22" fill="#555"/>
+      <rect x="42" y="106" width="26" height="22" fill="#555"/>
+      <rect x="74" y="106" width="26" height="22" fill="#555"/>
+      <rect x="106" y="106" width="26" height="22" fill="#555"/>
+      <!-- Driveways for bottom row -->
+      <rect x="18" y="140" width="6" height="4" fill="#999"/>
+      <rect x="50" y="140" width="6" height="4" fill="#999"/>
+      <rect x="82" y="140" width="6" height="4" fill="#999"/>
+      <rect x="114" y="140" width="6" height="4" fill="#999"/>
+
+      <!-- Urban block - apartments and offices (2x2 each = 96x96 visual) -->
+      <!-- Apartment -->
+      <rect x="164" y="164" width="56" height="56" fill="#555"/>
+      <rect x="170" y="144" width="6" height="20" fill="#999"/>
+      <!-- Office -->
+      <rect x="164" y="240" width="56" height="60" fill="#555"/>
+      <!-- Another apartment -->
+      <rect x="240" y="164" width="56" height="56" fill="#555"/>
+      <!-- Office -->
+      <rect x="240" y="240" width="56" height="60" fill="#555"/>
+
+      <!-- Normal building - right side -->
+      <rect x="324" y="10" width="26" height="22" fill="#555"/>
+      <rect x="356" y="10" width="26" height="22" fill="#555"/>
+      <rect x="388" y="10" width="26" height="22" fill="#555"/>
+      <rect x="420" y="10" width="26" height="22" fill="#555"/>
+      <rect x="324" y="42" width="26" height="22" fill="#555"/>
+      <rect x="356" y="42" width="26" height="22" fill="#555"/>
+      <rect x="388" y="42" width="26" height="22" fill="#555"/>
+      <rect x="420" y="42" width="26" height="22" fill="#555"/>
+      <rect x="324" y="74" width="56" height="56" fill="#555"/>
+      <rect x="388" y="74" width="56" height="56" fill="#555"/>
+
+      <!-- Park - green with trees (exception to gray) -->
+      <rect x="484" y="164" width="80" height="80" fill="#4a8a34" stroke="#3a7a24" stroke-width="1"/>
+      <circle cx="504" cy="184" r="8" fill="#2d6b1e"/>
+      <circle cx="530" cy="200" r="10" fill="#2d6b1e"/>
+      <circle cx="548" cy="180" r="7" fill="#2d6b1e"/>
+      <circle cx="510" cy="218" r="9" fill="#2d6b1e"/>
+
+      <!-- PLAYER LOCATION - blue highlight -->
+      <rect x="356" y="42" width="26" height="22" fill="#3a7acc" stroke="#5a9aee" stroke-width="2"/>
+
+      <!-- EVIDENCE BOARD addresses - red highlight -->
+      <rect x="164" y="164" width="56" height="56" fill="#8a3333" stroke="#cc4444" stroke-width="2"/>
+      <rect x="10" y="74" width="26" height="22" fill="#8a3333" stroke="#cc4444" stroke-width="2"/>
+
+      <!-- SELECTED building - white outline -->
+      <rect x="324" y="74" width="56" height="56" fill="#555" stroke="white" stroke-width="2.5"/>
+
+      <!-- Entity dots -->
+      <circle cx="370" cy="53" r="3.5" fill="#5aafff"/>
+      <circle cx="180" cy="185" r="3" fill="white"/>
+      <circle cx="260" cy="185" r="3" fill="#aaa"/>
+      <circle cx="22" cy="85" r="3" fill="white"/>
+      <circle cx="504" cy="200" r="3" fill="white"/>
+      <circle cx="340" cy="90" r="3" fill="white"/>
+
+      <!-- Empty plots - just green (already the background) -->
+
+      <!-- Legend -->
+      <rect x="8" y="350" width="560" height="75" fill="rgba(0,0,0,0.7)" rx="4"/>
+      <rect x="20" y="362" width="14" height="14" fill="#999"/>
+      <text x="40" y="373" fill="#ddd" font-size="10" font-family="monospace">Road</text>
+      <rect x="90" y="362" width="14" height="14" fill="#555"/>
+      <text x="110" y="373" fill="#ddd" font-size="10" font-family="monospace">Building</text>
+      <rect x="180" y="362" width="14" height="14" fill="#4a8a34"/>
+      <text x="200" y="373" fill="#ddd" font-size="10" font-family="monospace">Park</text>
+      <rect x="250" y="362" width="14" height="14" fill="#3a6b24"/>
+      <text x="270" y="373" fill="#ddd" font-size="10" font-family="monospace">Empty/Grass</text>
+
+      <rect x="20" y="390" width="14" height="14" fill="#3a7acc" stroke="#5a9aee" stroke-width="1.5"/>
+      <text x="40" y="401" fill="#ddd" font-size="10" font-family="monospace">Player location</text>
+      <rect x="180" y="390" width="14" height="14" fill="#8a3333" stroke="#cc4444" stroke-width="1.5"/>
+      <text x="200" y="401" fill="#ddd" font-size="10" font-family="monospace">Evidence board</text>
+      <rect x="370" y="390" width="14" height="14" fill="#555" stroke="white" stroke-width="1.5"/>
+      <text x="390" y="401" fill="#ddd" font-size="10" font-family="monospace">Selected</text>
+    </svg>
+  </div>
+</div>
