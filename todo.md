@@ -1,9 +1,8 @@
 - I saw a case where a woman working at a diner went kitchen->kitchen->kitchen
 - sublocation rethink: are doors and windows considered locations? graph view at least is confusing, as is inspector. It's weird that a person has an action to exist in "front door" between road and lobby, for example. Rather, I think "via" is going to be much more elegant. Edges can be doors/windows.Can we improve the algo to minimize overlaps of edges and nodes?
 - is "decomposition" a good name for the breakdowns of tasks to subtasks?
+- I saw a killer go to an apartment where the victim was not located (she was at work), and yet the killer successfulyl killed the target.
 
-- inventory, locked doors/windows, and keys
-- traces: fingerprints
 - music!
 - sfx!
 - ScheduleBuilder may need some love. The short term fixes put in place seem like bandaids. We need to review and think about what safegaurds are in place to ensure that a schedule is always sequential and has no overlaps and no gaps. Need to think about when schedules are recalculated and how the "current action" at recalc time isn't changed suddenly. Maybe at this point is a good chance to do a broad overview of the overall simulation mechanics before moving on to replay and other big things.

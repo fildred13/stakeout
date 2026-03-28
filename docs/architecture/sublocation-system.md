@@ -7,7 +7,7 @@ Models the interior layout of each Address as a graph of rooms (sublocation node
 | File | Role |
 |------|------|
 | `src/simulation/entities/Sublocation.cs` | Sublocation node, SublocationConnection edge, ConnectionType enum |
-| `src/simulation/entities/ConnectionProperties.cs` | Composable edge modifiers: LockableProperty, ConcealableProperty, TransparentProperty, BreakableProperty |
+| `src/simulation/entities/ConnectionProperties.cs` | Composable edge modifiers: LockableProperty, ConcealableProperty, TransparentProperty, BreakableProperty, FingerprintSurface (also used on Item) |
 | `src/simulation/entities/SublocationGraph.cs` | Graph storage, BFS pathfinding, tag-based queries (FindByTag, FindEntryPoint, FindConnectionByTag) |
 | `src/simulation/entities/PathStep.cs` | Pathfinding result: (Location, Via connection) pairs |
 | `src/simulation/entities/TraversalContext.cs` | Per-person edge filtering during BFS (locked doors, hidden passages) |

@@ -5,7 +5,7 @@ namespace Stakeout.Simulation.Traces;
 
 public enum TraceType
 {
-    Item, Sighting, Mark, Condition, Record
+    Item, Sighting, Mark, Condition, Record, Fingerprint
 }
 
 public class Trace

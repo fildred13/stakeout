@@ -30,6 +30,7 @@ public class DinerGenerator : ISublocationGenerator
         {
             var conn = template ?? new SublocationConnection();
             conn.Id = state.GenerateEntityId();
+            conn.Fingerprints ??= new FingerprintSurface();
             conn.FromSublocationId = from.Id;
             conn.ToSublocationId = to.Id;
             conns.Add(conn);

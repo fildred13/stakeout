@@ -15,4 +15,5 @@ public class Item
     public int? LocationAddressId { get; set; }
     public int? LocationSublocationId { get; set; }
     public Dictionary<string, object> Data { get; set; } = new();
+    public FingerprintSurface Fingerprints { get; set; }
 }

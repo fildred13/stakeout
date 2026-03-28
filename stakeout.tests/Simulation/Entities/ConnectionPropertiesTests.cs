@@ -1,4 +1,7 @@
+using System;
+using Stakeout.Simulation;
 using Stakeout.Simulation.Entities;
+using Stakeout.Simulation.Sublocations;
 using Xunit;
 
 namespace Stakeout.Tests.Simulation.Entities;
@@ -65,5 +68,49 @@ public class ConnectionPropertiesTests
     {
         var conn = new SublocationConnection { Tags = new[] { "exterior" } };
         Assert.False(conn.HasTag("locked"));
+    }
+
+    [Fact]
+    public void FingerprintSurface_DefaultsToEmptyLists()
+    {
+        var surface = new FingerprintSurface();
+        Assert.Empty(surface.SideATraceIds);
+        Assert.Empty(surface.SideBTraceIds);
+    }
+
+    [Fact]
+    public void SublocationConnection_FingerprintSurface_NullByDefault()
+    {
+        var conn = new SublocationConnection();
+        Assert.Null(conn.Fingerprints);
+    }
+
+    [Fact]
+    public void Item_FingerprintSurface_NullByDefault()
+    {
+        var item = new Item();
+        Assert.Null(item.Fingerprints);
+    }
+
+    [Fact]
+    public void GeneratedConnections_AllHaveFingerprintSurface()
+    {
+        var state = new SimulationState(new GameClock(new DateTime(1980, 1, 1)));
+        var address = new Address
+        {
+            Id = state.GenerateEntityId(),
+            Type = AddressType.SuburbanHome,
+            Position = new Godot.Vector2(100, 100),
+            Number = 1,
+            StreetId = 1
+        };
+        state.Addresses[address.Id] = address;
+        var generator = new SuburbanHomeGenerator();
+        generator.Generate(address, state, new Random(42));
+
+        foreach (var conn in address.Connections)
+        {
+            Assert.NotNull(conn.Fingerprints);
+        }
     }
 }
