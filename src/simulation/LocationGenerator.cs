@@ -2,6 +2,7 @@ using System;
 using Godot;
 using Stakeout.Simulation.Data;
 using Stakeout.Simulation.Entities;
+using CityEntity = Stakeout.Simulation.Entities.City;
 using Stakeout.Simulation.Sublocations;
 
 namespace Stakeout.Simulation;
@@ -28,7 +29,7 @@ public class LocationGenerator
         var country = new Country { Name = "United States" };
         state.Countries.Add(country);
 
-        var city = new City
+        var city = new CityEntity
         {
             Id = state.GenerateEntityId(),
             Name = "Boston",

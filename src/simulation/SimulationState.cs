@@ -4,6 +4,7 @@ using Stakeout.Simulation.Entities;
 using Stakeout.Simulation.Events;
 using Stakeout.Simulation.Crimes;
 using Stakeout.Simulation.Traces;
+using CityEntity = Stakeout.Simulation.Entities.City;
 
 namespace Stakeout.Simulation;
 
@@ -14,7 +15,7 @@ public class SimulationState
     public Dictionary<int, Job> Jobs { get; } = new();
     public Player Player { get; set; }
     public List<Country> Countries { get; } = new();
-    public Dictionary<int, City> Cities { get; } = new();
+    public Dictionary<int, CityEntity> Cities { get; } = new();
     public Dictionary<int, Street> Streets { get; } = new();
     public Dictionary<int, Address> Addresses { get; } = new();
     public EventJournal Journal { get; } = new();
