@@ -12,7 +12,8 @@ public enum PlotType
     Office,
     Diner,
     DiveBar,
-    Park
+    Park,
+    Airport
 }
 
 public enum FacingDirection
@@ -30,6 +31,7 @@ public static class PlotTypeExtensions
         PlotType.ApartmentBuilding => (3, 3),
         PlotType.Office => (3, 3),
         PlotType.Park => (2, 2),
+        PlotType.Airport => (10, 20),
         _ => (1, 1)
     };
 
@@ -44,6 +46,7 @@ public static class PlotTypeExtensions
         PlotType.Diner => AddressType.Diner,
         PlotType.DiveBar => AddressType.DiveBar,
         PlotType.Park => AddressType.Park,
+        PlotType.Airport => AddressType.Airport,
         _ => throw new InvalidOperationException($"{type} is not a building type")
     };
 }

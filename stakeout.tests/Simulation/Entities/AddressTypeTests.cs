@@ -31,4 +31,10 @@ public class AddressTypeTests
     {
         Assert.Equal(AddressCategory.Public, AddressType.Park.GetCategory());
     }
+
+    [Fact]
+    public void Airport_HasPublicCategory()
+    {
+        Assert.Equal(AddressCategory.Public, AddressType.Airport.GetCategory());
+    }
 }
