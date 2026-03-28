@@ -12,4 +12,19 @@ public class PersonTests
 
         Assert.Equal("James Smith", person.FullName);
     }
+
+    [Fact]
+    public void HomeUnitTag_DefaultsToNull()
+    {
+        var person = new Person();
+        Assert.Null(person.HomeUnitTag);
+    }
+
+    [Fact]
+    public void Person_InventoryItemIds_DefaultsToEmptyList()
+    {
+        var person = new Person();
+        Assert.NotNull(person.InventoryItemIds);
+        Assert.Empty(person.InventoryItemIds);
+    }
 }

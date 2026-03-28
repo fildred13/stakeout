@@ -55,6 +55,6 @@ public class LocationGeneratorTests
 
         Assert.NotEmpty(address.Sublocations);
         Assert.Contains(address.Sublocations.Values, s => s.HasTag("road"));
-        Assert.Contains(address.Sublocations.Values, s => s.HasTag("entrance"));
+        Assert.Contains(address.Connections, c => c.HasTag("entrance"));
     }
 }

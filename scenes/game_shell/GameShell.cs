@@ -468,6 +468,36 @@ public partial class GameShell : Control
             AddScheduleTree(vbox, font, person.Schedule, state, person.Id);
         }
 
+        // Inventory
+        var inventoryLines = new List<string>();
+        if (person.InventoryItemIds.Count == 0)
+        {
+            inventoryLines.Add("(empty)");
+        }
+        else
+        {
+            foreach (var itemId in person.InventoryItemIds)
+            {
+                if (state.Items.TryGetValue(itemId, out var item))
+                {
+                    var desc = item.ItemType.ToString();
+                    if (item.ItemType == ItemType.Key && item.Data.TryGetValue("TargetConnectionId", out var connIdObj))
+                    {
+                        var connId = (int)connIdObj;
+                        var homeAddr = state.Addresses.GetValueOrDefault(person.HomeAddressId);
+                        var conn = homeAddr?.Connections.FirstOrDefault(c => c.Id == connId);
+                        if (conn != null && homeAddr != null)
+                        {
+                            var street = state.Streets.GetValueOrDefault(homeAddr.StreetId);
+                            desc = $"Key: {conn.Name} at {homeAddr.Number} {street?.Name ?? "Unknown"}";
+                        }
+                    }
+                    inventoryLines.Add(desc);
+                }
+            }
+        }
+        AddInspectorSection(vbox, font, "— Inventory —", inventoryLines.ToArray());
+
         // Recent Events
         var events = state.Journal.GetEventsForPerson(person.Id);
         var recentEvents = events.TakeLast(10).Reverse().Select(e =>
@@ -555,7 +585,12 @@ public partial class GameShell : Control
                         var sublocationName = ResolveSublocationName(child.TargetSublocationId, child.TargetAddressId, state);
                         var childText = $"    [{child.StartTime:hh\\:mm}-{child.EndTime:hh\\:mm}] {child.Action}";
                         if (sublocationName != null)
+                        {
                             childText += $" → {sublocationName}";
+                            var conn = ResolveConnection(child.ViaConnectionId, child.TargetAddressId, state);
+                            if (conn?.Name != null && conn.Type != ConnectionType.OpenPassage)
+                                childText += $" (via {conn.Name})";
+                        }
 
                         var childLabel = new Label { Text = childText };
                         childLabel.AddThemeFontOverride("font", font);
@@ -596,7 +631,12 @@ public partial class GameShell : Control
         text += FormatAddressString(e.TargetAddressId, e.FromAddressId, state);
         var sublocationName = ResolveSublocationName(e.TargetSublocationId, e.TargetAddressId, state);
         if (sublocationName != null)
+        {
             text += $" → {sublocationName}";
+            var conn = ResolveConnection(e.ViaConnectionId, e.TargetAddressId, state);
+            if (conn?.Name != null && conn.Type != ConnectionType.OpenPassage)
+                text += $" (via {conn.Name})";
+        }
         return text;
     }
 
@@ -615,6 +655,13 @@ public partial class GameShell : Control
         if (!state.Addresses.TryGetValue(addressId.Value, out var addr)) return null;
         if (!addr.Sublocations.TryGetValue(sublocationId.Value, out var subloc)) return null;
         return subloc.Name;
+    }
+
+    private SublocationConnection ResolveConnection(int? connectionId, int? addressId, SimulationState state)
+    {
+        if (!connectionId.HasValue || !addressId.HasValue) return null;
+        if (!state.Addresses.TryGetValue(addressId.Value, out var addr)) return null;
+        return addr.Connections.FirstOrDefault(c => c.Id == connectionId.Value);
     }
 
     private void ShowAddToEvidenceBoardMenu(Vector2 pos, EvidenceEntityType entityType, int entityId)

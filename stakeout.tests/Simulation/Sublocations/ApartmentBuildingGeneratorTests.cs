@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using Stakeout.Simulation;
 using Stakeout.Simulation.Entities;
@@ -55,33 +56,67 @@ public class ApartmentBuildingGeneratorTests
     }
 
     [Fact]
-    public void Generate_HasFloorPlaceholders()
+    public void Generate_HasNoFloorPlaceholders()
     {
         var (graph, _) = Generate();
         var placeholders = graph.FindAllByTag("floor_placeholder");
-        Assert.True(placeholders.Count >= 4);
-        Assert.True(placeholders.Count <= 20);
+        Assert.Empty(placeholders);
     }
 
     [Fact]
-    public void Generate_FloorPlaceholdersAreNotGenerated()
+    public void Generate_HasHallwaysForEachFloor()
     {
         var (graph, _) = Generate();
-        var placeholders = graph.FindAllByTag("floor_placeholder");
-        foreach (var placeholder in placeholders)
+        var hallways = graph.FindAllByTag("hallway");
+        Assert.True(hallways.Count >= 4);
+        Assert.True(hallways.Count <= 20);
+    }
+
+    [Fact]
+    public void Generate_HasBedroomsWithUnitTags()
+    {
+        var (graph, _) = Generate();
+        var bedrooms = graph.FindAllByTag("bedroom");
+        Assert.NotEmpty(bedrooms);
+        foreach (var bedroom in bedrooms)
         {
-            Assert.False(placeholder.IsGenerated);
+            Assert.True(
+                bedroom.Tags.Any(t => t.StartsWith("unit_f")),
+                $"Bedroom '{bedroom.Name}' missing unit tag");
         }
     }
 
     [Fact]
-    public void Generate_FloorPlaceholderNamesMatchFloorNumbers()
+    public void Generate_UnitTagsAreFloorScoped()
     {
         var (graph, _) = Generate();
-        var placeholders = graph.FindAllByTag("floor_placeholder");
-        foreach (var placeholder in placeholders)
+        var bedrooms = graph.FindAllByTag("bedroom");
+        var floors = bedrooms.Select(b => b.Floor).Distinct().ToList();
+        if (floors.Count >= 2)
         {
-            Assert.Equal($"Floor {placeholder.Floor}", placeholder.Name);
+            var floor1Bedroom = bedrooms.First(b => b.Floor == floors[0]);
+            var floor2Bedroom = bedrooms.First(b => b.Floor == floors[1]);
+            var tag1 = floor1Bedroom.Tags.First(t => t.StartsWith("unit_f"));
+            var tag2 = floor2Bedroom.Tags.First(t => t.StartsWith("unit_f"));
+            Assert.NotEqual(tag1, tag2);
+        }
+    }
+
+    [Fact]
+    public void Generate_EachUnitHasFourRooms()
+    {
+        var (graph, _) = Generate();
+        var unitTags = graph.AllSublocations.Values
+            .SelectMany(s => s.Tags)
+            .Where(t => t.StartsWith("unit_f"))
+            .Distinct()
+            .ToList();
+
+        Assert.NotEmpty(unitTags);
+        foreach (var unitTag in unitTags)
+        {
+            var rooms = graph.FindAllByTag(unitTag);
+            Assert.Equal(4, rooms.Count);
         }
     }
 
@@ -96,61 +131,55 @@ public class ApartmentBuildingGeneratorTests
     }
 
     [Fact]
-    public void ExpandFloor_CreatesRoomsWithCorrectTags()
+    public void Generate_CanReachBedroomFromRoad()
     {
-        var (graph, state) = Generate();
-        var placeholder = graph.FindByTag("floor_placeholder");
-        Assert.NotNull(placeholder);
-
-        var expandedGraph = ApartmentBuildingGenerator.ExpandFloor(placeholder, state, new Random(42));
-
-        var bedroom = expandedGraph.FindByTag("bedroom");
-        var kitchen = expandedGraph.FindByTag("kitchen");
-        var living = expandedGraph.FindByTag("living");
-        var bathroom = expandedGraph.FindByTag("restroom");
-
-        Assert.NotNull(bedroom);
-        Assert.NotNull(kitchen);
-        Assert.NotNull(living);
-        Assert.NotNull(bathroom);
+        var (graph, _) = Generate();
+        var road = graph.GetRoad();
+        var bedroom = graph.FindByTag("bedroom");
+        var path = graph.FindPath(road.Id, bedroom.Id);
+        Assert.True(path.Count >= 2);
     }
 
     [Fact]
-    public void ExpandFloor_CreatesCorrectNumberOfUnits()
+    public void Generate_UnitsPerFloorInRange()
     {
-        var (graph, state) = Generate();
-        var placeholder = graph.FindByTag("floor_placeholder");
-
-        var expandedGraph = ApartmentBuildingGenerator.ExpandFloor(placeholder, state, new Random(42));
-
-        var bedrooms = expandedGraph.FindAllByTag("bedroom");
-        Assert.True(bedrooms.Count >= 4);
-        Assert.True(bedrooms.Count <= 8);
-    }
-
-    [Fact]
-    public void ExpandFloor_AllExpandedRoomsHaveCorrectAddressId()
-    {
-        var (graph, state) = Generate();
-        var placeholder = graph.FindByTag("floor_placeholder");
-
-        var expandedGraph = ApartmentBuildingGenerator.ExpandFloor(placeholder, state, new Random(42));
-
-        foreach (var sub in expandedGraph.AllSublocations.Values)
+        var (graph, _) = Generate();
+        var hallways = graph.FindAllByTag("hallway");
+        foreach (var hallway in hallways)
         {
-            Assert.Equal(1, sub.AddressId);
+            int floor = hallway.Floor.Value;
+            var unitTags = graph.AllSublocations.Values
+                .Where(s => s.Floor == floor && s.Tags.Any(t => t.StartsWith("unit_f")))
+                .SelectMany(s => s.Tags.Where(t => t.StartsWith("unit_f")))
+                .Distinct()
+                .ToList();
+            Assert.True(unitTags.Count >= 4, $"Floor {floor} has {unitTags.Count} units, expected >= 4");
+            Assert.True(unitTags.Count <= 8, $"Floor {floor} has {unitTags.Count} units, expected <= 8");
         }
     }
 
     [Fact]
-    public void ExpandFloor_MarkesPlaceholderAsGenerated()
+    public void Generate_UnitDoorsAreLockableWithUnitTag()
     {
-        var (graph, state) = Generate();
-        var placeholder = graph.FindByTag("floor_placeholder");
-        Assert.False(placeholder.IsGenerated);
+        var state = new SimulationState();
+        var address = new Address { Id = 1, Type = AddressType.ApartmentBuilding };
+        state.Addresses[1] = address;
+        var gen = new ApartmentBuildingGenerator();
+        gen.Generate(address, state, new Random(42));
 
-        ApartmentBuildingGenerator.ExpandFloor(placeholder, state, new Random(42));
+        // Find all connections that have a unit tag
+        var unitDoors = address.Connections
+            .Where(c => c.Tags.Any(t => t.StartsWith("unit_f")))
+            .ToList();
 
-        Assert.True(placeholder.IsGenerated);
+        Assert.NotEmpty(unitDoors);
+        foreach (var door in unitDoors)
+        {
+            Assert.Equal(ConnectionType.Door, door.Type);
+            Assert.NotNull(door.Lockable);
+            Assert.Equal(LockMechanism.Key, door.Lockable.Mechanism);
+            Assert.NotNull(door.Breakable);
+            Assert.NotNull(door.Name);
+        }
     }
 }

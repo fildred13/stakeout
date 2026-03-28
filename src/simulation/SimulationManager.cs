@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Godot;
 using Stakeout.Simulation.Crimes;
 using Stakeout.Simulation.Entities;
@@ -40,6 +41,10 @@ public partial class SimulationManager : Node
         SublocationGeneratorRegistry.RegisterAll();
         _locationGenerator.GenerateCityScaffolding(State);
 
+        // Generate a park
+        var park = _locationGenerator.GenerateAddress(State, AddressType.Park);
+        AddressAdded?.Invoke(park);
+
         // Generate 5 people
         for (var i = 0; i < 5; i++)
         {
@@ -66,6 +71,7 @@ public partial class SimulationManager : Node
             CurrentPosition = playerHome.Position
         };
         PlayerCreated?.Invoke();
+        CreatePlayerKey(State);
     }
 
     public override void _Process(double delta)
@@ -165,5 +171,30 @@ public partial class SimulationManager : Node
         };
 
         player.CurrentAddressId = 0; // In transit, no current address
+    }
+
+    public static void CreatePlayerKey(SimulationState state)
+    {
+        var player = state.Player;
+        var homeAddress = state.Addresses[player.HomeAddressId];
+
+        var entranceConn = homeAddress.Connections
+            .FirstOrDefault(c => c.Tags != null && c.Tags.Contains("entrance"));
+
+        if (entranceConn?.Lockable == null) return;
+
+        var key = new Item
+        {
+            Id = state.GenerateEntityId(),
+            ItemType = ItemType.Key,
+            HeldByEntityId = player.Id,
+            Data = new Dictionary<string, object>
+            {
+                ["TargetConnectionId"] = entranceConn.Id
+            }
+        };
+        state.Items[key.Id] = key;
+        player.InventoryItemIds.Add(key.Id);
+        entranceConn.Lockable.KeyItemId = key.Id;
     }
 }

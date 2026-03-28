@@ -4,6 +4,7 @@ using Stakeout.Simulation.Actions;
 using Stakeout.Simulation.Entities;
 using Stakeout.Simulation.Events;
 using Stakeout.Simulation.Objectives;
+using Stakeout.Simulation.Traces;
 
 namespace Stakeout.Simulation.Scheduling;
 
@@ -41,7 +42,17 @@ public class PersonBehavior
         else if (entry.TargetSublocationId != person.CurrentSublocationId)
         {
             // Same action, different sublocation — just move within the address
+            var previousSublocationId = person.CurrentSublocationId;
             person.CurrentSublocationId = entry.TargetSublocationId;
+
+            if (entry.ViaConnectionId.HasValue && previousSublocationId.HasValue)
+            {
+                var conn = FindConnection(state, person.CurrentAddressId.Value, entry.ViaConnectionId.Value);
+                if (conn?.Fingerprints != null)
+                {
+                    FingerprintService.DepositFingerprint(state, person.Id, conn, previousSublocationId.Value);
+                }
+            }
         }
     }
 
@@ -55,6 +66,12 @@ public class PersonBehavior
             // Arrived
             person.CurrentPosition = travel.ToPosition;
             person.CurrentAddressId = travel.ToAddressId;
+
+            // Unlock doors when arriving home
+            if (travel.ToAddressId == person.HomeAddressId)
+            {
+                DoorLockingService.UnlockEntrances(state, person);
+            }
 
             state.Journal.Append(new SimulationEvent
             {
@@ -88,6 +105,22 @@ public class PersonBehavior
         // Log end of old activity
         LogActivityEnd(person, oldActivity, state);
 
+        // Lock doors when leaving home
+        if (person.CurrentAddressId == person.HomeAddressId)
+        {
+            var targetAddressId = GetTargetAddressId(person, entry);
+            if (targetAddressId.HasValue && targetAddressId.Value != person.HomeAddressId)
+            {
+                DoorLockingService.LockEntrances(state, person);
+            }
+        }
+
+        // Lock doors when going to sleep at home
+        if (entry.Action == ActionType.Sleep && person.CurrentAddressId == person.HomeAddressId)
+        {
+            DoorLockingService.LockEntrances(state, person);
+        }
+
         if (entry.Action == ActionType.TravelByCar)
         {
             // Start travel
@@ -106,9 +139,20 @@ public class PersonBehavior
             else
             {
                 // Same location, switch activity directly
+                var previousSublocationId = person.CurrentSublocationId;
                 person.CurrentAction = entry.Action;
                 person.CurrentSublocationId = entry.TargetSublocationId;
                 LogActivityStart(person, entry.Action, state);
+
+                if (entry.ViaConnectionId.HasValue && previousSublocationId.HasValue
+                    && entry.TargetSublocationId != previousSublocationId)
+                {
+                    var conn = FindConnection(state, person.CurrentAddressId.Value, entry.ViaConnectionId.Value);
+                    if (conn?.Fingerprints != null)
+                    {
+                        FingerprintService.DepositFingerprint(state, person.Id, conn, previousSublocationId.Value);
+                    }
+                }
             }
         }
 
@@ -245,6 +289,12 @@ public class PersonBehavior
                 AddressId = person.CurrentAddressId
             });
         }
+    }
+
+    private static SublocationConnection FindConnection(SimulationState state, int addressId, int connectionId)
+    {
+        if (!state.Addresses.TryGetValue(addressId, out var address)) return null;
+        return address.Connections.FirstOrDefault(c => c.Id == connectionId);
     }
 
     private void LogActivityStart(Person person, ActionType activity, SimulationState state)

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Stakeout.Simulation.Traces;
 using Xunit;
 
@@ -34,5 +35,27 @@ public class TraceTests
         Assert.Equal(TraceType.Mark, trace.TraceType);
         Assert.Equal(10, trace.LocationId);
         Assert.Null(trace.AttachedToPersonId);
+    }
+
+    [Fact]
+    public void Trace_FingerprintType_HasSurfaceData()
+    {
+        var trace = new Trace
+        {
+            Id = 3, TraceType = TraceType.Fingerprint,
+            CreatedAt = new DateTime(1980, 1, 2, 8, 0, 0),
+            CreatedByPersonId = 7,
+            Description = "Fingerprint",
+            Data = new Dictionary<string, object>
+            {
+                ["SurfaceType"] = "Connection",
+                ["SurfaceId"] = 42,
+                ["Side"] = "A"
+            }
+        };
+        Assert.Equal(TraceType.Fingerprint, trace.TraceType);
+        Assert.Equal("Connection", trace.Data["SurfaceType"]);
+        Assert.Equal(42, trace.Data["SurfaceId"]);
+        Assert.Equal("A", trace.Data["Side"]);
     }
 }

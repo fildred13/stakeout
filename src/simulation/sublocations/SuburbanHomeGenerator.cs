@@ -11,7 +11,7 @@ public class SuburbanHomeGenerator : ISublocationGenerator
         var subs = new Dictionary<int, Sublocation>();
         var conns = new List<SublocationConnection>();
 
-        Sublocation Make(string name, string[] tags, int floor)
+        Sublocation Make(string name, string[] tags, int? floor)
         {
             var sub = new Sublocation
             {
@@ -26,15 +26,13 @@ public class SuburbanHomeGenerator : ISublocationGenerator
             return sub;
         }
 
-        void Connect(Sublocation from, Sublocation to, ConnectionType type = ConnectionType.OpenPassage)
+        void Connect(Sublocation from, Sublocation to, SublocationConnection template = null)
         {
-            var conn = new SublocationConnection
-            {
-                FromSublocationId = from.Id,
-                ToSublocationId = to.Id,
-                Type = type,
-                IsBidirectional = true
-            };
+            var conn = template ?? new SublocationConnection();
+            conn.Id = state.GenerateEntityId();
+            conn.Fingerprints ??= new FingerprintSurface();
+            conn.FromSublocationId = from.Id;
+            conn.ToSublocationId = to.Id;
             conns.Add(conn);
             address.Connections.Add(conn);
         }
@@ -42,15 +40,11 @@ public class SuburbanHomeGenerator : ISublocationGenerator
         // Ground floor layout
         var road = Make("Road", new[] { "road" }, 0);
         var frontYard = Make("Front Yard", new[] { "yard", "front" }, 0);
-        var frontDoor = Make("Front Door", new[] { "entrance" }, 0);
         var hallway = Make("Ground Floor Hallway", new[] { "hallway" }, 0);
         var kitchen = Make("Kitchen", new[] { "kitchen", "food" }, 0);
         var livingRoom = Make("Living Room", new[] { "living", "social" }, 0);
         var groundBathroom = Make("Ground Floor Bathroom", new[] { "restroom" }, 0);
-        var backDoor = Make("Back Door", new[] { "covert_entry", "staff_entry" }, 0);
         var backyard = Make("Backyard", new[] { "yard", "back" }, 0);
-        var groundWindow = Make("Ground Floor Window", new[] { "covert_entry" }, 0);
-        var stairs = Make("Stairs", new[] { "stairs" }, 0);
 
         // Upstairs layout
         var upstairsHallway = Make("Upstairs Hallway", new[] { "hallway" }, 1);
@@ -58,28 +52,50 @@ public class SuburbanHomeGenerator : ISublocationGenerator
 
         // Connect ground floor
         Connect(road, frontYard);
-        Connect(frontYard, frontDoor, ConnectionType.Door);
-        Connect(frontDoor, hallway);
+        Connect(frontYard, hallway, new SublocationConnection
+        {
+            Name = "Front Door",
+            Tags = new[] { "entrance" },
+            Type = ConnectionType.Door,
+            Lockable = new LockableProperty(),
+            Breakable = new BreakableProperty()
+        });
         Connect(hallway, kitchen);
         Connect(hallway, livingRoom);
-        Connect(hallway, groundBathroom, ConnectionType.Door);
-        Connect(hallway, backDoor, ConnectionType.Door);
-        Connect(backDoor, backyard);
+        Connect(hallway, groundBathroom);
+        Connect(hallway, backyard, new SublocationConnection
+        {
+            Name = "Back Door",
+            Tags = new[] { "covert_entry", "staff_entry" },
+            Type = ConnectionType.Door,
+            Lockable = new LockableProperty(),
+            Breakable = new BreakableProperty()
+        });
         Connect(backyard, road);
-        Connect(frontYard, groundWindow, ConnectionType.Window);
-        Connect(groundWindow, livingRoom);
-        Connect(hallway, stairs);
+        Connect(frontYard, livingRoom, new SublocationConnection
+        {
+            Name = "Ground Floor Window",
+            Tags = new[] { "covert_entry" },
+            Type = ConnectionType.Window,
+            Lockable = new LockableProperty(),
+            Transparent = new TransparentProperty { CanSeeThrough = true },
+            Breakable = new BreakableProperty()
+        });
 
         // Connect stairs to upstairs
-        Connect(stairs, upstairsHallway, ConnectionType.Stairs);
-        Connect(upstairsHallway, upstairsBathroom, ConnectionType.Door);
+        Connect(hallway, upstairsHallway, new SublocationConnection
+        {
+            Name = "Stairs",
+            Type = ConnectionType.Stairs
+        });
+        Connect(upstairsHallway, upstairsBathroom);
 
         // Bedrooms (2-3)
         int bedroomCount = rng.Next(2, 4);
         for (int i = 1; i <= bedroomCount; i++)
         {
             var bedroom = Make($"Bedroom {i}", new[] { "bedroom", "private" }, 1);
-            Connect(upstairsHallway, bedroom, ConnectionType.Door);
+            Connect(upstairsHallway, bedroom);
         }
 
         return new SublocationGraph(subs, conns);

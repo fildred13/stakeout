@@ -16,8 +16,11 @@ public class WorkDayDecomposition : IDecompositionStrategy
     public List<ScheduleEntry> Decompose(SimTask task, SublocationGraph graph,
         TimeSpan startTime, TimeSpan endTime, Random rng)
     {
-        var entrance = graph.FindByTag("entrance");
-        if (entrance == null)
+        var road = graph.GetRoad();
+        var entryResult = graph.FindEntryPoint("entrance");
+        var entrance = entryResult?.target;
+        var entranceConnId = entryResult?.conn?.Id;
+        if (entrance == null || road == null)
             return new List<ScheduleEntry>();
 
         var workArea = graph.FindByTag("work_area");
@@ -36,11 +39,12 @@ public class WorkDayDecomposition : IDecompositionStrategy
             };
         }
 
-        // Build sequence of meaningful stops (no pathfinding intermediates)
-        var stops = new List<(Sublocation sub, StopKind kind)>();
+        // Build sequence of meaningful stops: road → entrance → work → ... → entrance → road
+        var stops = new List<(Sublocation sub, StopKind kind, int? viaConnId)>();
 
-        stops.Add((entrance, StopKind.Arrival));
-        stops.Add((workArea, StopKind.Work));
+        stops.Add((road, StopKind.Arrival, null));
+        stops.Add((entrance, StopKind.Arrival, entranceConnId));
+        stops.Add((workArea, StopKind.Work, null));
 
         // Generate 1-3 break opportunities
         int breakCount = rng.Next(1, 4);
@@ -51,8 +55,8 @@ public class WorkDayDecomposition : IDecompositionStrategy
                 var food = graph.FindByTag("food");
                 if (food != null)
                 {
-                    stops.Add((food, StopKind.Break));
-                    stops.Add((workArea, StopKind.Work));
+                    stops.Add((food, StopKind.Break, null));
+                    stops.Add((workArea, StopKind.Work, null));
                 }
             }
 
@@ -61,13 +65,14 @@ public class WorkDayDecomposition : IDecompositionStrategy
                 var restroom = graph.FindByTag("restroom");
                 if (restroom != null)
                 {
-                    stops.Add((restroom, StopKind.Break));
-                    stops.Add((workArea, StopKind.Work));
+                    stops.Add((restroom, StopKind.Break, null));
+                    stops.Add((workArea, StopKind.Work, null));
                 }
             }
         }
 
-        stops.Add((entrance, StopKind.Departure));
+        stops.Add((entrance, StopKind.Departure, entranceConnId));
+        stops.Add((road, StopKind.Departure, null));
 
         return AllocateTimes(stops, task.TargetAddressId, startTime, endTime);
     }
@@ -75,7 +80,7 @@ public class WorkDayDecomposition : IDecompositionStrategy
     private enum StopKind { Arrival, Departure, Break, Work }
 
     private List<ScheduleEntry> AllocateTimes(
-        List<(Sublocation sub, StopKind kind)> stops,
+        List<(Sublocation sub, StopKind kind, int? viaConnId)> stops,
         int? addressId, TimeSpan startTime, TimeSpan endTime)
     {
         var totalDuration = endTime - startTime;
@@ -85,7 +90,7 @@ public class WorkDayDecomposition : IDecompositionStrategy
         // Calculate fixed time for non-work stops
         int fixedMinutes = 0;
         int workCount = 0;
-        foreach (var (_, kind) in stops)
+        foreach (var (_, kind, _) in stops)
         {
             switch (kind)
             {
@@ -107,7 +112,7 @@ public class WorkDayDecomposition : IDecompositionStrategy
 
         for (int i = 0; i < stops.Count; i++)
         {
-            var (sub, kind) = stops[i];
+            var (sub, kind, viaConnId) = stops[i];
             var duration = kind switch
             {
                 StopKind.Arrival => TimeSpan.FromMinutes(ArrivalMinutes),
@@ -126,7 +131,8 @@ public class WorkDayDecomposition : IDecompositionStrategy
                 StartTime = current,
                 EndTime = slotEnd,
                 TargetAddressId = addressId,
-                TargetSublocationId = sub.Id
+                TargetSublocationId = sub.Id,
+                ViaConnectionId = viaConnId
             });
             current = slotEnd;
         }

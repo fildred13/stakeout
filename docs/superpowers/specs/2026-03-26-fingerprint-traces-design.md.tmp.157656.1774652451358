@@ -1,0 +1,121 @@
+# Fingerprint Traces Design
+
+## Overview
+
+The first implementation of the traces framework, focused on fingerprints. When people interact with doors and keys, they leave fingerprints that accumulate and naturally decay through a smudging mechanic. This creates a forensic evidence layer that the player will eventually use during investigations.
+
+## Architecture: Hybrid (Trace + Surface Index)
+
+Fingerprints are stored as `Trace` entities in `SimulationState.Traces` (the simulation's single source of truth for evidence), but surfaces that can hold fingerprints maintain a lightweight index of trace IDs for fast access and smudging.
+
+This follows the codebase's existing composable-property pattern (`LockableProperty`, `BreakableProperty`, etc.) and keeps the smudging mechanic efficient — iterate the surface's list directly rather than scanning all traces.
+
+## Data Model
+
+### New TraceType Value
+
+Add `Fingerprint` to the `TraceType` enum.
+
+### FingerprintSurface (New Composable Property)
+
+**On SublocationConnection:**
+- `SideATraceIds: List<int>` — fingerprint trace IDs on side A (the `FromSublocationId` side)
+- `SideBTraceIds: List<int>` — fingerprint trace IDs on side B (the `ToSublocationId` side)
+
+**On Item:**
+- `TraceIds: List<int>` — fingerprint trace IDs on the item
+
+All connection types get a `FingerprintSurface` at generation time (doors have handles, stairs have railings, windows get touched when opened — the surface is cheap and ready for future interactions).
+
+### Trace.Data for Fingerprints
+
+- `SurfaceType`: `"Connection"` or `"Item"`
+- `SurfaceId`: the connection ID or item ID
+- `Side`: `"A"` or `"B"` (null for items)
+
+## Fingerprint Deposit & Smudging
+
+### Deposit Trigger: Door Traversal
+
+When a person traverses a connection:
+
+1. **Create** a `Trace` with `TraceType.Fingerprint`, `CreatedByPersonId` = the person, `Data` referencing the connection and the side they're coming from (they touch the handle on their side before walking through).
+2. **Index** the trace ID on the connection's `FingerprintSurface` for the appropriate side.
+3. **Smudge** existing fingerprints on that same side: for each other fingerprint, roll for erasure with base chance 25%, plus 25% per additional fingerprint on that side.
+   - 1 other fingerprint: 25% chance to erase
+   - 2 others: 50% each
+   - 3 others: 75% each
+   - 4+: guaranteed erasure
+4. **Erased fingerprints** are removed from the surface's trace ID list and deleted from `SimulationState.Traces`.
+
+### Deposit Trigger: Key Usage
+
+When a person uses a key (to lock or unlock a door):
+
+1. **Create** a fingerprint `Trace` on the key's `FingerprintSurface`.
+2. **Smudge** other fingerprints on the key using the same formula.
+
+### FingerprintService
+
+A static service class with two methods:
+
+- `DepositFingerprint(SimulationState, int personId, SublocationConnection conn, int fromSublocationId)` — for connection traversal
+- `DepositFingerprint(SimulationState, int personId, Item item)` — for item interaction (keys)
+
+Both handle trace creation, surface indexing, and smudging in one place.
+
+## Door Locking Behavior (New)
+
+### Rules
+
+- **Leaving home:** Lock all lockable entrance connections. 10% chance to forget per door (rolled independently).
+- **Going to sleep:** Lock all lockable entrance connections. 10% chance to forget per door.
+- **Arriving home:** Unlock all lockable entrance connections.
+
+Each lock/unlock operation uses the person's home key, triggering a fingerprint deposit on that key.
+
+### One Key, All Doors
+
+A person's home key works on all exterior doors of their residence. `PersonGenerator` is updated to assign the same `KeyItemId` to all lockable entrance connections for the home address.
+
+### DoorLockingService
+
+A service that checks transition context (leaving home? arriving? going to sleep?) and iterates all lockable entrance connections for the person's home address. Handles the 10% forget chance per door and delegates key fingerprints to `FingerprintService`.
+
+## Integration Points
+
+### PersonBehavior (Traversal Hook)
+
+When a person moves between sublocations and crosses a connection, call `FingerprintService.DepositFingerprint` for that connection.
+
+### PersonBehavior (Locking Hook)
+
+At action transitions:
+- Transitioning away from home address → `DoorLockingService.LockEntrances`
+- Transitioning to Sleep action → `DoorLockingService.LockEntrances`
+- Arriving at home address → `DoorLockingService.UnlockEntrances`
+
+### PersonGenerator (Setup)
+
+- All connections get `FingerprintSurface` at generation time.
+- Home key assignment updated to cover all lockable entrance connections per residence.
+
+## Scope
+
+### In Scope
+
+- `FingerprintSurface` composable property on connections and items
+- `TraceType.Fingerprint` enum value
+- `FingerprintService` — deposit + smudge logic
+- `DoorLockingService` — lock/unlock on leave/sleep/arrive, 10% forget, key fingerprints
+- All connections get `FingerprintSurface` at generation time
+- Hook into `PersonBehavior` for traversal fingerprints
+- Update `PersonGenerator` to assign same key to all exterior doors of a residence
+
+### Out of Scope (Future Work)
+
+- Player-facing fingerprint discovery/analysis UI
+- Lockpicking / forced entry actions
+- Fingerprints from non-door interactions (picking up objects, crime scenes)
+- Window entry by intruders
+- Stair railing fingerprints

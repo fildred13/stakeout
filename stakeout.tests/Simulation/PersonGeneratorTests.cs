@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using Stakeout.Simulation;
 using Stakeout.Simulation.Data;
@@ -115,5 +116,191 @@ public class PersonGeneratorTests
         Assert.Contains(person.Objectives, o => o.Type == ObjectiveType.GetSleep);
         Assert.Contains(person.Objectives, o => o.Type == ObjectiveType.MaintainJob);
         Assert.Contains(person.Objectives, o => o.Type == ObjectiveType.DefaultIdle);
+    }
+
+    [Fact]
+    public void GeneratePerson_ApartmentResident_HasHomeUnitTag()
+    {
+        var state = CreateState();
+        var gen = CreateGenerator();
+        for (int i = 0; i < 100; i++)
+        {
+            gen.GeneratePerson(state);
+        }
+        var apartmentResident = state.People.Values
+            .FirstOrDefault(p => state.Addresses[p.HomeAddressId].Type == AddressType.ApartmentBuilding);
+        Assert.NotNull(apartmentResident);
+        Assert.NotNull(apartmentResident.HomeUnitTag);
+        Assert.StartsWith("unit_f", apartmentResident.HomeUnitTag);
+    }
+
+    [Fact]
+    public void GeneratePerson_SuburbanResident_HasNullHomeUnitTag()
+    {
+        var state = CreateState();
+        var gen = CreateGenerator();
+        for (int i = 0; i < 100; i++)
+        {
+            gen.GeneratePerson(state);
+        }
+        var suburbanResident = state.People.Values
+            .FirstOrDefault(p => state.Addresses[p.HomeAddressId].Type == AddressType.SuburbanHome);
+        Assert.NotNull(suburbanResident);
+        Assert.Null(suburbanResident.HomeUnitTag);
+    }
+
+    [Fact]
+    public void GeneratePerson_MultipleApartmentResidents_CanShareBuilding()
+    {
+        var state = CreateState();
+        var gen = CreateGenerator();
+        for (int i = 0; i < 100; i++)
+        {
+            gen.GeneratePerson(state);
+        }
+        var apartmentAddressIds = state.People.Values
+            .Where(p => state.Addresses[p.HomeAddressId].Type == AddressType.ApartmentBuilding)
+            .Select(p => p.HomeAddressId)
+            .ToList();
+        var grouped = apartmentAddressIds.GroupBy(id => id).Where(g => g.Count() > 1);
+        Assert.NotEmpty(grouped);
+    }
+
+    [Fact]
+    public void GeneratePerson_SharedBuilding_DifferentUnitTags()
+    {
+        var state = CreateState();
+        var gen = CreateGenerator();
+        for (int i = 0; i < 100; i++)
+        {
+            gen.GeneratePerson(state);
+        }
+        var byAddress = state.People.Values
+            .Where(p => state.Addresses[p.HomeAddressId].Type == AddressType.ApartmentBuilding)
+            .GroupBy(p => p.HomeAddressId)
+            .Where(g => g.Count() > 1);
+
+        foreach (var group in byAddress)
+        {
+            var tags = group.Select(p => p.HomeUnitTag).ToList();
+            Assert.Equal(tags.Count, tags.Distinct().Count());
+        }
+    }
+
+    [Fact]
+    public void GeneratePerson_HasHomeKeyInInventory()
+    {
+        var state = CreateState();
+        var person = CreateGenerator().GeneratePerson(state);
+        Assert.Single(person.InventoryItemIds);
+        var itemId = person.InventoryItemIds[0];
+        Assert.True(state.Items.ContainsKey(itemId));
+        var item = state.Items[itemId];
+        Assert.Equal(ItemType.Key, item.ItemType);
+        Assert.Equal(person.Id, item.HeldByEntityId);
+        Assert.True(item.Data.ContainsKey("TargetConnectionId"));
+    }
+
+    [Fact]
+    public void GeneratePerson_HomeKey_LinksToEntranceConnection()
+    {
+        var state = CreateState();
+        var gen = CreateGenerator();
+        for (int i = 0; i < 50; i++)
+        {
+            gen.GeneratePerson(state);
+        }
+        foreach (var person in state.People.Values)
+        {
+            var itemId = person.InventoryItemIds[0];
+            var item = state.Items[itemId];
+            var targetConnId = (int)item.Data["TargetConnectionId"];
+            var homeAddress = state.Addresses[person.HomeAddressId];
+            var conn = homeAddress.Connections.First(c => c.Id == targetConnId);
+            Assert.NotNull(conn.Lockable);
+            Assert.Equal(itemId, conn.Lockable.KeyItemId);
+        }
+    }
+
+    [Fact]
+    public void GeneratePerson_SuburbanHome_KeyTargetsEntranceDoor()
+    {
+        var state = CreateState();
+        var gen = CreateGenerator();
+        for (int i = 0; i < 100; i++)
+        {
+            gen.GeneratePerson(state);
+        }
+        var suburbanResident = state.People.Values
+            .First(p => state.Addresses[p.HomeAddressId].Type == AddressType.SuburbanHome);
+        var itemId = suburbanResident.InventoryItemIds[0];
+        var item = state.Items[itemId];
+        var targetConnId = (int)item.Data["TargetConnectionId"];
+        var homeAddress = state.Addresses[suburbanResident.HomeAddressId];
+        var conn = homeAddress.Connections.First(c => c.Id == targetConnId);
+        Assert.True(conn.HasTag("entrance"));
+    }
+
+    [Fact]
+    public void GeneratePerson_ApartmentResident_KeyTargetsUnitDoor()
+    {
+        var state = CreateState();
+        var gen = CreateGenerator();
+        for (int i = 0; i < 100; i++)
+        {
+            gen.GeneratePerson(state);
+        }
+        var aptResident = state.People.Values
+            .First(p => state.Addresses[p.HomeAddressId].Type == AddressType.ApartmentBuilding);
+        var itemId = aptResident.InventoryItemIds[0];
+        var item = state.Items[itemId];
+        var targetConnId = (int)item.Data["TargetConnectionId"];
+        var homeAddress = state.Addresses[aptResident.HomeAddressId];
+        var conn = homeAddress.Connections.First(c => c.Id == targetConnId);
+        Assert.True(conn.HasTag(aptResident.HomeUnitTag));
+    }
+
+    [Fact]
+    public void GeneratePerson_SuburbanHome_KeyAssignedToAllLockableConnections()
+    {
+        var state = CreateState();
+        var gen = CreateGenerator();
+        for (int i = 0; i < 100; i++)
+        {
+            gen.GeneratePerson(state);
+        }
+        var suburbanResident = state.People.Values
+            .First(p => state.Addresses[p.HomeAddressId].Type == AddressType.SuburbanHome);
+        var itemId = suburbanResident.InventoryItemIds[0];
+        var homeAddress = state.Addresses[suburbanResident.HomeAddressId];
+        var lockableConns = homeAddress.Connections.Where(c => c.Lockable != null).ToList();
+
+        // Suburban homes have front door, back door, and ground floor window — all lockable
+        Assert.True(lockableConns.Count >= 2);
+        foreach (var conn in lockableConns)
+        {
+            Assert.Equal(itemId, conn.Lockable.KeyItemId);
+        }
+    }
+
+    [Fact]
+    public void GeneratePerson_ApartmentResident_KeyOnlyAssignedToOwnUnitDoor()
+    {
+        var state = CreateState();
+        var gen = CreateGenerator();
+        for (int i = 0; i < 100; i++)
+        {
+            gen.GeneratePerson(state);
+        }
+        var aptResident = state.People.Values
+            .First(p => state.Addresses[p.HomeAddressId].Type == AddressType.ApartmentBuilding);
+        var itemId = aptResident.InventoryItemIds[0];
+        var homeAddress = state.Addresses[aptResident.HomeAddressId];
+
+        // Only the unit door should have this person's key
+        var connsWithKey = homeAddress.Connections
+            .Where(c => c.Lockable != null && c.Lockable.KeyItemId == itemId)
+            .ToList();
+        Assert.All(connsWithKey, c => Assert.True(c.HasTag(aptResident.HomeUnitTag)));
     }
 }

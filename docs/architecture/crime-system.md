@@ -10,7 +10,8 @@ Generates and executes crimes as structured scenarios that inject Objectives ont
 | `src/simulation/crimes/SerialKillerTemplate.cs` | First template — casts a killer, creates 3-step CommitMurder objective (ChooseVictim → KillPerson → GoHome) |
 | `src/simulation/crimes/CrimeGenerator.cs` | Registry of templates by CrimeTemplateType; Generate() instantiates and returns a Crime |
 | `src/simulation/crimes/Crime.cs` | Crime record — roles (name→personId), status, related trace/objective IDs; CrimeTemplateType, CrimeStatus enums |
-| `src/simulation/traces/Trace.cs` | Trace record — type (Item/Sighting/Mark/Condition/Record), location or person attachment, description, data; TraceType enum |
+| `src/simulation/traces/Trace.cs` | Trace record — type (Item/Sighting/Mark/Condition/Record/Fingerprint), location or person attachment, description, data; TraceType enum |
+| `src/simulation/traces/FingerprintService.cs` | Static service — deposits fingerprint Traces on connections (per-side) and items, applies smudging formula to decay old prints |
 
 ## How It Works
 1. **CrimeGenerator.Generate()** looks up the template by type and calls `Instantiate(state)`.
@@ -22,11 +23,12 @@ Generates and executes crimes as structured scenarios that inject Objectives ont
 ## Key Decisions
 - **Templates are C# classes, not data files:** Keeps logic co-located with casting and objective tree definitions. Designed to become data-driven later.
 - **Crime.Roles uses Dictionary\<string, int?\>:** Flexible role mapping (Killer, Victim, etc.). Victim starts null, populated when ChooseVictim resolves.
-- **Trace taxonomy defined upfront:** Five types (Item, Sighting, Mark, Condition, Record) cover all planned evidence categories. Only Condition and Mark are produced in this iteration.
+- **Trace taxonomy defined upfront:** Six types (Item, Sighting, Mark, Condition, Record, Fingerprint) cover all planned evidence categories. Condition and Mark are produced by crime actions; Fingerprint is produced by FingerprintService during door traversal and key usage.
 - **One crime at a time:** Multiple simultaneous crimes are out of scope for the initial implementation.
 
 ## Connection Points
 - **Scheduling system:** Crime Objectives flow through the same ObjectiveResolver → ScheduleBuilder → PersonBehavior pipeline as CoreNeed objectives
 - **SimulationState:** Crimes and Traces dictionaries store all crime records and evidence
 - **Debug UI:** GameShell's Crime Generator button triggers CrimeGenerator.Generate(); Person Inspector shows objectives and traces
+- **Fingerprint system:** FingerprintService deposits fingerprint Traces; surfaces (connections, items) maintain a FingerprintSurface index of trace IDs for fast lookup and smudging
 - **Future:** Trace system will expand with Item lifecycle, Sighting generation, and player investigation mechanics

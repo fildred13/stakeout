@@ -1,9 +1,8 @@
 - I saw a case where a woman working at a diner went kitchen->kitchen->kitchen
 - is "decomposition" a good name for the breakdowns of tasks to subtasks?
+- I saw a killer go to an apartment where the victim was not located (she was at work), and yet the killer successfulyl killed the target.
 
-- inventory, locked doors/windows, and keys. traces: fingerprints
 - player notification of a crime and case tracking. "Homicide at 123 Fantasy Lane" Renamble cases. Design for multiple crimes somehow? Scope creep?
-- better city map
 - tagging of "case critical people". tagging of "player interest people". Spawning of neighbors for both.
 - arrest mechanic / case closed
 - music!

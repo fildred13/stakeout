@@ -14,6 +14,7 @@ public class Person
     public string LastName { get; set; }
     public DateTime CreatedAt { get; set; }
     public int HomeAddressId { get; set; }
+    public string HomeUnitTag { get; set; }
     public int JobId { get; set; }
     public int? CurrentAddressId { get; set; }
     public int? CurrentSublocationId { get; set; }
@@ -26,6 +27,7 @@ public class Person
     public List<Objective> Objectives { get; set; } = new();
     public DailySchedule Schedule { get; set; }
     public bool NeedsScheduleRebuild { get; set; }
+    public List<int> InventoryItemIds { get; set; } = new();
 
     public string FullName => $"{FirstName} {LastName}";
 }

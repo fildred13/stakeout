@@ -1,0 +1,160 @@
+<h2>Fingerprint Trace Architecture: Two Approaches</h2>
+<p class="subtitle">How fingerprints connect to existing systems — click the one you prefer</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Trace-Only (Centralized)</h3>
+      <p>Fingerprints live exclusively as <code>Trace</code> entities in <code>SimulationState.Traces</code></p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Hybrid (Trace + Surface Index)</h3>
+      <p>Fingerprints are <code>Trace</code> entities, but surfaces (doors/items) maintain a list of trace IDs for fast access</p>
+    </div>
+  </div>
+</div>
+
+<div class="split" style="margin-top: 2rem;">
+
+  <!-- OPTION A -->
+  <div class="mockup">
+    <div class="mockup-header">A: Trace-Only Architecture</div>
+    <div class="mockup-body" style="font-family: monospace; font-size: 0.8rem; line-height: 1.6;">
+      <div style="background: #1a1a2e; padding: 1rem; border-radius: 8px; color: #e0e0e0;">
+
+        <div style="color: #7fdbca; font-weight: bold; margin-bottom: 0.5rem;">SimulationState.Traces</div>
+        <div style="border: 1px solid #444; padding: 0.5rem; margin-bottom: 1rem; border-radius: 4px;">
+          <div style="color: #c792ea;">Trace (Fingerprint)</div>
+          <div style="color: #999; font-size: 0.75rem;">
+            TraceType: <span style="color: #f78c6c;">Fingerprint</span><br>
+            CreatedByPersonId: <span style="color: #82aaff;">7</span><br>
+            Data["SurfaceType"]: <span style="color: #c3e88d;">"Connection"</span><br>
+            Data["SurfaceId"]: <span style="color: #82aaff;">42</span><br>
+            Data["Side"]: <span style="color: #c3e88d;">"FrontHall"</span>
+          </div>
+        </div>
+
+        <div style="color: #ff5370; font-size: 0.75rem; margin-top: 0.5rem;">
+          ⚠ Smudging = scan ALL traces, filter by surface<br>
+          ⚠ "What's on this door?" = linear scan
+        </div>
+
+        <div style="margin-top: 1rem; border-top: 1px solid #444; padding-top: 0.5rem;">
+          <div style="color: #ffcb6b; font-weight: bold; font-size: 0.75rem;">CONNECTIONS:</div>
+          <div style="font-size: 0.75rem; color: #bbb;">
+            <span style="color: #7fdbca;">Person</span> → creates → <span style="color: #c792ea;">Trace</span><br>
+            <span style="color: #c792ea;">Trace</span> → references → <span style="color: #ffcb6b;">Connection</span> (via Data dict)<br>
+            <span style="color: #c792ea;">Trace</span> → references → <span style="color: #ffcb6b;">Item</span> (via Data dict)<br>
+            <span style="color: #82aaff;">EvidenceBoard</span> → queries → <span style="color: #c792ea;">Trace</span><br>
+            <span style="color: #ff5370;">ActionExecutor</span> → creates → <span style="color: #c792ea;">Trace</span><br>
+            <span style="color: #ffcb6b;">Connection/Item</span> → <em>no back-reference</em>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- OPTION B -->
+  <div class="mockup">
+    <div class="mockup-header">B: Hybrid Architecture</div>
+    <div class="mockup-body" style="font-family: monospace; font-size: 0.8rem; line-height: 1.6;">
+      <div style="background: #1a1a2e; padding: 1rem; border-radius: 8px; color: #e0e0e0;">
+
+        <div style="color: #7fdbca; font-weight: bold; margin-bottom: 0.5rem;">SimulationState.Traces</div>
+        <div style="border: 1px solid #444; padding: 0.5rem; margin-bottom: 0.5rem; border-radius: 4px;">
+          <div style="color: #c792ea;">Trace (Fingerprint)</div>
+          <div style="color: #999; font-size: 0.75rem;">
+            TraceType: <span style="color: #f78c6c;">Fingerprint</span><br>
+            CreatedByPersonId: <span style="color: #82aaff;">7</span><br>
+            Data["SurfaceType"]: <span style="color: #c3e88d;">"Connection"</span><br>
+            Data["SurfaceId"]: <span style="color: #82aaff;">42</span><br>
+            Data["Side"]: <span style="color: #c3e88d;">"FrontHall"</span>
+          </div>
+        </div>
+
+        <div style="color: #7fdbca; font-weight: bold; margin-top: 1rem; margin-bottom: 0.5rem;">SublocationConnection (Door)</div>
+        <div style="border: 1px solid #444; padding: 0.5rem; margin-bottom: 0.5rem; border-radius: 4px;">
+          <div style="color: #ffcb6b;">FingerprintSurface</div>
+          <div style="color: #999; font-size: 0.75rem;">
+            SideA: <span style="color: #c3e88d;">"FrontHall"</span> → TraceIds: [<span style="color: #82aaff;">101, 104</span>]<br>
+            SideB: <span style="color: #c3e88d;">"Road"</span> → TraceIds: [<span style="color: #82aaff;">99</span>]
+          </div>
+        </div>
+
+        <div style="color: #c3e88d; font-size: 0.75rem; margin-top: 0.5rem;">
+          ✓ Smudging = iterate surface's list directly<br>
+          ✓ "What's on this door?" = O(1) lookup
+        </div>
+
+        <div style="margin-top: 1rem; border-top: 1px solid #444; padding-top: 0.5rem;">
+          <div style="color: #ffcb6b; font-weight: bold; font-size: 0.75rem;">CONNECTIONS:</div>
+          <div style="font-size: 0.75rem; color: #bbb;">
+            <span style="color: #7fdbca;">Person</span> → creates → <span style="color: #c792ea;">Trace</span><br>
+            <span style="color: #c792ea;">Trace</span> → references → <span style="color: #ffcb6b;">Surface</span> (via Data dict)<br>
+            <span style="color: #ffcb6b;">Surface</span> → indexes → <span style="color: #c792ea;">Trace IDs</span> ← <em style="color: #c3e88d;">bidirectional</em><br>
+            <span style="color: #82aaff;">EvidenceBoard</span> → queries → <span style="color: #c792ea;">Trace</span><br>
+            <span style="color: #ff5370;">ActionExecutor</span> → creates → <span style="color: #c792ea;">Trace</span> + updates → <span style="color: #ffcb6b;">Surface</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Tradeoffs -->
+<div style="margin-top: 2rem;">
+  <h3>Trade-off Comparison</h3>
+  <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+    <thead>
+      <tr style="border-bottom: 2px solid #555; text-align: left;">
+        <th style="padding: 0.5rem;">Dimension</th>
+        <th style="padding: 0.5rem;">A: Trace-Only</th>
+        <th style="padding: 0.5rem;">B: Hybrid</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid #333;">
+        <td style="padding: 0.5rem; color: #ffcb6b;">Smudging speed</td>
+        <td style="padding: 0.5rem;">Scan all traces filtered by surface</td>
+        <td style="padding: 0.5rem; color: #c3e88d;">Direct list on surface — O(n) where n = fingerprints on that surface</td>
+      </tr>
+      <tr style="border-bottom: 1px solid #333;">
+        <td style="padding: 0.5rem; color: #ffcb6b;">Complexity</td>
+        <td style="padding: 0.5rem; color: #c3e88d;">Single source of truth, no sync</td>
+        <td style="padding: 0.5rem;">Must keep surface index in sync with Trace lifecycle</td>
+      </tr>
+      <tr style="border-bottom: 1px solid #333;">
+        <td style="padding: 0.5rem; color: #ffcb6b;">Existing pattern fit</td>
+        <td style="padding: 0.5rem;">Matches current Trace usage (crime system)</td>
+        <td style="padding: 0.5rem; color: #c3e88d;">Matches composable property pattern (LockableProperty, BreakableProperty)</td>
+      </tr>
+      <tr style="border-bottom: 1px solid #333;">
+        <td style="padding: 0.5rem; color: #ffcb6b;">Extensibility</td>
+        <td style="padding: 0.5rem;">New surface types = query changes only</td>
+        <td style="padding: 0.5rem; color: #c3e88d;">New surface types = add FingerprintSurface property, automatic indexing</td>
+      </tr>
+      <tr style="border-bottom: 1px solid #333;">
+        <td style="padding: 0.5rem; color: #ffcb6b;">Investigation query</td>
+        <td style="padding: 0.5rem;">Must filter all traces to find what's on a door</td>
+        <td style="padding: 0.5rem; color: #c3e88d;">"Show fingerprints on this door" = read surface directly</td>
+      </tr>
+      <tr>
+        <td style="padding: 0.5rem; color: #ffcb6b;">Scale concern</td>
+        <td style="padding: 0.5rem;">Could get slow with thousands of traces</td>
+        <td style="padding: 0.5rem;">Index overhead is trivial (list of ints)</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div style="margin-top: 1.5rem; padding: 1rem; border: 1px solid #555; border-radius: 8px; background: rgba(127, 219, 202, 0.05);">
+  <h3 style="margin-top: 0;">Recommendation: B (Hybrid)</h3>
+  <p style="font-size: 0.9rem; color: #bbb;">
+    The hybrid approach matches the codebase's existing composable-property pattern (like <code>LockableProperty</code>) and makes the smudging mechanic natural — you just iterate the fingerprints on that specific surface. The sync cost is minimal since fingerprint creation and removal happen in one place (<code>ActionExecutor</code>).
+  </p>
+</div>

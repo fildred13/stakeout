@@ -12,6 +12,8 @@ public class ScheduleEntry
     public int? TargetAddressId { get; set; }
     public int? FromAddressId { get; set; }
     public int? TargetSublocationId { get; set; }
+    public int? ViaConnectionId { get; set; }
+    public string UnitTag { get; set; }
 }
 
 public class ScheduleGroup

@@ -212,6 +212,7 @@ public partial class CityView : Control, IContentView
                 color = SleepingPersonColor;
             else
                 color = PersonColor;
+            var radius = (int)(EntityDotSize / 2);
             var style = new StyleBoxFlat
             {
                 BgColor = color,
@@ -219,7 +220,11 @@ public partial class CityView : Control, IContentView
                 BorderWidthLeft = DotBorderWidth,
                 BorderWidthRight = DotBorderWidth,
                 BorderWidthTop = DotBorderWidth,
-                BorderWidthBottom = DotBorderWidth
+                BorderWidthBottom = DotBorderWidth,
+                CornerRadiusTopLeft = radius,
+                CornerRadiusTopRight = radius,
+                CornerRadiusBottomLeft = radius,
+                CornerRadiusBottomRight = radius
             };
             dot.AddThemeStyleboxOverride("panel", style);
         }
@@ -253,7 +258,7 @@ public partial class CityView : Control, IContentView
     private void OnPersonAdded(Person person)
     {
         var size = new Vector2(EntityDotSize, EntityDotSize);
-        var dot = CreateIconPanel(size, PersonColor, BorderColor, DotBorderWidth);
+        var dot = CreateCirclePanel(size, PersonColor, BorderColor, DotBorderWidth);
         dot.Position = person.CurrentPosition - size / 2;
         _entityDots.AddChild(dot);
         _personNodes[person.Id] = dot;
@@ -263,7 +268,7 @@ public partial class CityView : Control, IContentView
     {
         var player = _simulationManager.State.Player;
         var size = new Vector2(EntityDotSize, EntityDotSize);
-        _playerNode = CreateIconPanel(size, PlayerColor, BorderColor, DotBorderWidth);
+        _playerNode = CreateCirclePanel(size, PlayerColor, BorderColor, DotBorderWidth);
         _playerNode.Position = player.CurrentPosition - size / 2;
         _entityDots.AddChild(_playerNode);
     }
@@ -352,6 +357,27 @@ public partial class CityView : Control, IContentView
         if (workAddr == null) return "Work";
         var street = _simulationManager.State.Streets.GetValueOrDefault(workAddr.StreetId);
         return $"Work at {workAddr.Number} {street?.Name ?? "Unknown"}";
+    }
+
+    private static Panel CreateCirclePanel(Vector2 size, Color fillColor, Color borderColor, int borderWidth)
+    {
+        var radius = (int)(size.X / 2);
+        var style = new StyleBoxFlat
+        {
+            BgColor = fillColor,
+            BorderColor = borderColor,
+            BorderWidthLeft = borderWidth,
+            BorderWidthRight = borderWidth,
+            BorderWidthTop = borderWidth,
+            BorderWidthBottom = borderWidth,
+            CornerRadiusTopLeft = radius,
+            CornerRadiusTopRight = radius,
+            CornerRadiusBottomLeft = radius,
+            CornerRadiusBottomRight = radius
+        };
+        var panel = new Panel { Size = size, MouseFilter = MouseFilterEnum.Ignore };
+        panel.AddThemeStyleboxOverride("panel", style);
+        return panel;
     }
 
     private static Panel CreateIconPanel(Vector2 size, Color fillColor, Color borderColor, int borderWidth)
