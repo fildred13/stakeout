@@ -1,0 +1,31 @@
+Let's flesh out case tracking, crime notification, and the systems around them.
+
+The game needs to track two core things: criminals and crimes. These are wrapped in a higher-level concept — the Case — which is what gives the player (and the simulation) a reason to care about a particular set of events.
+
+A Case is a template-driven container. A SerialKiller case template, for example, creates one criminal who commits multiple murders over time. A TerroristPlot template might involve a mastermind, a planner, a financier, and several operatives — many criminals committing many crimes in service of one plot. An AffairInvestigation might have no "crime" in the legal sense at all — just a wife who wants proof her husband is cheating.
+
+Cases start running in the simulation before the player knows about them. The killer is already stalking victims, the terrorists are already meeting in back rooms, the affair is already happening. At some point, the player becomes aware — and how they become aware depends on the case and the player's progression tier.
+
+For now, the simplest possible alert: the player owns a police scanner. When a homicide occurs anywhere in the city, the scanner picks it up and alerts the player sometime between 1 and 8 hours later (randomly determined). This is deliberately a cheat — a simple bootstrapping mechanism so we can start building the tracking systems. Eventually, alert mechanisms will be much richer: jobs posted on bar bulletin boards, phone calls from clients, anonymous tips from CIA contacts, coded messages left in the player's mailbox. Different case templates will use different alert channels appropriate to their tier and flavor.
+
+When the player is alerted, the game creates the case internally and starts tracking it. But the player doesn't see a case file or a progress bar. The game's tracking is opaque — the player only knows what they've discovered themselves. Their evidence board IS their case file. If they want to track suspects, link crimes, or note alibis, they pin things to the board and draw connections. The game never says "you're 60% done" or "there are 2 more victims you haven't found." The player is the detective, not the game.
+
+Each crime within a case encodes what proof is needed to solve it for a given suspect. For a murder, the player needs either direct proof (a witness who saw the killing, the murder caught on camera, fingerprints on the murder weapon) or circumstantial evidence: placing the suspect at the scene (witness report, fingerprints, disproving their alibi) combined with establishing motive (a denied promotion, a life insurance policy, a grudge). Different crime types have different proof structures. Proving a mastermind orchestrated a terrorist plot requires phone records of coordination, or catching them accepting payment, or testimony from a co-conspirator. The exact mechanics of "what counts as proof" need more detailed design work, but the key idea is that proof requirements are encoded per crime type, not globally.
+
+The player can also stumble into crimes that aren't part of any job they've taken. Imagine the player is investigating the murder of Person A. While poking around, they find another corpse — Person B. Was it the same killer? A different one? The player can start investigating on their own initiative. If they prove the first murder and get the killer arrested, the second murder is still out there. Maybe it was the same killer and the case wraps up neatly. Maybe there's a second killer still on the loose, and now the player has a new thread to pull.
+
+Resolution varies by case template. A serial killer case doesn't resolve until the killer is arrested or killed AND identified. A terrorist plot case ends when all participants have been arrested or gone into hiding. An affair investigation might end on a timer — the wife sees enough and doesn't need the PI anymore. Resolution is what triggers two important things: first, it unlocks replay mode for that case, letting the player watch the whole sequence of events from start to finish. Second, it triggers simulation cleanup — removing from the simulation anything that existed solely to support that case (NPCs who were only created as victims, locations that were only relevant to the plot, etc.).
+
+This breaks down into several chunks of future work:
+
+The Case system itself — case templates, the case lifecycle (created → active → resolved), storage of case state in the simulation, and the relationship between cases, crimes, and criminals. This is the structural backbone.
+
+The alert/notification system — starting with the police scanner, but designed so that other alert channels can be plugged in later. The scanner is an inventory item (the inventory system is being built on another branch). When the player has it, homicides trigger a delayed notification. The notification itself is simple for now — something like "Homicide reported at [address]" — but the delivery mechanism should be extensible.
+
+Crime proof requirements — the per-crime-type encoding of what evidence is needed to "solve" a crime for a given suspect. This interacts heavily with the traces system (fingerprints, witness sightings, records) and needs careful design. Direct proof vs. circumstantial (placement + motive) is the basic framework.
+
+Player-initiated case tracking — the player can stumble into crimes and start investigating without being assigned a job. The game needs to handle "unofficial" investigations that the player drives themselves, which may later merge with or diverge from official cases.
+
+Resolution mechanics — per-template resolution conditions, the transition to "resolved" state, triggering replay mode, and simulation cleanup of case-specific entities. This is tightly coupled with the replay system (another future-plan item) and with how NPCs and locations are tagged as case-critical vs. persistent.
+
+Multiple simultaneous cases — the player may be juggling several cases at once. The simulation already supports multiple crimes in its state. The challenge is more on the player experience side: making sure the evidence board, notifications, and any future case-related UI support working on more than one thing at a time without becoming overwhelming.
