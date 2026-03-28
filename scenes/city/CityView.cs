@@ -81,9 +81,18 @@ public partial class CityView : Control, IContentView
 
     private void CenterViewport()
     {
-        var viewportSize = GetViewportRect().Size;
+        var localSize = Size;
         var gridPixelSize = new Vector2(GridWidth * CellSize, GridHeight * CellSize);
-        _panOffset = (viewportSize - gridPixelSize * _zoom) / 2;
+        _panOffset = (localSize - gridPixelSize * _zoom) / 2;
+    }
+
+    /// <summary>
+    /// Converts a viewport-space position (from InputEvent.Position) to this Control's local space.
+    /// CityView may be offset within the viewport (e.g., by a sidebar).
+    /// </summary>
+    private Vector2 ToLocal(Vector2 viewportPos)
+    {
+        return viewportPos - GlobalPosition;
     }
 
     public override void _Process(double delta)
@@ -106,11 +115,11 @@ public partial class CityView : Control, IContentView
         if (grid == null) return;
 
         // Compute visible grid range for culling
-        var viewportSize = GetViewportRect().Size;
+        var localSize = Size;
         int minGX = Math.Max(0, (int)((-_panOffset.X) / (_zoom * CellSize)));
-        int maxGX = Math.Min(GridWidth - 1, (int)((-_panOffset.X + viewportSize.X) / (_zoom * CellSize)));
+        int maxGX = Math.Min(GridWidth - 1, (int)((-_panOffset.X + localSize.X) / (_zoom * CellSize)));
         int minGY = Math.Max(0, (int)((-_panOffset.Y) / (_zoom * CellSize)));
-        int maxGY = Math.Min(GridHeight - 1, (int)((-_panOffset.Y + viewportSize.Y) / (_zoom * CellSize)));
+        int maxGY = Math.Min(GridHeight - 1, (int)((-_panOffset.Y + localSize.Y) / (_zoom * CellSize)));
 
         // Collect highlight sets
         var playerCells = new HashSet<(int, int)>();
@@ -380,14 +389,16 @@ public partial class CityView : Control, IContentView
 
     private void HandleMouseButton(InputEventMouseButton mb)
     {
+        var localPos = ToLocal(mb.Position);
+
         if (mb.ButtonIndex == MouseButton.WheelUp && mb.Pressed)
         {
-            Zoom(ZoomStep, mb.Position);
+            Zoom(ZoomStep, localPos);
             GetViewport().SetInputAsHandled();
         }
         else if (mb.ButtonIndex == MouseButton.WheelDown && mb.Pressed)
         {
-            Zoom(-ZoomStep, mb.Position);
+            Zoom(-ZoomStep, localPos);
             GetViewport().SetInputAsHandled();
         }
         else if (mb.ButtonIndex == MouseButton.Middle)
@@ -395,7 +406,7 @@ public partial class CityView : Control, IContentView
             if (mb.Pressed)
             {
                 _isPanning = true;
-                _panStartMouse = mb.Position;
+                _panStartMouse = localPos;
                 _panStartOffset = _panOffset;
                 _didDrag = false;
             }
@@ -410,7 +421,7 @@ public partial class CityView : Control, IContentView
             if (mb.Pressed)
             {
                 _isPanning = true;
-                _panStartMouse = mb.Position;
+                _panStartMouse = localPos;
                 _panStartOffset = _panOffset;
                 _didDrag = false;
             }
@@ -419,21 +430,22 @@ public partial class CityView : Control, IContentView
                 _isPanning = false;
                 if (!_didDrag)
                 {
-                    HandleClick(mb.Position);
+                    HandleClick(localPos);
                 }
             }
             GetViewport().SetInputAsHandled();
         }
         else if (mb.ButtonIndex == MouseButton.Right && mb.Pressed)
         {
-            HandleRightClick(mb.Position, mb.GlobalPosition);
+            HandleRightClick(localPos, mb.GlobalPosition);
             GetViewport().SetInputAsHandled();
         }
     }
 
     private void HandlePanMotion(InputEventMouseMotion mm)
     {
-        var delta = mm.Position - _panStartMouse;
+        var localPos = ToLocal(mm.Position);
+        var delta = localPos - _panStartMouse;
         if (delta.Length() > DragThreshold)
             _didDrag = true;
 
