@@ -52,7 +52,10 @@ SubLocation
   LocationId: int                # parent location
   Name: string                   # "Bedroom", "Kitchen", "Manager's Office"
   Tags: string[]                 # ["bedroom"], ["work_area", "food"]
+  AccessPoints: List<AccessPoint># optional — doors/windows guarding this sub-location
 ```
+
+**AccessPoint ownership:** AccessPoints live on whatever they guard. A locked front door on an apartment unit lives on that unit's Location. A locked bedroom door within the unit lives on the bedroom's SubLocation. Most SubLocations won't have AccessPoints (interior rooms rarely have locks), but the field is available for cases where they do.
 
 ### AccessPoint
 
