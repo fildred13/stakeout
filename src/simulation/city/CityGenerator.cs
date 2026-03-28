@@ -354,43 +354,50 @@ public class CityGenerator
 
     private string GenerateStreetName(bool isArterial, HashSet<string> usedNames)
     {
-        // Try to find an unused base name
-        string baseName = null;
-        // Shuffle attempt: try up to all names
-        var names = StreetData.StreetNames;
-        for (int attempt = 0; attempt < names.Length * 2; attempt++)
-        {
-            string candidate = names[_rng.Next(names.Length)];
-            if (!usedNames.Contains(candidate + " Boulevard") &&
-                !usedNames.Contains(candidate + " Avenue") &&
-                !usedNames.Contains(candidate + " Street") &&
-                !usedNames.Contains(candidate + " Road") &&
-                !usedNames.Contains(candidate + " Drive") &&
-                !usedNames.Contains(candidate + " Lane"))
-            {
-                baseName = candidate;
-                break;
-            }
-        }
-
-        // Fall back to a numbered name if all base names are used
-        if (baseName == null)
-            baseName = $"Street {_rng.Next(100, 999)}";
-
         string suffix;
         if (isArterial)
         {
-            // Arterial: Boulevard or Avenue
             suffix = _rng.Next(2) == 0 ? "Boulevard" : "Avenue";
         }
         else
         {
-            // Secondary: Street, Road, Drive, Lane (skip Avenue — reserve for arterials)
             string[] secondarySuffixes = { "Street", "Road", "Drive", "Lane" };
             suffix = secondarySuffixes[_rng.Next(secondarySuffixes.Length)];
         }
 
-        return $"{baseName} {suffix}";
+        // Try to find an unused base name with this suffix
+        var names = StreetData.StreetNames;
+        for (int attempt = 0; attempt < names.Length * 2; attempt++)
+        {
+            string candidate = $"{names[_rng.Next(names.Length)]} {suffix}";
+            if (!usedNames.Contains(candidate))
+                return candidate;
+        }
+
+        // Fall back to a numbered ordinal name (e.g. "42nd Street")
+        for (int i = 1; i < 1000; i++)
+        {
+            int num = _rng.Next(10, 200);
+            string ordinal = OrdinalSuffix(num);
+            string candidate = $"{num}{ordinal} {suffix}";
+            if (!usedNames.Contains(candidate))
+                return candidate;
+        }
+
+        return $"{_rng.Next(100, 999)}th {suffix}";
+    }
+
+    private static string OrdinalSuffix(int n)
+    {
+        int lastTwo = n % 100;
+        if (lastTwo >= 11 && lastTwo <= 13) return "th";
+        return (n % 10) switch
+        {
+            1 => "st",
+            2 => "nd",
+            3 => "rd",
+            _ => "th"
+        };
     }
 
     private float ComputeUrbanness(float cx, float cy)
