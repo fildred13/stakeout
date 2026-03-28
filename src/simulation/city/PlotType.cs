@@ -27,8 +27,8 @@ public static class PlotTypeExtensions
 {
     public static (int Width, int Height) GetSize(this PlotType type) => type switch
     {
-        PlotType.ApartmentBuilding => (2, 2),
-        PlotType.Office => (2, 2),
+        PlotType.ApartmentBuilding => (3, 3),
+        PlotType.Office => (3, 3),
         PlotType.Park => (2, 2),
         _ => (1, 1)
     };

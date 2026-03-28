@@ -159,15 +159,22 @@ public class CityGenerator
         if (blockSize < 3)
             return 0;
 
+        // Cap roads so each resulting sub-block is at least 3 cells wide (fits 3x3 buildings).
+        // Each road consumes 1 cell, so n roads split blockSize into (n+1) segments.
+        // We need blockSize - n >= 3*(n+1), i.e. n <= (blockSize - 3) / 4.
+        int maxRoads = (blockSize - 3) / 4;
+        if (maxRoads <= 0)
+            return 0;
+
         if (urbanness > 0.7f)
         {
-            // Urban: 1-2 secondary roads
-            return _rng.Next(1, 3);
+            // Urban: 1 to maxRoads secondary roads
+            return _rng.Next(1, Math.Min(3, maxRoads + 1));
         }
         else if (urbanness >= 0.3f)
         {
             // Transitional: 0-1 secondary roads
-            return _rng.Next(0, 2);
+            return Math.Min(_rng.Next(0, 2), maxRoads);
         }
         else
         {
@@ -498,15 +505,15 @@ public class CityGenerator
         }
     }
 
-    // Weight tables: [ApartmentBuilding, Office, Park] for 2x2; [SuburbanHome, Diner, DiveBar, Empty] for 1x1
-    private static readonly (PlotType Type, float Urban, float Suburban)[] TwoByTwoTypes =
+    // Weight tables for multi-cell and single-cell building types
+    private static readonly (PlotType Type, float Urban, float Suburban)[] LargeBuildingTypes =
     {
         (PlotType.ApartmentBuilding, 30f, 5f),
         (PlotType.Office,            25f, 5f),
         (PlotType.Park,              10f, 10f),
     };
 
-    private static readonly (PlotType Type, float Urban, float Suburban)[] OneByOneTypes =
+    private static readonly (PlotType Type, float Urban, float Suburban)[] SmallBuildingTypes =
     {
         (PlotType.SuburbanHome, 5f,  40f),
         (PlotType.Diner,        5f,   5f),
@@ -520,43 +527,52 @@ public class CityGenerator
         float centerY = (top + bottom) / 2f;
         float urbanness = ComputeUrbanness(centerX, centerY);
 
-        // Compute interpolated weights for 2x2 types
-        float[] twoByTwoWeights = new float[TwoByTwoTypes.Length];
-        float twoByTwoTotal = 0f;
-        for (int i = 0; i < TwoByTwoTypes.Length; i++)
+        // Compute interpolated weights for large building types
+        float[] largeWeights = new float[LargeBuildingTypes.Length];
+        float largeTotal = 0f;
+        for (int i = 0; i < LargeBuildingTypes.Length; i++)
         {
-            var (_, u, s) = TwoByTwoTypes[i];
-            twoByTwoWeights[i] = u * urbanness + s * (1f - urbanness);
-            twoByTwoTotal += twoByTwoWeights[i];
+            var (_, u, s) = LargeBuildingTypes[i];
+            largeWeights[i] = u * urbanness + s * (1f - urbanness);
+            largeTotal += largeWeights[i];
         }
 
         // Compute interpolated weights for 1x1 types
-        float[] oneByOneWeights = new float[OneByOneTypes.Length];
-        float oneByOneTotal = 0f;
-        for (int i = 0; i < OneByOneTypes.Length; i++)
+        float[] smallWeights = new float[SmallBuildingTypes.Length];
+        float smallTotal = 0f;
+        for (int i = 0; i < SmallBuildingTypes.Length; i++)
         {
-            var (_, u, s) = OneByOneTypes[i];
-            oneByOneWeights[i] = u * urbanness + s * (1f - urbanness);
-            oneByOneTotal += oneByOneWeights[i];
+            var (_, u, s) = SmallBuildingTypes[i];
+            smallWeights[i] = u * urbanness + s * (1f - urbanness);
+            smallTotal += smallWeights[i];
         }
 
-        // Pass 1: place 2x2 buildings in empty 2x2 openings
-        for (int y = top; y <= bottom - 1; y++)
+        // Pass 1: place large buildings in empty openings
+        // Pick a type first to know the size, then check if it fits
+        for (int y = top; y <= bottom; y++)
         {
-            for (int x = left; x <= right - 1; x++)
+            for (int x = left; x <= right; x++)
             {
                 if (grid.GetCell(x, y).PlotType != PlotType.Empty) continue;
-                if (grid.GetCell(x + 1, y).PlotType != PlotType.Empty) continue;
-                if (grid.GetCell(x, y + 1).PlotType != PlotType.Empty) continue;
-                if (grid.GetCell(x + 1, y + 1).PlotType != PlotType.Empty) continue;
 
-                PlotType chosen = PickWeighted(twoByTwoWeights, twoByTwoTotal, TwoByTwoTypes);
+                PlotType chosen = PickWeighted(largeWeights, largeTotal, LargeBuildingTypes);
+                var (w, h) = chosen.GetSize();
 
-                // Place all 4 cells
-                SetPlotType(grid, x,     y,     chosen);
-                SetPlotType(grid, x + 1, y,     chosen);
-                SetPlotType(grid, x,     y + 1, chosen);
-                SetPlotType(grid, x + 1, y + 1, chosen);
+                // Check if the full footprint fits and is empty
+                if (x + w - 1 > right || y + h - 1 > bottom) continue;
+
+                bool fits = true;
+                for (int dy = 0; dy < h && fits; dy++)
+                    for (int dx = 0; dx < w && fits; dx++)
+                        if (grid.GetCell(x + dx, y + dy).PlotType != PlotType.Empty)
+                            fits = false;
+
+                if (!fits) continue;
+
+                // Place all cells
+                for (int dy = 0; dy < h; dy++)
+                    for (int dx = 0; dx < w; dx++)
+                        SetPlotType(grid, x + dx, y + dy, chosen);
             }
         }
 
@@ -567,7 +583,7 @@ public class CityGenerator
             {
                 if (grid.GetCell(x, y).PlotType != PlotType.Empty) continue;
 
-                PlotType chosen = PickWeighted(oneByOneWeights, oneByOneTotal, OneByOneTypes);
+                PlotType chosen = PickWeighted(smallWeights, smallTotal, SmallBuildingTypes);
                 SetPlotType(grid, x, y, chosen);
             }
         }
@@ -609,7 +625,7 @@ public class CityGenerator
             }
         }
 
-        // Step 2: Create Address entities, grouping 2x2 buildings
+        // Step 2: Create Address entities, grouping multi-cell buildings
         // Track which cells have already been assigned to an address
         var assigned = new bool[GridSize, GridSize];
 
@@ -628,40 +644,36 @@ public class CityGenerator
 
                 PlotType plotType = cell.PlotType;
                 var (sizeW, sizeH) = plotType.GetSize();
+                bool isMultiCell = sizeW > 1 || sizeH > 1;
 
-                bool is2x2 = sizeW == 2 && sizeH == 2;
-                bool topLeft = false;
-
-                if (is2x2)
+                if (isMultiCell)
                 {
-                    // Only create one address per 2x2 group, at the top-left corner
-                    topLeft = x + 1 < GridSize && y + 1 < GridSize
-                        && grid.GetCell(x + 1, y).PlotType == plotType
-                        && grid.GetCell(x, y + 1).PlotType == plotType
-                        && grid.GetCell(x + 1, y + 1).PlotType == plotType
-                        && !assigned[x + 1, y] && !assigned[x, y + 1] && !assigned[x + 1, y + 1];
+                    // Only create one address per multi-cell group, at the top-left corner
+                    // Verify all cells in the footprint match and are unassigned
+                    bool isTopLeft = true;
+                    for (int dy = 0; dy < sizeH && isTopLeft; dy++)
+                        for (int dx = 0; dx < sizeW && isTopLeft; dx++)
+                        {
+                            int cx = x + dx, cy = y + dy;
+                            if (cx >= GridSize || cy >= GridSize
+                                || grid.GetCell(cx, cy).PlotType != plotType
+                                || assigned[cx, cy])
+                                isTopLeft = false;
+                        }
 
-                    if (!topLeft) continue; // Part of a 2x2 but not the top-left — skip
+                    if (!isTopLeft) continue;
                 }
 
                 // Determine which street this address faces
                 int? facingStreetId = null;
 
-                if (is2x2)
-                {
-                    // Check all 4 cells for the nearest road; use first found
-                    (int cx, int cy)[] corners = { (x, y), (x + 1, y), (x, y + 1), (x + 1, y + 1) };
-                    foreach (var (cx, cy) in corners)
+                // Check all cells in the footprint for the nearest road
+                for (int dy = 0; dy < sizeH && !facingStreetId.HasValue; dy++)
+                    for (int dx = 0; dx < sizeW && !facingStreetId.HasValue; dx++)
                     {
-                        var (_, sid) = grid.FindNearestRoad(cx, cy);
-                        if (sid.HasValue) { facingStreetId = sid; break; }
+                        var (_, sid) = grid.FindNearestRoad(x + dx, y + dy);
+                        if (sid.HasValue) facingStreetId = sid;
                     }
-                }
-                else
-                {
-                    var (_, sid) = grid.FindNearestRoad(x, y);
-                    facingStreetId = sid;
-                }
 
                 if (!facingStreetId.HasValue) continue; // No road found — skip
 
@@ -677,24 +689,16 @@ public class CityGenerator
 
                 state.Addresses[address.Id] = address;
 
-                // Mark cells as assigned and set AddressId on them
-                if (is2x2)
-                {
-                    (int cx, int cy)[] cells2x2 = { (x, y), (x + 1, y), (x, y + 1), (x + 1, y + 1) };
-                    foreach (var (cx, cy) in cells2x2)
+                // Mark all cells as assigned and set AddressId
+                for (int dy = 0; dy < sizeH; dy++)
+                    for (int dx = 0; dx < sizeW; dx++)
                     {
+                        int cx = x + dx, cy = y + dy;
                         assigned[cx, cy] = true;
                         var c = grid.GetCell(cx, cy);
                         c.AddressId = address.Id;
                         grid.SetCell(cx, cy, c);
                     }
-                }
-                else
-                {
-                    assigned[x, y] = true;
-                    cell.AddressId = address.Id;
-                    grid.SetCell(x, y, cell);
-                }
 
                 if (!addressesByStreet.TryGetValue(facingStreetId.Value, out var list))
                 {

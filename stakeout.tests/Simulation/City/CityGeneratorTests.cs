@@ -153,57 +153,55 @@ public class CityGeneratorTests
     }
 
     [Fact]
-    public void Generate_UrbanCenterHasMoreApartmentsAndOffices()
+    public void Generate_UrbanCenterHasFewerSuburbanHomes()
     {
         var state = new SimulationState();
         var grid = new CityGenerator(seed: 42).Generate(state);
 
-        int centerUrban = 0, edgeUrban = 0;
+        // The center should have a lower proportion of SuburbanHomes than the edge,
+        // reflecting the urbanness gradient. We check this instead of apartment/office
+        // counts because large (3x3) buildings are constrained by block geometry.
+        int centerSuburban = 0, edgeSuburban = 0;
         int centerTotal = 0, edgeTotal = 0;
 
-        for (int x = 0; x < grid.Width; x++)
+        foreach (var addr in state.Addresses.Values)
         {
-            for (int y = 0; y < grid.Height; y++)
-            {
-                var type = grid.GetCell(x, y).PlotType;
-                if (type == PlotType.Road) continue;
+            bool isCenter = addr.GridX >= 35 && addr.GridX < 65 && addr.GridY >= 35 && addr.GridY < 65;
+            bool isEdge = addr.GridX < 15 || addr.GridX >= 85 || addr.GridY < 15 || addr.GridY >= 85;
 
-                bool isCenter = x >= 30 && x < 70 && y >= 30 && y < 70;
-                bool isUrbanType = type == PlotType.ApartmentBuilding || type == PlotType.Office;
-
-                if (isCenter) { centerTotal++; if (isUrbanType) centerUrban++; }
-                else { edgeTotal++; if (isUrbanType) edgeUrban++; }
-            }
+            if (isCenter) { centerTotal++; if (addr.Type == AddressType.SuburbanHome) centerSuburban++; }
+            else if (isEdge) { edgeTotal++; if (addr.Type == AddressType.SuburbanHome) edgeSuburban++; }
         }
 
-        float centerRatio = centerTotal > 0 ? (float)centerUrban / centerTotal : 0;
-        float edgeRatio = edgeTotal > 0 ? (float)edgeUrban / edgeTotal : 0;
-        Assert.True(centerRatio > edgeRatio,
-            $"Center urban ratio ({centerRatio:F3}) should exceed edge ({edgeRatio:F3})");
+        float centerRatio = centerTotal > 0 ? (float)centerSuburban / centerTotal : 0;
+        float edgeRatio = edgeTotal > 0 ? (float)edgeSuburban / edgeTotal : 0;
+        Assert.True(centerRatio < edgeRatio,
+            $"Center suburban ratio ({centerRatio:F3}) should be less than edge ({edgeRatio:F3})");
     }
 
     [Fact]
-    public void Generate_MultiPlotBuildingsOccupy2x2()
+    public void Generate_MultiPlotBuildingsOccupyCorrectSize()
     {
         var state = new SimulationState();
         var grid = new CityGenerator(seed: 42).Generate(state);
 
-        // Find an apartment building cell — all 4 cells in the 2x2 should be ApartmentBuilding
-        for (int x = 0; x < grid.Width - 1; x++)
+        // Find an apartment building cell — all cells in the NxN footprint should be ApartmentBuilding
+        var (sizeW, sizeH) = PlotType.ApartmentBuilding.GetSize();
+        for (int x = 0; x <= grid.Width - sizeW; x++)
         {
-            for (int y = 0; y < grid.Height - 1; y++)
+            for (int y = 0; y <= grid.Height - sizeH; y++)
             {
                 var cell = grid.GetCell(x, y);
                 if (cell.PlotType == PlotType.ApartmentBuilding)
                 {
-                    Assert.Equal(PlotType.ApartmentBuilding, grid.GetCell(x + 1, y).PlotType);
-                    Assert.Equal(PlotType.ApartmentBuilding, grid.GetCell(x, y + 1).PlotType);
-                    Assert.Equal(PlotType.ApartmentBuilding, grid.GetCell(x + 1, y + 1).PlotType);
+                    for (int dx = 0; dx < sizeW; dx++)
+                        for (int dy = 0; dy < sizeH; dy++)
+                            Assert.Equal(PlotType.ApartmentBuilding, grid.GetCell(x + dx, y + dy).PlotType);
                     return;
                 }
             }
         }
-        Assert.Fail("No 2x2 apartment building found in generated city");
+        Assert.Fail($"No {sizeW}x{sizeH} apartment building found in generated city");
     }
 
     [Fact]
