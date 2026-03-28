@@ -4,6 +4,8 @@ using Stakeout.Simulation.Actions;
 
 namespace Stakeout.Simulation.Scheduling;
 
+// TODO: Project 3 — this system will be rebuilt as part of the simulation overhaul.
+
 public class ScheduleEntry
 {
     public ActionType Action { get; set; }
@@ -33,18 +35,6 @@ public class DailySchedule
 
     public ScheduleEntry GetEntryAtTime(TimeSpan timeOfDay)
     {
-        foreach (var entry in Entries)
-        {
-            if (SpanContains(entry.StartTime, entry.EndTime, timeOfDay))
-                return entry;
-        }
-        return Entries[^1];
-    }
-
-    private static bool SpanContains(TimeSpan start, TimeSpan end, TimeSpan time)
-    {
-        if (start <= end)
-            return time >= start && time < end;
-        return time >= start || time < end;
+        throw new System.NotImplementedException();
     }
 }
