@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Godot;
+using Stakeout.Simulation.City;
 using Stakeout.Simulation.Crimes;
 using Stakeout.Simulation.Entities;
 using Stakeout.Simulation.Events;
@@ -32,7 +33,7 @@ public partial class SimulationManager : Node
     {
         State = state;
         _locationGenerator = new LocationGenerator(_mapConfig);
-        _personGenerator = new PersonGenerator(_locationGenerator, _mapConfig);
+        _personGenerator = new PersonGenerator(_mapConfig);
         _personBehavior = new PersonBehavior(_mapConfig);
     }
 
@@ -41,16 +42,21 @@ public partial class SimulationManager : Node
         SublocationGeneratorRegistry.RegisterAll();
         _locationGenerator.GenerateCityScaffolding(State);
 
-        // Generate a park
-        var park = _locationGenerator.GenerateAddress(State, AddressType.Park);
-        AddressAdded?.Invoke(park);
+        // Generate the city grid (creates streets, plots, and Address entities)
+        var cityGenerator = new CityGenerator(seed: 42);
+        State.CityGrid = cityGenerator.Generate(State);
 
-        // Generate 5 people
+        // Notify listeners of all addresses created by the city generator
+        foreach (var address in State.Addresses.Values)
+            AddressAdded?.Invoke(address);
+
+        // Generate 5 people (they pick addresses from the grid)
         for (var i = 0; i < 5; i++)
         {
             var knownAddressIds = new HashSet<int>(State.Addresses.Keys);
             var person = _personGenerator.GeneratePerson(State);
 
+            // Notify listeners of any newly resolved addresses
             foreach (var address in State.Addresses.Values)
             {
                 if (!knownAddressIds.Contains(address.Id))
@@ -59,9 +65,8 @@ public partial class SimulationManager : Node
             PersonAdded?.Invoke(person);
         }
 
-        // Create player at a generated home address
-        var playerHome = _locationGenerator.GenerateAddress(State, AddressType.SuburbanHome);
-        AddressAdded?.Invoke(playerHome);
+        // Create player at an unresolved suburban home from the grid
+        var playerHome = PickAndResolveAddress(State, AddressType.SuburbanHome);
 
         State.Player = new Player
         {
@@ -72,6 +77,20 @@ public partial class SimulationManager : Node
         };
         PlayerCreated?.Invoke();
         CreatePlayerKey(State);
+    }
+
+    private static Address PickAndResolveAddress(SimulationState state, AddressType type)
+    {
+        var plotType = type.ToPlotType();
+        var unresolvedIds = state.CityGrid.GetUnresolvedAddressIdsByType(plotType, state.Addresses);
+        if (unresolvedIds.Count == 0)
+            throw new InvalidOperationException($"No unresolved {type} addresses available on the city grid");
+
+        var rng = new Random();
+        var addressId = unresolvedIds[rng.Next(unresolvedIds.Count)];
+        var address = state.Addresses[addressId];
+        LocationGenerator.ResolveAddressInterior(address, state);
+        return address;
     }
 
     public override void _Process(double delta)

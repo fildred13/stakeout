@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Stakeout.Simulation.Actions;
+using Stakeout.Simulation.City;
 using Stakeout.Simulation.Data;
 using Stakeout.Simulation.Entities;
 using Stakeout.Simulation.Events;
@@ -13,27 +14,25 @@ namespace Stakeout.Simulation;
 public class PersonGenerator
 {
     private readonly Random _random = new();
-    private readonly LocationGenerator _locationGenerator;
     private readonly MapConfig _mapConfig;
 
-    public PersonGenerator(LocationGenerator locationGenerator, MapConfig mapConfig)
+    public PersonGenerator(MapConfig mapConfig)
     {
-        _locationGenerator = locationGenerator;
         _mapConfig = mapConfig;
     }
 
     public Person GeneratePerson(SimulationState state)
     {
-        // 1. Pick job type and generate matching address
+        // 1. Pick job type and claim a matching address from the grid
         var jobType = PickJobType();
         var addressType = JobTypeToAddressType(jobType);
-        var workAddress = _locationGenerator.GenerateAddress(state, addressType);
+        var workAddress = PickAndResolveAddress(state, addressType);
 
-        // 2. Generate home address (random residential type)
+        // 2. Claim a home address from the grid (random residential type)
         var homeType = _random.NextDouble() < 0.5 ? AddressType.SuburbanHome : AddressType.ApartmentBuilding;
         var homeAddress = homeType == AddressType.ApartmentBuilding
-            ? FindOrCreateApartmentBuilding(state)
-            : _locationGenerator.GenerateAddress(state, homeType);
+            ? FindApartmentBuilding(state)
+            : PickAndResolveAddress(state, homeType);
         string homeUnitTag = null;
         if (homeType == AddressType.ApartmentBuilding)
         {
@@ -169,14 +168,28 @@ public class PersonGenerator
         return new TimeSpan(startHour, 0, 0);
     }
 
-    private Address FindOrCreateApartmentBuilding(SimulationState state)
+    private Address PickAndResolveAddress(SimulationState state, AddressType type)
     {
+        var plotType = type.ToPlotType();
+        var unresolvedIds = state.CityGrid.GetUnresolvedAddressIdsByType(plotType, state.Addresses);
+        if (unresolvedIds.Count == 0)
+            throw new InvalidOperationException($"No unresolved {type} addresses available on the city grid");
+
+        var addressId = unresolvedIds[_random.Next(unresolvedIds.Count)];
+        var address = state.Addresses[addressId];
+        LocationGenerator.ResolveAddressInterior(address, state, _random);
+        return address;
+    }
+
+    private Address FindApartmentBuilding(SimulationState state)
+    {
+        // First, try to find a resolved apartment building with vacancy
         if (_random.NextDouble() < 0.5)
         {
             var apartments = new List<Address>();
             foreach (var addr in state.Addresses.Values)
             {
-                if (addr.Type == AddressType.ApartmentBuilding)
+                if (addr.Type == AddressType.ApartmentBuilding && addr.Sublocations.Count > 0)
                     apartments.Add(addr);
             }
             if (apartments.Count > 0)
@@ -186,7 +199,8 @@ public class PersonGenerator
                     return candidate;
             }
         }
-        return _locationGenerator.GenerateAddress(state, AddressType.ApartmentBuilding);
+        // Otherwise, pick an unresolved apartment building from the grid and resolve it
+        return PickAndResolveAddress(state, AddressType.ApartmentBuilding);
     }
 
     private static bool HasVacancy(SimulationState state, Address building)

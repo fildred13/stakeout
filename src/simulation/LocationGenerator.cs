@@ -68,6 +68,19 @@ public class LocationGenerator
         return address;
     }
 
+    /// <summary>
+    /// Generates the interior (sublocations) for an address that was placed on the city grid
+    /// but hasn't had its interior resolved yet. No-op if already resolved.
+    /// </summary>
+    public static void ResolveAddressInterior(Address address, SimulationState state, Random random = null)
+    {
+        if (address.Sublocations.Count > 0) return;
+
+        random ??= new Random();
+        var sublocationGenerator = SublocationGeneratorRegistry.Get(address.Type);
+        sublocationGenerator?.Generate(address, state, random);
+    }
+
     private Street FindOrCreateStreet(SimulationState state, int cityId)
     {
         if (state.Streets.Count > 0 && _random.NextDouble() < 0.5)

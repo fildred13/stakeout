@@ -2,9 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Stakeout.Simulation;
+using Stakeout.Simulation.City;
 using Stakeout.Simulation.Data;
 using Stakeout.Simulation.Entities;
 using Stakeout.Simulation.Objectives;
+using Stakeout.Simulation.Sublocations;
 using Xunit;
 
 namespace Stakeout.Tests.Simulation;
@@ -13,17 +15,23 @@ public class PersonGeneratorTests
 {
     private static SimulationState CreateState()
     {
+        SublocationGeneratorRegistry.RegisterAll();
         var state = new SimulationState();
         var mapConfig = new MapConfig();
         var locationGen = new LocationGenerator(mapConfig);
         locationGen.GenerateCityScaffolding(state);
+
+        // Generate a city grid so PersonGenerator can pick addresses
+        var cityGen = new CityGenerator(seed: 42);
+        state.CityGrid = cityGen.Generate(state);
+
         return state;
     }
 
     private static PersonGenerator CreateGenerator()
     {
         var mapConfig = new MapConfig();
-        return new PersonGenerator(new LocationGenerator(mapConfig), mapConfig);
+        return new PersonGenerator(mapConfig);
     }
 
     [Fact]
