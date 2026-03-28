@@ -13,7 +13,6 @@ public partial class CityView : Control, IContentView
     private GameManager _gameManager;
     private SimulationManager _simulationManager;
     private GameShell _gameShell;
-    private Control _cityMapNode;
     private Label _hoverLabel;
 
     // Pan/zoom state (modeled after EvidenceBoardScene)
@@ -69,7 +68,6 @@ public partial class CityView : Control, IContentView
 
     public override void _Ready()
     {
-        _cityMapNode = GetNode<Control>("CityMap");
         _hoverLabel = GetNode<Label>("HoverLabel");
 
         _gameManager = GetNode<GameManager>("/root/GameManager");

@@ -6,6 +6,7 @@ namespace Stakeout.Simulation.City;
 public class CityGrid
 {
     private readonly Cell[,] _cells;
+    private Dictionary<int, List<(int X, int Y)>> _addressCellIndex;
 
     public int Width { get; }
     public int Height { get; }
@@ -19,19 +20,38 @@ public class CityGrid
 
     public Cell GetCell(int x, int y) => _cells[x, y];
 
-    public void SetCell(int x, int y, Cell cell) => _cells[x, y] = cell;
+    public void SetCell(int x, int y, Cell cell)
+    {
+        _cells[x, y] = cell;
+        _addressCellIndex = null; // Invalidate index on mutation
+    }
 
     public bool IsInBounds(int x, int y) =>
         x >= 0 && x < Width && y >= 0 && y < Height;
 
     public List<(int X, int Y)> GetCellsForAddress(int addressId)
     {
-        var result = new List<(int, int)>();
+        BuildAddressCellIndex();
+        return _addressCellIndex.TryGetValue(addressId, out var cells) ? cells : new List<(int, int)>();
+    }
+
+    private void BuildAddressCellIndex()
+    {
+        if (_addressCellIndex != null) return;
+
+        _addressCellIndex = new Dictionary<int, List<(int X, int Y)>>();
         for (int x = 0; x < Width; x++)
             for (int y = 0; y < Height; y++)
-                if (_cells[x, y].AddressId == addressId)
-                    result.Add((x, y));
-        return result;
+            {
+                var id = _cells[x, y].AddressId;
+                if (!id.HasValue) continue;
+                if (!_addressCellIndex.TryGetValue(id.Value, out var list))
+                {
+                    list = new List<(int, int)>();
+                    _addressCellIndex[id.Value] = list;
+                }
+                list.Add((x, y));
+            }
     }
 
     public List<(int X, int Y)> GetPlotsByType(PlotType type)
