@@ -4,6 +4,7 @@ using Stakeout.Simulation.City;
 using Stakeout.Simulation.Entities;
 using Stakeout.Simulation.Events;
 using Stakeout.Simulation.Crimes;
+using Stakeout.Simulation.Fixtures;
 using Stakeout.Simulation.Traces;
 using CityEntity = Stakeout.Simulation.Entities.City;
 
@@ -25,6 +26,7 @@ public class SimulationState
     public Dictionary<int, Crime> Crimes { get; } = new();
     public Dictionary<int, Trace> Traces { get; } = new();
     public Dictionary<int, Item> Items { get; } = new();
+    public Dictionary<int, Fixture> Fixtures { get; } = new();
     public Dictionary<int, CityGrid> CityGrids { get; } = new();
 
     private int _nextEntityId = 1;
@@ -78,5 +80,15 @@ public class SimulationState
     {
         var addr = Addresses[addressId];
         return Cities[addr.CityId];
+    }
+
+    public List<Fixture> GetFixturesForLocation(int locationId)
+    {
+        return Fixtures.Values.Where(f => f.LocationId == locationId).ToList();
+    }
+
+    public List<Fixture> GetFixturesForSubLocation(int subLocationId)
+    {
+        return Fixtures.Values.Where(f => f.SubLocationId == subLocationId).ToList();
     }
 }
