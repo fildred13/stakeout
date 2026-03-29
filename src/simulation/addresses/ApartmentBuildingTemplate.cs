@@ -1,5 +1,6 @@
 using System;
 using Stakeout.Simulation.Entities;
+using Stakeout.Simulation.Fixtures;
 
 namespace Stakeout.Simulation.Addresses;
 
@@ -9,8 +10,9 @@ public class ApartmentBuildingTemplate : IAddressTemplate
     {
         LocationBuilders.ExteriorParkingLot(state, address);
 
-        LocationBuilders.CreateLocation(state, address, "Lobby",
+        var lobby = LocationBuilders.CreateLocation(state, address, "Lobby",
             new[] { "publicly_accessible", "entrance" });
+        LocationBuilders.CreateFixture(state, FixtureType.TrashCan, "Trash Can", locationId: lobby.Id, subLocationId: null);
 
         LocationBuilders.SecurityRoom(state, address);
 

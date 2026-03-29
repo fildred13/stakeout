@@ -1,5 +1,6 @@
 using System;
 using Stakeout.Simulation.Entities;
+using Stakeout.Simulation.Fixtures;
 
 namespace Stakeout.Simulation.Addresses;
 
@@ -30,6 +31,7 @@ public class DinerTemplate : IAddressTemplate
             IsLocked = true,
             LockMechanism = LockMechanism.Key
         });
+        LocationBuilders.CreateFixture(state, FixtureType.TrashCan, "Trash Can", locationId: kitchen.Id, subLocationId: null);
 
         LocationBuilders.CreateLocation(state, address, "Storage",
             new[] { "staff_only", "storage" });

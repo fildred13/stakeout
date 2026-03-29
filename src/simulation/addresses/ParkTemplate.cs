@@ -1,5 +1,6 @@
 using System;
 using Stakeout.Simulation.Entities;
+using Stakeout.Simulation.Fixtures;
 
 namespace Stakeout.Simulation.Addresses;
 
@@ -13,8 +14,9 @@ public class ParkTemplate : IAddressTemplate
             new[] { "exterior", "publicly_accessible", "entrance" });
         LocationBuilders.CreateLocation(state, address, "Jogging Path",
             new[] { "exterior", "publicly_accessible" });
-        LocationBuilders.CreateLocation(state, address, "Picnic Area",
+        var picnic = LocationBuilders.CreateLocation(state, address, "Picnic Area",
             new[] { "exterior", "publicly_accessible", "social", "food" });
+        LocationBuilders.CreateFixture(state, FixtureType.TrashCan, "Trash Can", locationId: picnic.Id, subLocationId: null);
         LocationBuilders.CreateLocation(state, address, "Playground",
             new[] { "exterior", "publicly_accessible", "social" });
         LocationBuilders.CreateLocation(state, address, "Wooded Area",

@@ -1,5 +1,6 @@
 using System;
 using Stakeout.Simulation.Entities;
+using Stakeout.Simulation.Fixtures;
 
 namespace Stakeout.Simulation.Addresses;
 
@@ -25,8 +26,9 @@ public class OfficeTemplate : IAddressTemplate
                 new[] { "work_area" });
             LocationBuilders.CreateSubLocation(state, floor, "Manager's Office",
                 new[] { "private", "office" });
-            LocationBuilders.CreateSubLocation(state, floor, "Break Room",
+            var breakRoom = LocationBuilders.CreateSubLocation(state, floor, "Break Room",
                 new[] { "food", "social" });
+            LocationBuilders.CreateFixture(state, FixtureType.TrashCan, "Trash Can", locationId: null, subLocationId: breakRoom.Id);
             LocationBuilders.CreateSubLocation(state, floor, "Restroom",
                 new[] { "restroom" });
         }
