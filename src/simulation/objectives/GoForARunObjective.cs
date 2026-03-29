@@ -18,8 +18,10 @@ public class GoForARunObjective : Objective
         var parkId = FindPark(person, state);
         if (parkId == null) return new List<PlannedAction>();
 
-        var runStart = planStart.Date + TimeSpan.FromHours(6);
-        if (runStart < planStart) runStart = runStart.AddDays(1);
+        var windowStart = planStart + TimeSpan.FromHours(1);
+        var windowEnd = planStart + TimeSpan.FromHours(6);
+        if (windowEnd > planEnd) windowEnd = planEnd;
+        if (windowStart >= windowEnd) return new List<PlannedAction>();
 
         return new List<PlannedAction>
         {
@@ -27,8 +29,8 @@ public class GoForARunObjective : Objective
             {
                 Action = new WaitAction(RunDuration, "running on the trails"),
                 TargetAddressId = parkId.Value,
-                TimeWindowStart = runStart,
-                TimeWindowEnd = runStart.Date + TimeSpan.FromHours(20),
+                TimeWindowStart = windowStart,
+                TimeWindowEnd = windowEnd,
                 Duration = RunDuration,
                 DisplayText = "running on the trails",
                 SourceObjective = this

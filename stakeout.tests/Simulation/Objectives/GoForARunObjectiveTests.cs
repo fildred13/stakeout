@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using Stakeout.Simulation;
 using Stakeout.Simulation.Entities;
 using Stakeout.Simulation.Objectives;
@@ -46,7 +45,7 @@ public class GoForARunObjectiveTests
 
         Assert.Single(actions);
         Assert.Equal("running on the trails", actions[0].DisplayText);
-        Assert.Equal(2, actions[0].TargetAddressId); // park
+        Assert.Equal(2, actions[0].TargetAddressId);
     }
 
     [Fact]
@@ -77,5 +76,36 @@ public class GoForARunObjectiveTests
         var actions = obj.GetActions(person, state, planStart, planEnd);
 
         Assert.Equal(TimeSpan.FromMinutes(45), actions[0].Duration);
+    }
+
+    [Fact]
+    public void GetActions_TimeWindowFallsWithinPlanWindow()
+    {
+        var state = CreateStateWithPark();
+        var person = new Person { Id = 1, HomeAddressId = 1, CurrentCityId = 1 };
+        var planStart = new DateTime(1980, 1, 1, 6, 0, 0);
+        var planEnd = planStart.AddHours(24);
+
+        var obj = new GoForARunObjective();
+        var actions = obj.GetActions(person, state, planStart, planEnd);
+
+        Assert.True(actions[0].TimeWindowStart >= planStart);
+        Assert.True(actions[0].TimeWindowEnd <= planEnd);
+    }
+
+    [Fact]
+    public void GetActions_RunScheduledEarlyInWindow()
+    {
+        var state = CreateStateWithPark();
+        var person = new Person { Id = 1, HomeAddressId = 1, CurrentCityId = 1 };
+        var planStart = new DateTime(1980, 1, 1, 6, 0, 0);
+        var planEnd = planStart.AddHours(24);
+
+        var obj = new GoForARunObjective();
+        var actions = obj.GetActions(person, state, planStart, planEnd);
+
+        var midpoint = planStart + TimeSpan.FromHours(12);
+        Assert.True(actions[0].TimeWindowStart < midpoint);
+        Assert.True(actions[0].TimeWindowEnd <= midpoint);
     }
 }
