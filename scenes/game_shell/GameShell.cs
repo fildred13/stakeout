@@ -472,7 +472,7 @@ public partial class GameShell : Control
                 var targetAddr = state.Addresses.GetValueOrDefault(entry.PlannedAction.TargetAddressId);
                 var street = targetAddr != null ? state.Streets.GetValueOrDefault(targetAddr.StreetId) : null;
                 var location = targetAddr != null ? $"at {targetAddr.Number} {street?.Name ?? "Unknown"}" : "";
-                planLines.Add($"{entry.StartTime:hh\\:mm} - {entry.EndTime:hh\\:mm}  {entry.PlannedAction.DisplayText} {location}{marker}");
+                planLines.Add($"{entry.StartTime:HH:mm} - {entry.EndTime:HH:mm}  {entry.PlannedAction.DisplayText} {location}{marker}");
             }
             AddInspectorSection(vbox, font, "— Day Plan —", planLines.ToArray());
         }
