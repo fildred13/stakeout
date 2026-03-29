@@ -2,7 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Godot;
+using Stakeout.Simulation.Actions;
 using Stakeout.Simulation.Addresses;
+using Stakeout.Simulation.Brain;
 using Stakeout.Simulation.City;
 using Stakeout.Simulation.Crimes;
 using Stakeout.Simulation.Entities;
@@ -23,6 +25,7 @@ public partial class SimulationManager : Node
     public MapConfig MapConfig => _mapConfig;
     private readonly PersonGenerator _personGenerator;
     private readonly LocationGenerator _locationGenerator;
+    private readonly ActionRunner _actionRunner;
 
     private readonly Random _random = new(42);
     private readonly CrimeGenerator _crimeGenerator = new();
@@ -33,6 +36,7 @@ public partial class SimulationManager : Node
         State = state;
         _locationGenerator = new LocationGenerator(_mapConfig);
         _personGenerator = new PersonGenerator(_mapConfig);
+        _actionRunner = new ActionRunner(_mapConfig);
     }
 
     public override void _Ready()
@@ -99,29 +103,27 @@ public partial class SimulationManager : Node
 
         State.Clock.Tick(scaledDelta);
 
-        // TODO: Project 3 — person behavior update will be rebuilt
-        // foreach (var person in State.People.Values)
-        // {
-        //     if (!person.IsAlive) continue;
-        //     _personBehavior.Update(person, State);
-        // }
+        foreach (var person in State.People.Values)
+        {
+            if (!person.IsAlive) continue;
 
-        // TODO: Project 3 — schedule rebuild will be rebuilt
-        // foreach (var person in State.People.Values)
-        // {
-        //     if (person.NeedsScheduleRebuild)
-        //     {
-        //         RebuildSchedule(person);
-        //         person.NeedsScheduleRebuild = false;
-        //     }
-        // }
+            // Plan day on wake-up (first tick, plan exhausted, or plan is null)
+            if (person.DayPlan == null || person.DayPlan.IsExhausted)
+            {
+                person.DayPlan = NpcBrain.PlanDay(person, State, State.Clock.CurrentTime);
+                State.Journal.Append(new SimulationEvent
+                {
+                    Timestamp = State.Clock.CurrentTime,
+                    PersonId = person.Id,
+                    EventType = SimulationEventType.DayPlanned,
+                    Description = $"Planned {person.DayPlan.Entries.Count} activities"
+                });
+            }
+
+            _actionRunner.Tick(person, State, TimeSpan.FromSeconds(scaledDelta));
+        }
 
         UpdatePlayerTravel(State);
-    }
-
-    // TODO: Project 3 — schedule rebuild will be rebuilt
-    public void RebuildSchedule(Person person)
-    {
     }
 
     public static void UpdatePlayerTravel(SimulationState state)

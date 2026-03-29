@@ -2,7 +2,7 @@ using Stakeout.Simulation.Entities;
 
 namespace Stakeout.Simulation.Scheduling;
 
-// TODO: Project 3 — this system will be rebuilt as part of the simulation overhaul.
+// TODO: Project 4 — lock/unlock doors based on business hours and NPC presence
 public static class DoorLockingService
 {
     public static void LockEntrances(SimulationState state, Person person)

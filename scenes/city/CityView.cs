@@ -5,7 +5,6 @@ using Godot;
 using Stakeout;
 using Stakeout.Evidence;
 using Stakeout.Simulation;
-using Stakeout.Simulation.Actions;
 using Stakeout.Simulation.City;
 using Stakeout.Simulation.Entities;
 
@@ -400,8 +399,6 @@ public partial class CityView : Control, IContentView
             Color color;
             if (!person.IsAlive)
                 color = DeadPersonColor;
-            else if (person.CurrentAction == ActionType.Sleep)
-                color = SleepingPersonColor;
             else
                 color = PersonColor;
 
@@ -778,15 +775,7 @@ public partial class CityView : Control, IContentView
                 }
                 else
                 {
-                    var actionLabel = person.CurrentAction switch
-                    {
-                        ActionType.Work => FormatWorkLabel(person),
-                        ActionType.Sleep => "Sleep",
-                        ActionType.TravelByCar => FormatTravelLabel(person),
-                        ActionType.Idle => "Idle",
-                        ActionType.KillPerson => "KillPerson",
-                        _ => person.CurrentAction.ToString()
-                    };
+                    var actionLabel = person.CurrentActivity?.DisplayText ?? "idle";
                     label = $"{person.FullName}: {actionLabel}";
                 }
                 if (!lines.Contains(label) && !lines.Contains(person.FullName))
@@ -806,22 +795,4 @@ public partial class CityView : Control, IContentView
         }
     }
 
-    private string FormatTravelLabel(Person person)
-    {
-        if (person.TravelInfo == null) return "TravelByCar";
-        var toAddr = _simulationManager.State.Addresses.GetValueOrDefault(person.TravelInfo.ToAddressId);
-        if (toAddr == null) return "TravelByCar";
-        var street = _simulationManager.State.Streets.GetValueOrDefault(toAddr.StreetId);
-        return $"TravelByCar -> {toAddr.Number} {street?.Name ?? "Unknown"}";
-    }
-
-    private string FormatWorkLabel(Person person)
-    {
-        var job = _simulationManager.State.Jobs.GetValueOrDefault(person.JobId);
-        if (job == null) return "Work";
-        var workAddr = _simulationManager.State.Addresses.GetValueOrDefault(job.WorkAddressId);
-        if (workAddr == null) return "Work";
-        var street = _simulationManager.State.Streets.GetValueOrDefault(workAddr.StreetId);
-        return $"Work at {workAddr.Number} {street?.Name ?? "Unknown"}";
-    }
 }

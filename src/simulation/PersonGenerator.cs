@@ -1,11 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Stakeout.Simulation.Actions;
 using Stakeout.Simulation.Data;
 using Stakeout.Simulation.Entities;
 using Stakeout.Simulation.Events;
+using Stakeout.Simulation.Objectives;
 using Stakeout.Simulation.Scheduling;
+using Stakeout.Simulation.Traits;
 
 namespace Stakeout.Simulation;
 
@@ -65,7 +66,6 @@ public class PersonGenerator
         var (sleepTime, wakeTime) = SleepScheduleCalculator.Compute(job, commuteHours);
 
         // 5. Create person — simplified initialization (no scheduling)
-        // TODO: Project 3 — objectives and schedule will be rebuilt
         var person = new Person
         {
             Id = state.GenerateEntityId(),
@@ -78,10 +78,32 @@ public class PersonGenerator
             JobId = job.Id,
             CurrentAddressId = homeAddress.Id,
             CurrentPosition = homeAddress.Position,
-            CurrentAction = ActionType.Idle,
             PreferredSleepTime = sleepTime,
             PreferredWakeTime = wakeTime,
         };
+
+        // Assign traits (random selection, 0-2 traits per person)
+        var allTraits = TraitDefinitions.GetAllTraitNames();
+        var traitCount = _random.Next(0, 3); // 0, 1, or 2 traits
+        var shuffled = allTraits.OrderBy(_ => _random.Next()).Take(traitCount);
+        foreach (var trait in shuffled)
+        {
+            person.Traits.Add(trait);
+        }
+
+        // Create objectives: universal + trait-based
+        person.Objectives.Add(new SleepObjective { Id = state.GenerateEntityId() });
+        foreach (var trait in person.Traits)
+        {
+            foreach (var obj in TraitDefinitions.CreateObjectivesForTrait(trait))
+            {
+                obj.Id = state.GenerateEntityId();
+                person.Objectives.Add(obj);
+            }
+        }
+
+        // TODO: Project 4 — job objectives will be created here
+
         state.People[person.Id] = person;
 
         // 6. Create home key
@@ -92,8 +114,8 @@ public class PersonGenerator
         {
             Timestamp = state.Clock.CurrentTime,
             PersonId = person.Id,
-            EventType = SimulationEventType.ActionChanged,
-            NewAction = ActionType.Idle
+            EventType = SimulationEventType.ActivityStarted,
+            Description = "Spawned"
         });
 
         return person;

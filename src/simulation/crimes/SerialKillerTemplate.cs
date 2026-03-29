@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Stakeout.Simulation.Actions;
-using Stakeout.Simulation.Objectives;
 
 namespace Stakeout.Simulation.Crimes;
 
@@ -31,82 +29,7 @@ public class SerialKillerTemplate : ICrimeTemplate
             }
         };
 
-        var objective = new Objective
-        {
-            Id = state.GenerateEntityId(),
-            Type = ObjectiveType.CommitMurder,
-            Source = ObjectiveSource.CrimeTemplate,
-            SourceEntityId = crime.Id,
-            Priority = 40,
-            IsRecurring = false
-        };
-
-        // Step 0: Choose victim (instant)
-        objective.Steps.Add(new ObjectiveStep
-        {
-            Description = "Choose victim",
-            IsInstant = true,
-            ResolveFunc = (obj, st) =>
-            {
-                var alive = st.People.Values.Where(p => p.IsAlive && p.Id != killer.Id).ToList();
-                if (alive.Count == 0) return null;
-                var victim = alive[new Random().Next(alive.Count)];
-                obj.Data["VictimId"] = victim.Id;
-                crime.Roles["Victim"] = victim.Id;
-                return null;
-            }
-        });
-
-        // Step 1: Kill victim
-        objective.Steps.Add(new ObjectiveStep
-        {
-            Description = "Kill victim",
-            ActionType = ActionType.KillPerson,
-            ResolveFunc = (obj, st) =>
-            {
-                var victimId = (int)obj.Data["VictimId"];
-                var victim = st.People[victimId];
-                return new SimTask
-                {
-                    Id = st.GenerateEntityId(),
-                    ObjectiveId = obj.Id,
-                    StepIndex = 1,
-                    ActionType = ActionType.KillPerson,
-                    Priority = 40,
-                    WindowStart = new TimeSpan(1, 0, 0),
-                    WindowEnd = new TimeSpan(1, 30, 0),
-                    TargetAddressId = victim.HomeAddressId,
-                    ActionData = new Dictionary<string, object>
-                    {
-                        { "VictimId", victimId }
-                    }
-                };
-            }
-        });
-
-        // Step 2: Go home
-        objective.Steps.Add(new ObjectiveStep
-        {
-            Description = "Go home",
-            ActionType = ActionType.Idle,
-            ResolveFunc = (obj, st) =>
-            {
-                return new SimTask
-                {
-                    Id = st.GenerateEntityId(),
-                    ObjectiveId = obj.Id,
-                    StepIndex = 2,
-                    ActionType = ActionType.Idle,
-                    Priority = 40,
-                    WindowStart = new TimeSpan(1, 30, 0),
-                    WindowEnd = new TimeSpan(3, 0, 0),
-                    TargetAddressId = killer.HomeAddressId
-                };
-            }
-        });
-
-        killer.Objectives.Add(objective);
-        crime.ObjectiveIds.Add(objective.Id);
+        // TODO: Project 3 — crime objectives will be created via the new Objective subclass system
         state.Crimes[crime.Id] = crime;
 
         return crime;
