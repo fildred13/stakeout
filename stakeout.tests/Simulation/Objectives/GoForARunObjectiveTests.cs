@@ -34,13 +34,15 @@ public class GoForARunObjectiveTests
     }
 
     [Fact]
-    public void GetActionsForToday_ReturnsRunAction()
+    public void GetActions_ReturnsRunAction()
     {
         var state = CreateStateWithPark();
         var person = new Person { Id = 1, HomeAddressId = 1, CurrentCityId = 1 };
+        var planStart = new DateTime(1980, 1, 1, 6, 0, 0);
+        var planEnd = planStart.AddHours(24);
 
         var obj = new GoForARunObjective();
-        var actions = obj.GetActionsForToday(person, state, DateTime.Today);
+        var actions = obj.GetActions(person, state, planStart, planEnd);
 
         Assert.Single(actions);
         Assert.Equal("running on the trails", actions[0].DisplayText);
@@ -48,27 +50,31 @@ public class GoForARunObjectiveTests
     }
 
     [Fact]
-    public void GetActionsForToday_NoPark_ReturnsEmpty()
+    public void GetActions_NoPark_ReturnsEmpty()
     {
         var state = new SimulationState();
         state.Addresses[1] = new Address { Id = 1, Type = AddressType.SuburbanHome };
         state.Cities[1] = new Stakeout.Simulation.Entities.City { Id = 1, AddressIds = { 1 } };
         var person = new Person { Id = 1, HomeAddressId = 1, CurrentCityId = 1 };
+        var planStart = new DateTime(1980, 1, 1, 6, 0, 0);
+        var planEnd = planStart.AddHours(24);
 
         var obj = new GoForARunObjective();
-        var actions = obj.GetActionsForToday(person, state, DateTime.Today);
+        var actions = obj.GetActions(person, state, planStart, planEnd);
 
         Assert.Empty(actions);
     }
 
     [Fact]
-    public void GetActionsForToday_Duration_Is45Minutes()
+    public void GetActions_Duration_Is45Minutes()
     {
         var state = CreateStateWithPark();
         var person = new Person { Id = 1, HomeAddressId = 1, CurrentCityId = 1 };
+        var planStart = new DateTime(1980, 1, 1, 6, 0, 0);
+        var planEnd = planStart.AddHours(24);
 
         var obj = new GoForARunObjective();
-        var actions = obj.GetActionsForToday(person, state, DateTime.Today);
+        var actions = obj.GetActions(person, state, planStart, planEnd);
 
         Assert.Equal(TimeSpan.FromMinutes(45), actions[0].Duration);
     }

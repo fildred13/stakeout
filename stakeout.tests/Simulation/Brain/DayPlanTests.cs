@@ -9,7 +9,9 @@ namespace Stakeout.Tests.Simulation.Brain;
 
 public class DayPlanTests
 {
-    private static PlannedAction MakeAction(string name, TimeSpan windowStart, TimeSpan windowEnd, TimeSpan duration)
+    private static readonly DateTime BaseDate = new DateTime(1980, 1, 1);
+
+    private static PlannedAction MakeAction(string name, DateTime windowStart, DateTime windowEnd, TimeSpan duration)
     {
         return new PlannedAction
         {
@@ -35,9 +37,9 @@ public class DayPlanTests
         var plan = new DayPlan();
         plan.Entries.Add(new DayPlanEntry
         {
-            StartTime = TimeSpan.FromHours(6),
-            EndTime = TimeSpan.FromHours(7),
-            PlannedAction = MakeAction("test", TimeSpan.FromHours(6), TimeSpan.FromHours(7), TimeSpan.FromHours(1))
+            StartTime = BaseDate + TimeSpan.FromHours(6),
+            EndTime = BaseDate + TimeSpan.FromHours(7),
+            PlannedAction = MakeAction("test", BaseDate + TimeSpan.FromHours(6), BaseDate + TimeSpan.FromHours(7), TimeSpan.FromHours(1))
         });
         Assert.NotNull(plan.Current);
         Assert.Equal("test", plan.Current.PlannedAction.DisplayText);
@@ -49,15 +51,15 @@ public class DayPlanTests
         var plan = new DayPlan();
         plan.Entries.Add(new DayPlanEntry
         {
-            StartTime = TimeSpan.FromHours(6),
-            EndTime = TimeSpan.FromHours(7),
-            PlannedAction = MakeAction("first", TimeSpan.FromHours(6), TimeSpan.FromHours(7), TimeSpan.FromHours(1))
+            StartTime = BaseDate + TimeSpan.FromHours(6),
+            EndTime = BaseDate + TimeSpan.FromHours(7),
+            PlannedAction = MakeAction("first", BaseDate + TimeSpan.FromHours(6), BaseDate + TimeSpan.FromHours(7), TimeSpan.FromHours(1))
         });
         plan.Entries.Add(new DayPlanEntry
         {
-            StartTime = TimeSpan.FromHours(8),
-            EndTime = TimeSpan.FromHours(9),
-            PlannedAction = MakeAction("second", TimeSpan.FromHours(8), TimeSpan.FromHours(9), TimeSpan.FromHours(1))
+            StartTime = BaseDate + TimeSpan.FromHours(8),
+            EndTime = BaseDate + TimeSpan.FromHours(9),
+            PlannedAction = MakeAction("second", BaseDate + TimeSpan.FromHours(8), BaseDate + TimeSpan.FromHours(9), TimeSpan.FromHours(1))
         });
 
         var next = plan.AdvanceToNext();
@@ -71,9 +73,9 @@ public class DayPlanTests
         var plan = new DayPlan();
         plan.Entries.Add(new DayPlanEntry
         {
-            StartTime = TimeSpan.FromHours(6),
-            EndTime = TimeSpan.FromHours(7),
-            PlannedAction = MakeAction("only", TimeSpan.FromHours(6), TimeSpan.FromHours(7), TimeSpan.FromHours(1))
+            StartTime = BaseDate + TimeSpan.FromHours(6),
+            EndTime = BaseDate + TimeSpan.FromHours(7),
+            PlannedAction = MakeAction("only", BaseDate + TimeSpan.FromHours(6), BaseDate + TimeSpan.FromHours(7), TimeSpan.FromHours(1))
         });
 
         var next = plan.AdvanceToNext();

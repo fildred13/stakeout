@@ -13,10 +13,13 @@ public class GoForARunObjective : Objective
     public override int Priority => 20;
     public override ObjectiveSource Source => ObjectiveSource.Trait;
 
-    public override List<PlannedAction> GetActionsForToday(Person person, SimulationState state, DateTime currentDate)
+    public override List<PlannedAction> GetActions(Person person, SimulationState state, DateTime planStart, DateTime planEnd)
     {
         var parkId = FindPark(person, state);
         if (parkId == null) return new List<PlannedAction>();
+
+        var runStart = planStart.Date + TimeSpan.FromHours(6);
+        if (runStart < planStart) runStart = runStart.AddDays(1);
 
         return new List<PlannedAction>
         {
@@ -24,8 +27,8 @@ public class GoForARunObjective : Objective
             {
                 Action = new WaitAction(RunDuration, "running on the trails"),
                 TargetAddressId = parkId.Value,
-                TimeWindowStart = TimeSpan.FromHours(6),
-                TimeWindowEnd = TimeSpan.FromHours(20),
+                TimeWindowStart = runStart,
+                TimeWindowEnd = runStart.Date + TimeSpan.FromHours(20),
                 Duration = RunDuration,
                 DisplayText = "running on the trails",
                 SourceObjective = this

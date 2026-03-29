@@ -15,6 +15,7 @@ public static class NpcBrain
         var plan = new DayPlan();
         var wakeTime = person.PreferredWakeTime;
         var sleepTime = person.PreferredSleepTime;
+        var planDate = currentTime.Date;
 
         // Separate sleep from other objectives — sleep is appended at the end, not slot-found
         var objectives = person.Objectives
@@ -23,11 +24,14 @@ public static class NpcBrain
             .ToList();
 
         PlannedAction sleepAction = null;
-        var scheduled = new List<(TimeSpan start, TimeSpan end, PlannedAction action)>();
+        var scheduled = new List<(DateTime start, DateTime end, PlannedAction action)>();
+
+        var planStart = planDate + wakeTime;
+        var planEnd = planStart.AddHours(24);
 
         foreach (var objective in objectives)
         {
-            var actions = objective.GetActionsForToday(person, state, currentTime.Date);
+            var actions = objective.GetActions(person, state, planStart, planEnd);
             foreach (var action in actions)
             {
                 // Sleep is special — it goes at the end of the day, not in a waking-hours slot
@@ -41,7 +45,7 @@ public static class NpcBrain
                 var totalDuration = action.Duration + TimeSpan.FromHours(travelHours);
 
                 var slot = FindSlot(scheduled, action.TimeWindowStart, action.TimeWindowEnd,
-                    totalDuration, wakeTime, sleepTime);
+                    totalDuration, planDate + wakeTime, planDate + sleepTime);
                 if (slot.HasValue)
                 {
                     scheduled.Add((slot.Value, slot.Value + totalDuration, action));
@@ -53,7 +57,7 @@ public static class NpcBrain
         scheduled.Sort((a, b) => a.start.CompareTo(b.start));
 
         // Build plan entries, filling gaps with IdleAtHome
-        var currentSlotTime = wakeTime;
+        var currentSlotTime = planDate + wakeTime;
         foreach (var (start, end, action) in scheduled)
         {
             if (start > currentSlotTime)
@@ -70,9 +74,12 @@ public static class NpcBrain
         }
 
         // Fill remaining waking time with idle
-        if (currentSlotTime < sleepTime)
+        var sleepDateTime = planDate + sleepTime;
+        if (sleepDateTime <= planDate + wakeTime)
+            sleepDateTime = sleepDateTime.AddDays(1);
+        if (currentSlotTime < sleepDateTime)
         {
-            AddIdleEntry(plan, currentSlotTime, sleepTime, person.HomeAddressId);
+            AddIdleEntry(plan, currentSlotTime, sleepDateTime, person.HomeAddressId);
         }
 
         // Append sleep at the end of the day
@@ -80,8 +87,8 @@ public static class NpcBrain
         {
             plan.Entries.Add(new DayPlanEntry
             {
-                StartTime = sleepTime,
-                EndTime = sleepTime + sleepAction.Duration,
+                StartTime = sleepAction.TimeWindowStart,
+                EndTime = sleepAction.TimeWindowStart + sleepAction.Duration,
                 PlannedAction = sleepAction
             });
         }
@@ -89,11 +96,11 @@ public static class NpcBrain
         return plan;
     }
 
-    private static TimeSpan? FindSlot(
-        List<(TimeSpan start, TimeSpan end, PlannedAction action)> scheduled,
-        TimeSpan windowStart, TimeSpan windowEnd,
+    private static DateTime? FindSlot(
+        List<(DateTime start, DateTime end, PlannedAction action)> scheduled,
+        DateTime windowStart, DateTime windowEnd,
         TimeSpan totalDuration,
-        TimeSpan wakeTime, TimeSpan sleepTime)
+        DateTime wakeTime, DateTime sleepTime)
     {
         // Clamp window to waking hours
         var effectiveStart = windowStart < wakeTime ? wakeTime : windowStart;
@@ -119,7 +126,7 @@ public static class NpcBrain
         return null;
     }
 
-    private static void AddIdleEntry(DayPlan plan, TimeSpan start, TimeSpan end, int homeAddressId)
+    private static void AddIdleEntry(DayPlan plan, DateTime start, DateTime end, int homeAddressId)
     {
         var duration = end - start;
         if (duration <= TimeSpan.Zero) return;

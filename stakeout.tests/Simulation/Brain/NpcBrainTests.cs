@@ -12,6 +12,8 @@ namespace Stakeout.Tests.Simulation.Brain;
 
 public class NpcBrainTests
 {
+    private static readonly DateTime BaseDate = new DateTime(1980, 1, 1);
+
     private static SimulationState CreateState()
     {
         var state = new SimulationState();
@@ -59,8 +61,8 @@ public class NpcBrainTests
         {
             Action = new WaitAction(TimeSpan.FromHours(1), "high priority"),
             TargetAddressId = 1,
-            TimeWindowStart = TimeSpan.FromHours(8),
-            TimeWindowEnd = TimeSpan.FromHours(12),
+            TimeWindowStart = BaseDate + TimeSpan.FromHours(8),
+            TimeWindowEnd = BaseDate + TimeSpan.FromHours(12),
             Duration = TimeSpan.FromHours(1),
             DisplayText = "high priority"
         }));
@@ -68,8 +70,8 @@ public class NpcBrainTests
         {
             Action = new WaitAction(TimeSpan.FromHours(1), "low priority"),
             TargetAddressId = 1,
-            TimeWindowStart = TimeSpan.FromHours(8),
-            TimeWindowEnd = TimeSpan.FromHours(12),
+            TimeWindowStart = BaseDate + TimeSpan.FromHours(8),
+            TimeWindowEnd = BaseDate + TimeSpan.FromHours(12),
             Duration = TimeSpan.FromHours(1),
             DisplayText = "low priority"
         }));
@@ -93,8 +95,8 @@ public class NpcBrainTests
         {
             Action = new WaitAction(TimeSpan.FromHours(1), "eating"),
             TargetAddressId = 1,
-            TimeWindowStart = TimeSpan.FromHours(12),
-            TimeWindowEnd = TimeSpan.FromHours(13),
+            TimeWindowStart = BaseDate + TimeSpan.FromHours(12),
+            TimeWindowEnd = BaseDate + TimeSpan.FromHours(13),
             Duration = TimeSpan.FromHours(1),
             DisplayText = "eating"
         }));
@@ -117,8 +119,8 @@ public class NpcBrainTests
         {
             Action = new WaitAction(TimeSpan.FromHours(16), "all day"),
             TargetAddressId = 1,
-            TimeWindowStart = TimeSpan.FromHours(6),
-            TimeWindowEnd = TimeSpan.FromHours(22),
+            TimeWindowStart = BaseDate + TimeSpan.FromHours(6),
+            TimeWindowEnd = BaseDate + TimeSpan.FromHours(22),
             Duration = TimeSpan.FromHours(16),
             DisplayText = "all day"
         }));
@@ -127,8 +129,8 @@ public class NpcBrainTests
         {
             Action = new WaitAction(TimeSpan.FromHours(1), "cant fit"),
             TargetAddressId = 1,
-            TimeWindowStart = TimeSpan.FromHours(6),
-            TimeWindowEnd = TimeSpan.FromHours(22),
+            TimeWindowStart = BaseDate + TimeSpan.FromHours(6),
+            TimeWindowEnd = BaseDate + TimeSpan.FromHours(22),
             Duration = TimeSpan.FromHours(1),
             DisplayText = "cant fit"
         }));
@@ -153,7 +155,7 @@ public class NpcBrainTests
             _action = action;
         }
 
-        public override List<PlannedAction> GetActionsForToday(Person person, SimulationState state, DateTime currentDate)
+        public override List<PlannedAction> GetActions(Person person, SimulationState state, DateTime planStart, DateTime planEnd)
         {
             return new List<PlannedAction> { _action };
         }

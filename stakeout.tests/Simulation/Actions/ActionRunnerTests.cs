@@ -12,9 +12,11 @@ namespace Stakeout.Tests.Simulation.Actions;
 
 public class ActionRunnerTests
 {
+    private static readonly DateTime BaseTime = new DateTime(1980, 1, 1, 8, 0, 0);
+
     private static (SimulationState state, Person person) Setup()
     {
-        var state = new SimulationState(new GameClock(new DateTime(1980, 1, 1, 8, 0, 0)));
+        var state = new SimulationState(new GameClock(BaseTime));
         var home = new Address { Id = 1, GridX = 0, GridY = 0 };
         var park = new Address { Id = 2, GridX = 2, GridY = 2 };
         state.Addresses[home.Id] = home;
@@ -35,8 +37,8 @@ public class ActionRunnerTests
         person.DayPlan = new DayPlan();
         person.DayPlan.Entries.Add(new DayPlanEntry
         {
-            StartTime = TimeSpan.FromHours(8),
-            EndTime = TimeSpan.FromHours(9),
+            StartTime = BaseTime,
+            EndTime = BaseTime.AddHours(1),
             PlannedAction = new PlannedAction
             {
                 Action = new WaitAction(TimeSpan.FromHours(1), "relaxing at home"),
@@ -68,8 +70,8 @@ public class ActionRunnerTests
         // Change plan to target park (address 2), person is at home (address 1)
         person.DayPlan.Entries[0] = new DayPlanEntry
         {
-            StartTime = TimeSpan.FromHours(8),
-            EndTime = TimeSpan.FromHours(9),
+            StartTime = BaseTime,
+            EndTime = BaseTime.AddHours(1),
             PlannedAction = new PlannedAction
             {
                 Action = new WaitAction(TimeSpan.FromHours(1), "running"),
@@ -94,8 +96,8 @@ public class ActionRunnerTests
         // Add a second entry
         person.DayPlan.Entries.Add(new DayPlanEntry
         {
-            StartTime = TimeSpan.FromHours(9),
-            EndTime = TimeSpan.FromHours(10),
+            StartTime = BaseTime.AddHours(1),
+            EndTime = BaseTime.AddHours(2),
             PlannedAction = new PlannedAction
             {
                 Action = new WaitAction(TimeSpan.FromHours(1), "second activity"),

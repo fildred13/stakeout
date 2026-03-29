@@ -13,10 +13,13 @@ public class EatOutObjective : Objective
     public override int Priority => 40;
     public override ObjectiveSource Source => ObjectiveSource.Trait;
 
-    public override List<PlannedAction> GetActionsForToday(Person person, SimulationState state, DateTime currentDate)
+    public override List<PlannedAction> GetActions(Person person, SimulationState state, DateTime planStart, DateTime planEnd)
     {
         var dinerId = FindRestaurant(person, state);
         if (dinerId == null) return new List<PlannedAction>();
+
+        var mealStart = planStart.Date + TimeSpan.FromHours(11);
+        if (mealStart < planStart) mealStart = mealStart.AddDays(1);
 
         return new List<PlannedAction>
         {
@@ -24,8 +27,8 @@ public class EatOutObjective : Objective
             {
                 Action = new WaitAction(MealDuration, "eating at the counter"),
                 TargetAddressId = dinerId.Value,
-                TimeWindowStart = TimeSpan.FromHours(11),
-                TimeWindowEnd = TimeSpan.FromHours(14),
+                TimeWindowStart = mealStart,
+                TimeWindowEnd = mealStart.Date + TimeSpan.FromHours(14),
                 Duration = MealDuration,
                 DisplayText = "eating at the counter",
                 SourceObjective = this
