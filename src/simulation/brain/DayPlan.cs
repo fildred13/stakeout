@@ -10,6 +10,8 @@ public class DayPlan
     public DayPlanEntry Current =>
         CurrentIndex < Entries.Count ? Entries[CurrentIndex] : null;
 
+    public bool IsExhausted => CurrentIndex >= Entries.Count;
+
     public DayPlanEntry AdvanceToNext()
     {
         if (CurrentIndex < Entries.Count)

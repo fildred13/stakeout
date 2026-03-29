@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Stakeout.Simulation.Brain;
 using Stakeout.Simulation.Entities;
 using Stakeout.Simulation.Events;
@@ -8,6 +9,7 @@ namespace Stakeout.Simulation.Actions;
 public class ActionRunner
 {
     private readonly MapConfig _mapConfig;
+    private readonly Dictionary<int, Random> _personRandoms = new();
 
     public ActionRunner(MapConfig mapConfig)
     {
@@ -169,14 +171,20 @@ public class ActionRunner
         });
     }
 
-    private static ActionContext CreateContext(Person person, SimulationState state)
+    private ActionContext CreateContext(Person person, SimulationState state)
     {
+        if (!_personRandoms.TryGetValue(person.Id, out var random))
+        {
+            random = new Random(person.Id);
+            _personRandoms[person.Id] = random;
+        }
+
         return new ActionContext
         {
             Person = person,
             State = state,
             EventJournal = state.Journal,
-            Random = new Random(person.Id), // deterministic per-person
+            Random = random,
             CurrentTime = state.Clock.CurrentTime
         };
     }

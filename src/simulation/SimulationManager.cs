@@ -107,8 +107,8 @@ public partial class SimulationManager : Node
         {
             if (!person.IsAlive) continue;
 
-            // Plan day on wake-up (first tick or when plan is null)
-            if (person.DayPlan == null)
+            // Plan day on wake-up (first tick, plan exhausted, or plan is null)
+            if (person.DayPlan == null || person.DayPlan.IsExhausted)
             {
                 person.DayPlan = NpcBrain.PlanDay(person, State, State.Clock.CurrentTime);
                 State.Journal.Append(new SimulationEvent

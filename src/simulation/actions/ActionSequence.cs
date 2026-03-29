@@ -122,6 +122,13 @@ public class ActionSequence : IAction
             return this;
         }
 
+        public ActionSequenceBuilder MoveTo(int targetLocationId, int? targetSubLocationId = null, string displayText = "moving")
+        {
+            _sequence._steps.Add(new DirectStep(
+                new Primitives.MoveToAction(targetLocationId, targetSubLocationId, displayText)));
+            return this;
+        }
+
         public ActionSequenceBuilder If(Func<ActionContext, bool> condition,
             Func<ActionSequenceBuilder, ActionSequenceBuilder> buildInner)
         {
