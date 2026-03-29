@@ -5,11 +5,8 @@ using Godot;
 using Stakeout;
 using Stakeout.Evidence;
 using Stakeout.Simulation;
-using Stakeout.Simulation.Actions;
 using Stakeout.Simulation.Crimes;
 using Stakeout.Simulation.Entities;
-using Stakeout.Simulation.Objectives;
-using Stakeout.Simulation.Scheduling;
 
 /// <summary>
 /// Interface implemented by content views that live inside GameShell's content area.
@@ -245,11 +242,7 @@ public partial class GameShell : Control
         var killerId = crime.Roles["Killer"].Value;
         var killer = _simulationManager.State.People[killerId];
 
-        // Rebuild killer's schedule to include crime tasks
-        _simulationManager.RebuildSchedule(killer);
-
-        // Resolve objectives to pick victim
-        ObjectiveResolver.ResolveTasks(killer.Objectives, _simulationManager.State);
+        // TODO: Project 3 — crime objectives will be resolved through the new objective system
         var victimId = crime.Roles["Victim"];
         var victimName = victimId.HasValue
             ? _simulationManager.State.People[victimId.Value].FullName
@@ -433,44 +426,17 @@ public partial class GameShell : Control
         // Current State
         AddInspectorSection(vbox, font, "— Current State —", new[]
         {
-            $"Action: {person.CurrentAction}"
+            $"Activity: {person.CurrentActivity?.DisplayText ?? "idle"}"
         });
 
-        // Job
-        if (state.Jobs.TryGetValue(person.JobId, out var job))
-        {
-            var workAddr = state.Addresses.GetValueOrDefault(job.WorkAddressId);
-            var workStreet = workAddr != null ? state.Streets.GetValueOrDefault(workAddr.StreetId) : null;
-            AddInspectorSection(vbox, font, "— Job —", new[]
-            {
-                $"Title: {job.Title}",
-                $"Work: {workAddr?.Number} {workStreet?.Name ?? "Unknown"}",
-                $"Shift: {job.ShiftStart:hh\\:mm} - {job.ShiftEnd:hh\\:mm}"
-            });
-        }
+        // TODO: Project 4 — will be restored with Business entities
+        // Job section commented out
 
-        // Objectives
-        var objLines = new List<string>();
-        foreach (var obj in person.Objectives)
-        {
-            objLines.Add($"[{obj.Status}] {obj.Type} (pri:{obj.Priority}, src:{obj.Source})");
-            for (int i = 0; i < obj.Steps.Count; i++)
-            {
-                var step = obj.Steps[i];
-                var marker = step.Status == StepStatus.Completed ? "✓"
-                    : i == obj.CurrentStepIndex ? "→"
-                    : " ";
-                objLines.Add($"  {marker} {step.Description} [{step.Status}]");
-            }
-        }
-        if (objLines.Count > 0)
-            AddInspectorSection(vbox, font, "— Objectives —", objLines.ToArray());
+        // TODO: P3 Task 8 — will be restored with new objective display
+        // Objectives section commented out
 
-        // Schedule (collapsible tree grouped by task)
-        if (person.Schedule != null)
-        {
-            AddScheduleTree(vbox, font, person.Schedule, state, person.Id);
-        }
+        // TODO: P3 Task 8 — will be restored as Day Plan display
+        // Schedule section commented out
 
         // Inventory
         var inventoryLines = new List<string>();
@@ -528,112 +494,6 @@ public partial class GameShell : Control
 
         // Spacer
         vbox.AddChild(new Control { CustomMinimumSize = new Vector2(0, 10) });
-    }
-
-    private void AddScheduleTree(VBoxContainer vbox, Font font, DailySchedule schedule, SimulationState state, int personId)
-    {
-        var headerLabel = new Label { Text = "— Schedule —" };
-        headerLabel.AddThemeFontOverride("font", font);
-        headerLabel.AddThemeFontSizeOverride("font_size", 14);
-        headerLabel.AddThemeColorOverride("font_color", new Color(0.3f, 0.6f, 1.0f));
-        vbox.AddChild(headerLabel);
-
-        var groups = schedule.Groups.Count > 0 ? schedule.Groups : null;
-        if (groups == null)
-        {
-            // Fallback: show flat entries if no groups available
-            foreach (var e in schedule.Entries)
-            {
-                var label = new Label { Text = FormatScheduleEntry(e, state) };
-                label.AddThemeFontOverride("font", font);
-                label.AddThemeFontSizeOverride("font_size", 12);
-                label.AddThemeColorOverride("font_color", new Color(0.9f, 0.9f, 0.9f));
-                vbox.AddChild(label);
-            }
-        }
-        else
-        {
-            if (!_inspectorExpandedGroups.ContainsKey(personId))
-                _inspectorExpandedGroups[personId] = new HashSet<int>();
-            var expandedSet = _inspectorExpandedGroups[personId];
-
-            for (int gi = 0; gi < groups.Count; gi++)
-            {
-                var group = groups[gi];
-                var groupIndex = gi;
-                var hasChildren = group.Children.Count > 1;
-                var isExpanded = expandedSet.Contains(groupIndex);
-                var arrow = hasChildren ? (isExpanded ? "▼ " : "▶ ") : "  ";
-                var groupText = $"{arrow}[{group.StartTime:hh\\:mm}-{group.EndTime:hh\\:mm}] {group.Action}";
-                groupText += FormatAddressString(group.TargetAddressId, group.FromAddressId, state);
-
-                var groupButton = new Button
-                {
-                    Text = groupText,
-                    Flat = true,
-                    Alignment = HorizontalAlignment.Left
-                };
-                groupButton.AddThemeFontOverride("font", font);
-                groupButton.AddThemeFontSizeOverride("font_size", 12);
-                groupButton.AddThemeColorOverride("font_color", new Color(0.9f, 0.9f, 0.7f));
-
-                var childContainer = new VBoxContainer { Visible = isExpanded };
-
-                if (hasChildren)
-                {
-                    foreach (var child in group.Children)
-                    {
-                        var childText = $"    [{child.StartTime:hh\\:mm}-{child.EndTime:hh\\:mm}] {child.Action}";
-                        childText += FormatAddressString(child.TargetAddressId, child.FromAddressId, state);
-
-                        var childLabel = new Label { Text = childText };
-                        childLabel.AddThemeFontOverride("font", font);
-                        childLabel.AddThemeFontSizeOverride("font_size", 11);
-                        childLabel.AddThemeColorOverride("font_color", new Color(0.7f, 0.7f, 0.7f));
-                        childContainer.AddChild(childLabel);
-                    }
-
-                    var containerRef = childContainer;
-                    var buttonRef = groupButton;
-                    var groupRef = group;
-                    var pid = personId;
-                    var gIdx = groupIndex;
-                    groupButton.Pressed += () =>
-                    {
-                        containerRef.Visible = !containerRef.Visible;
-                        if (containerRef.Visible)
-                            _inspectorExpandedGroups[pid].Add(gIdx);
-                        else
-                            _inspectorExpandedGroups[pid].Remove(gIdx);
-                        var a = containerRef.Visible ? "▼ " : "▶ ";
-                        buttonRef.Text = $"{a}[{groupRef.StartTime:hh\\:mm}-{groupRef.EndTime:hh\\:mm}] {groupRef.Action}"
-                            + FormatAddressString(groupRef.TargetAddressId, groupRef.FromAddressId, state);
-                    };
-                }
-
-                vbox.AddChild(groupButton);
-                vbox.AddChild(childContainer);
-            }
-        }
-
-        vbox.AddChild(new Control { CustomMinimumSize = new Vector2(0, 10) });
-    }
-
-    private string FormatScheduleEntry(ScheduleEntry e, SimulationState state)
-    {
-        var text = $"[{e.StartTime:hh\\:mm}-{e.EndTime:hh\\:mm}] {e.Action}";
-        text += FormatAddressString(e.TargetAddressId, e.FromAddressId, state);
-        // TODO: Project 8 (Player UI) — show Location/SubLocation and AccessPoint info
-        return text;
-    }
-
-    private string FormatAddressString(int? targetAddressId, int? fromAddressId, SimulationState state)
-    {
-        if (!targetAddressId.HasValue) return "";
-        var addr = state.Addresses.GetValueOrDefault(targetAddressId.Value);
-        if (addr == null) return $" @ addr {targetAddressId.Value}";
-        var street = state.Streets.GetValueOrDefault(addr.StreetId);
-        return $" @ {addr.Number} {street?.Name ?? "Unknown"} ({addr.Type})";
     }
 
     private string ResolveSublocationName(int? sublocationId, int? addressId, SimulationState state)

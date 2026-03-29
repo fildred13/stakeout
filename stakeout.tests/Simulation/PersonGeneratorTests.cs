@@ -86,11 +86,11 @@ public class PersonGeneratorTests
     }
 
     [Fact]
-    public void GeneratePerson_SetsInitialActivity()
+    public void GeneratePerson_StartsWithNoCurrentActivity()
     {
         var state = CreateState();
         var person = CreateGenerator().GeneratePerson(state);
-        Assert.True(Enum.IsDefined(person.CurrentAction));
+        Assert.Null(person.CurrentActivity);
     }
 
     [Fact]

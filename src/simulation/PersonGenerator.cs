@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Stakeout.Simulation.Actions;
 using Stakeout.Simulation.Data;
 using Stakeout.Simulation.Entities;
 using Stakeout.Simulation.Events;
@@ -57,6 +56,7 @@ public class PersonGenerator
         }
 
         // 3. Create Job
+        // TODO: Project 4 — job objectives will be created here
         var job = CreateJob(state, jobType, workAddress.Id);
         state.Jobs[job.Id] = job;
 
@@ -65,7 +65,6 @@ public class PersonGenerator
         var (sleepTime, wakeTime) = SleepScheduleCalculator.Compute(job, commuteHours);
 
         // 5. Create person — simplified initialization (no scheduling)
-        // TODO: Project 3 — objectives and schedule will be rebuilt
         var person = new Person
         {
             Id = state.GenerateEntityId(),
@@ -78,7 +77,6 @@ public class PersonGenerator
             JobId = job.Id,
             CurrentAddressId = homeAddress.Id,
             CurrentPosition = homeAddress.Position,
-            CurrentAction = ActionType.Idle,
             PreferredSleepTime = sleepTime,
             PreferredWakeTime = wakeTime,
         };
@@ -92,8 +90,8 @@ public class PersonGenerator
         {
             Timestamp = state.Clock.CurrentTime,
             PersonId = person.Id,
-            EventType = SimulationEventType.ActionChanged,
-            NewAction = ActionType.Idle
+            EventType = SimulationEventType.ActivityStarted,
+            Description = "Spawned"
         });
 
         return person;

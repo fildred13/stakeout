@@ -99,29 +99,9 @@ public partial class SimulationManager : Node
 
         State.Clock.Tick(scaledDelta);
 
-        // TODO: Project 3 — person behavior update will be rebuilt
-        // foreach (var person in State.People.Values)
-        // {
-        //     if (!person.IsAlive) continue;
-        //     _personBehavior.Update(person, State);
-        // }
-
-        // TODO: Project 3 — schedule rebuild will be rebuilt
-        // foreach (var person in State.People.Values)
-        // {
-        //     if (person.NeedsScheduleRebuild)
-        //     {
-        //         RebuildSchedule(person);
-        //         person.NeedsScheduleRebuild = false;
-        //     }
-        // }
+        // TODO: Project 3 Task 6 — ActionRunner.Tick will be wired here
 
         UpdatePlayerTravel(State);
-    }
-
-    // TODO: Project 3 — schedule rebuild will be rebuilt
-    public void RebuildSchedule(Person person)
-    {
     }
 
     public static void UpdatePlayerTravel(SimulationState state)

@@ -2,7 +2,6 @@ using System.Linq;
 using Stakeout.Simulation;
 using Stakeout.Simulation.Crimes;
 using Stakeout.Simulation.Entities;
-using Stakeout.Simulation.Objectives;
 using Xunit;
 
 namespace Stakeout.Tests.Simulation.Crimes;
@@ -57,22 +56,6 @@ public class SerialKillerTemplateTests
         Assert.NotNull(crime);
         Assert.True(crime.Roles.ContainsKey("Victim"));
         Assert.Null(crime.Roles["Victim"]);
-    }
-
-    [Fact]
-    public void Instantiate_InjectsCommitMurderObjective_IntoKiller()
-    {
-        var state = CreateStateWithPeople(3);
-        var template = new SerialKillerTemplate();
-
-        var crime = template.Instantiate(state);
-
-        Assert.NotNull(crime);
-        var killerId = crime.Roles["Killer"].Value;
-        var killer = state.People[killerId];
-        Assert.Single(killer.Objectives);
-        Assert.Equal(ObjectiveType.CommitMurder, killer.Objectives[0].Type);
-        Assert.Equal(3, killer.Objectives[0].Steps.Count);
     }
 
     [Fact]
