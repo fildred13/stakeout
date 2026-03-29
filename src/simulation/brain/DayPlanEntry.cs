@@ -13,8 +13,8 @@ public enum DayPlanEntryStatus
 
 public class DayPlanEntry
 {
-    public TimeSpan StartTime { get; init; }
-    public TimeSpan EndTime { get; init; }
+    public DateTime StartTime { get; init; }
+    public DateTime EndTime { get; init; }
     public PlannedAction PlannedAction { get; init; }
     public DayPlanEntryStatus Status { get; set; } = DayPlanEntryStatus.Pending;
 }
