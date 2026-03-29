@@ -136,10 +136,10 @@ Static query service that merges fixtures and traces for a location. The future 
 ```csharp
 public static class InvestigationQuery
 {
-    public static InvestigationResult GetDiscoveries(SimulationState state,
+    public static InvestigationResult GetDiscoveriesForLocation(SimulationState state,
         int locationId, DateTime currentTime);
 
-    public static InvestigationResult GetDiscoveries(SimulationState state,
+    public static InvestigationResult GetDiscoveriesForSubLocation(SimulationState state,
         int subLocationId, DateTime currentTime);
 
     public static List<Trace> GetFixtureTraces(SimulationState state,
