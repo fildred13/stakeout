@@ -18,8 +18,10 @@ public class EatOutObjective : Objective
         var dinerId = FindRestaurant(person, state);
         if (dinerId == null) return new List<PlannedAction>();
 
-        var mealStart = planStart.Date + TimeSpan.FromHours(11);
-        if (mealStart < planStart) mealStart = mealStart.AddDays(1);
+        var windowStart = planStart + TimeSpan.FromHours(3);
+        var windowEnd = planStart + TimeSpan.FromHours(8);
+        if (windowEnd > planEnd) windowEnd = planEnd;
+        if (windowStart >= windowEnd) return new List<PlannedAction>();
 
         return new List<PlannedAction>
         {
@@ -27,8 +29,8 @@ public class EatOutObjective : Objective
             {
                 Action = new WaitAction(MealDuration, "eating at the counter"),
                 TargetAddressId = dinerId.Value,
-                TimeWindowStart = mealStart,
-                TimeWindowEnd = mealStart.Date + TimeSpan.FromHours(14),
+                TimeWindowStart = windowStart,
+                TimeWindowEnd = windowEnd,
                 Duration = MealDuration,
                 DisplayText = "eating at the counter",
                 SourceObjective = this

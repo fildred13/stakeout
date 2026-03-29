@@ -77,4 +77,34 @@ public class EatOutObjectiveTests
 
         Assert.Equal(TimeSpan.FromMinutes(30), actions[0].Duration);
     }
+
+    [Fact]
+    public void GetActions_TimeWindowFallsWithinPlanWindow()
+    {
+        var state = CreateStateWithDiner();
+        var person = new Person { Id = 1, HomeAddressId = 1, CurrentCityId = 1 };
+        var planStart = new DateTime(1980, 1, 1, 6, 0, 0);
+        var planEnd = planStart.AddHours(24);
+
+        var obj = new EatOutObjective();
+        var actions = obj.GetActions(person, state, planStart, planEnd);
+
+        Assert.True(actions[0].TimeWindowStart >= planStart);
+        Assert.True(actions[0].TimeWindowEnd <= planEnd);
+    }
+
+    [Fact]
+    public void GetActions_MealScheduledInFirstHalfOfWakingWindow()
+    {
+        var state = CreateStateWithDiner();
+        var person = new Person { Id = 1, HomeAddressId = 1, CurrentCityId = 1 };
+        var planStart = new DateTime(1980, 1, 1, 6, 0, 0);
+        var planEnd = planStart.AddHours(24);
+
+        var obj = new EatOutObjective();
+        var actions = obj.GetActions(person, state, planStart, planEnd);
+
+        var midpoint = planStart + TimeSpan.FromHours(12);
+        Assert.True(actions[0].TimeWindowStart < midpoint);
+    }
 }
