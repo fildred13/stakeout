@@ -64,6 +64,27 @@ public partial class AddressView : Control, IContentView
             { "callback", Callable.From(ShowBlueprintView) }
         });
 
+        // Airport: show fly-to options for other cities
+        var state = _simulationManager.State;
+        var player = state.Player;
+        if (player != null && state.Addresses.TryGetValue(player.CurrentAddressId, out var addr)
+            && addr.Type == Stakeout.Simulation.Entities.AddressType.Airport)
+        {
+            foreach (var city in state.Cities.Values)
+            {
+                if (city.Id == player.CurrentCityId) continue;
+                if (!city.AirportAddressId.HasValue) continue;
+
+                var destCityId = city.Id;
+                var destAirportId = city.AirportAddressId.Value;
+                items.Add(new Godot.Collections.Dictionary
+                {
+                    { "label", $"Fly to {city.Name}" },
+                    { "callback", Callable.From(() => OnFlyToCity(destCityId, destAirportId)) }
+                });
+            }
+        }
+
         items.Add(new Godot.Collections.Dictionary
         {
             { "label", "Leave" },
@@ -148,6 +169,21 @@ public partial class AddressView : Control, IContentView
                 child.QueueFree();
             }
         }
+    }
+
+    private void OnFlyToCity(int destCityId, int destAirportAddressId)
+    {
+        var state = _simulationManager.State;
+        var player = state.Player;
+        var destAddress = state.Addresses[destAirportAddressId];
+
+        // Update player city and position to destination airport
+        player.CurrentCityId = destCityId;
+        player.CurrentAddressId = destAirportAddressId;
+        player.CurrentPosition = destAddress.Position;
+
+        // Leave the AddressView back to CityView (which will now show the new city)
+        _gameShell.LoadContentView("res://scenes/city/CityView.tscn");
     }
 
     private void OnLeave()

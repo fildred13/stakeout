@@ -26,6 +26,7 @@ public partial class GameShell : Control
 
     // Sidebar elements
     private Label _clockLabel;
+    private Label _cityLabel;
     private HBoxContainer _timeControls;
     private Button _pauseButton;
     private Button _playButton;
@@ -72,6 +73,7 @@ public partial class GameShell : Control
         sidebar.AddThemeStyleboxOverride("panel", sidebarStyle);
 
         _clockLabel = GetNode<Label>("LeftSidebar/VBox/ClockLabel");
+        _cityLabel = GetNode<Label>("LeftSidebar/VBox/CityLabel");
         _timeControls = GetNode<HBoxContainer>("LeftSidebar/VBox/TimeControls");
 
         _pauseButton = GetNode<Button>("LeftSidebar/VBox/TimeControls/PauseButton");
@@ -219,8 +221,14 @@ public partial class GameShell : Control
 
     public override void _Process(double delta)
     {
-        var time = _simulationManager.State.Clock.CurrentTime;
+        var state = _simulationManager.State;
+        var time = state.Clock.CurrentTime;
         _clockLabel.Text = time.ToString("ddd MMM dd, yyyy HH:mm:ss");
+
+        // Update city label
+        var player = state.Player;
+        if (player?.CurrentCityId != null && state.Cities.TryGetValue(player.CurrentCityId.Value, out var city))
+            _cityLabel.Text = $"{city.Name}, {city.CountryName}";
 
         RefreshInspectorWindows(delta);
     }
