@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Stakeout.Simulation.City;
@@ -90,5 +91,32 @@ public class SimulationState
     public List<Fixture> GetFixturesForSubLocation(int subLocationId)
     {
         return Fixtures.Values.Where(f => f.SubLocationId == subLocationId).ToList();
+    }
+
+    public List<Trace> GetTracesForLocation(int locationId, DateTime currentTime)
+    {
+        return Traces.Values.Where(t => t.LocationId == locationId && IsTraceVisible(t, currentTime)).ToList();
+    }
+
+    public List<Trace> GetTracesForSubLocation(int subLocationId, DateTime currentTime)
+    {
+        return Traces.Values.Where(t => t.SubLocationId == subLocationId && IsTraceVisible(t, currentTime)).ToList();
+    }
+
+    public List<Trace> GetTracesForFixture(int fixtureId, DateTime currentTime)
+    {
+        return Traces.Values.Where(t => t.FixtureId == fixtureId && IsTraceVisible(t, currentTime)).ToList();
+    }
+
+    public List<Trace> GetTracesForPerson(int personId, DateTime currentTime)
+    {
+        return Traces.Values.Where(t => t.AttachedToPersonId == personId && IsTraceVisible(t, currentTime)).ToList();
+    }
+
+    private static bool IsTraceVisible(Trace trace, DateTime currentTime)
+    {
+        if (!trace.IsActive) return false;
+        if (trace.DecayDays.HasValue && trace.CreatedAt.AddDays(trace.DecayDays.Value) < currentTime) return false;
+        return true;
     }
 }
