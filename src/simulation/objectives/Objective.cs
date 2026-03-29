@@ -12,10 +12,11 @@ public abstract class Objective
     public ObjectiveStatus Status { get; set; } = ObjectiveStatus.Active;
     public List<Objective> Children { get; } = new();
 
-    public abstract List<PlannedAction> GetActionsForToday(
+    public abstract List<PlannedAction> GetActions(
         Person person,
         SimulationState state,
-        DateTime currentDate);
+        DateTime planStart,
+        DateTime planEnd);
 
     public virtual void OnActionCompleted(PlannedAction action, bool success) { }
 
