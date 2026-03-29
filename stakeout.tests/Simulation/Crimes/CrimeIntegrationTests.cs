@@ -80,7 +80,7 @@ public class CrimeIntegrationTests
         // Step 5: Verify results
         Assert.False(victim.IsAlive);
         Assert.True(state.Traces.Count >= 2); // condition + mark
-        Assert.Contains(state.Traces.Values, t => t.TraceType == TraceType.Condition);
-        Assert.Contains(state.Traces.Values, t => t.TraceType == TraceType.Mark);
+        Assert.Contains(state.Traces.Values, t => t.Type == TraceType.Condition);
+        Assert.Contains(state.Traces.Values, t => t.Type == TraceType.Mark);
     }
 }

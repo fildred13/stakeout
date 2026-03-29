@@ -1,5 +1,6 @@
 using System;
 using Stakeout.Simulation.Entities;
+using Stakeout.Simulation.Fixtures;
 
 namespace Stakeout.Simulation.Addresses;
 
@@ -44,7 +45,8 @@ public class SuburbanHomeTemplate : IAddressTemplate
         });
 
         LocationBuilders.CreateSubLocation(state, interior, "Hallway", new[] { "hallway" });
-        LocationBuilders.CreateSubLocation(state, interior, "Kitchen", new[] { "kitchen", "food" });
+        var kitchen = LocationBuilders.CreateSubLocation(state, interior, "Kitchen", new[] { "kitchen", "food" });
+        LocationBuilders.CreateFixture(state, FixtureType.TrashCan, "Trash Can", locationId: null, subLocationId: kitchen.Id);
         LocationBuilders.CreateSubLocation(state, interior, "Living Room", new[] { "living", "social" });
         LocationBuilders.CreateSubLocation(state, interior, "Bathroom", new[] { "restroom" });
 

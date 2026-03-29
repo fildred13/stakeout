@@ -4,6 +4,7 @@ using System.Linq;
 using Stakeout.Simulation;
 using Stakeout.Simulation.Addresses;
 using Stakeout.Simulation.Entities;
+using Stakeout.Simulation.Fixtures;
 using Xunit;
 
 namespace Stakeout.Tests.Simulation.Addresses;
@@ -95,5 +96,46 @@ public class LocationBuildersTests
         var sub = LocationBuilders.Restroom(state, parent);
         Assert.True(sub.HasTag("restroom"));
         Assert.Contains(sub.Id, parent.SubLocationIds);
+    }
+
+    [Fact]
+    public void CreateFixture_OnLocation_RegisteredInState()
+    {
+        var (state, addr) = Setup();
+        var loc = LocationBuilders.CreateLocation(state, addr, "Kitchen", new[] { "kitchen" });
+        var fixture = LocationBuilders.CreateFixture(state, FixtureType.TrashCan, "Trash Can",
+            locationId: loc.Id, subLocationId: null);
+
+        Assert.True(state.Fixtures.ContainsKey(fixture.Id));
+        Assert.Equal(loc.Id, fixture.LocationId);
+        Assert.Null(fixture.SubLocationId);
+        Assert.Equal("Trash Can", fixture.Name);
+        Assert.Equal(FixtureType.TrashCan, fixture.Type);
+    }
+
+    [Fact]
+    public void CreateFixture_OnSubLocation_RegisteredInState()
+    {
+        var (state, addr) = Setup();
+        var loc = LocationBuilders.CreateLocation(state, addr, "Interior", new[] { "residential" });
+        var sub = LocationBuilders.CreateSubLocation(state, loc, "Kitchen", new[] { "kitchen" });
+        var fixture = LocationBuilders.CreateFixture(state, FixtureType.TrashCan, "Trash Can",
+            locationId: null, subLocationId: sub.Id);
+
+        Assert.True(state.Fixtures.ContainsKey(fixture.Id));
+        Assert.Null(fixture.LocationId);
+        Assert.Equal(sub.Id, fixture.SubLocationId);
+    }
+
+    [Fact]
+    public void CreateFixture_WithTags_HasTags()
+    {
+        var (state, addr) = Setup();
+        var loc = LocationBuilders.CreateLocation(state, addr, "Kitchen", new[] { "kitchen" });
+        var fixture = LocationBuilders.CreateFixture(state, FixtureType.TrashCan, "Trash Can",
+            locationId: loc.Id, subLocationId: null, tags: new[] { "kitchen", "waste" });
+
+        Assert.True(fixture.HasTag("kitchen"));
+        Assert.True(fixture.HasTag("waste"));
     }
 }

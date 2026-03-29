@@ -1,5 +1,6 @@
 using System;
 using Stakeout.Simulation.Entities;
+using Stakeout.Simulation.Fixtures;
 
 namespace Stakeout.Simulation.Addresses;
 
@@ -7,8 +8,9 @@ public class DiveBarTemplate : IAddressTemplate
 {
     public void Generate(Address address, SimulationState state, Random random)
     {
-        LocationBuilders.CreateLocation(state, address, "Alley",
+        var alley = LocationBuilders.CreateLocation(state, address, "Alley",
             new[] { "exterior", "covert_entry" });
+        LocationBuilders.CreateFixture(state, FixtureType.TrashCan, "Trash Can", locationId: alley.Id, subLocationId: null);
 
         var barArea = LocationBuilders.CreateLocation(state, address, "Bar Area",
             new[] { "publicly_accessible", "service_area", "entrance", "social" });
