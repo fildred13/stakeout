@@ -192,8 +192,41 @@ public class NpcBrainTests
 
         Assert.Equal(now, plan.Entries.First().StartTime);
         var lastEnd = plan.Entries.Last().EndTime;
-        Assert.True(lastEnd <= now.AddHours(24),
-            $"Plan extends past 24h: ends at {lastEnd}");
+        Assert.Equal(now.AddHours(24), lastEnd);
+    }
+
+    [Fact]
+    public void PlanDay_ObjectiveThatDoesntFit_IsSkipped()
+    {
+        var now = new DateTime(1980, 1, 1, 6, 0, 0);
+        var state = CreateState(now);
+        var person = CreatePerson(state,
+            TimeSpan.FromHours(6), TimeSpan.FromHours(22));
+
+        // Fill most of the 24h window with high priority
+        person.Objectives.Add(new TestObjective(90, new PlannedAction
+        {
+            Action = new WaitAction(TimeSpan.FromHours(23), "all day"),
+            TargetAddressId = 1,
+            TimeWindowStart = now,
+            TimeWindowEnd = now.AddHours(24),
+            Duration = TimeSpan.FromHours(23),
+            DisplayText = "all day"
+        }));
+        // Low priority can't fit
+        person.Objectives.Add(new TestObjective(20, new PlannedAction
+        {
+            Action = new WaitAction(TimeSpan.FromHours(2), "cant fit"),
+            TargetAddressId = 1,
+            TimeWindowStart = now,
+            TimeWindowEnd = now.AddHours(24),
+            Duration = TimeSpan.FromHours(2),
+            DisplayText = "cant fit"
+        }));
+
+        var plan = NpcBrain.PlanDay(person, state, now);
+
+        Assert.DoesNotContain(plan.Entries, e => e.PlannedAction.DisplayText == "cant fit");
     }
 
     // Helper: a test objective that returns a fixed PlannedAction
