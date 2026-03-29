@@ -5,8 +5,11 @@ using Godot;
 using Stakeout;
 using Stakeout.Evidence;
 using Stakeout.Simulation;
+using Stakeout.Simulation.Actions;
+using Stakeout.Simulation.Brain;
 using Stakeout.Simulation.Crimes;
 using Stakeout.Simulation.Entities;
+using Stakeout.Simulation.Objectives;
 
 /// <summary>
 /// Interface implemented by content views that live inside GameShell's content area.
@@ -424,19 +427,57 @@ public partial class GameShell : Control
         AddInspectorSection(vbox, font, "— Location —", locationLines.ToArray());
 
         // Current State
-        AddInspectorSection(vbox, font, "— Current State —", new[]
+        var activityLines = new List<string>();
+        if (person.TravelInfo != null)
         {
-            $"Activity: {person.CurrentActivity?.DisplayText ?? "idle"}"
-        });
+            var toAddr = state.Addresses.GetValueOrDefault(person.TravelInfo.ToAddressId);
+            var street = toAddr != null ? state.Streets.GetValueOrDefault(toAddr.StreetId) : null;
+            var eta = person.TravelInfo.ArrivalTime;
+            activityLines.Add($"Status: Traveling to {toAddr?.Number} {street?.Name ?? "Unknown"}");
+            activityLines.Add($"ETA: {eta:HH:mm}");
+        }
+        else if (person.CurrentActivity != null)
+        {
+            activityLines.Add($"Activity: {person.CurrentActivity.DisplayText}");
+            activityLines.Add("Status: Active");
+        }
+        else
+        {
+            activityLines.Add("Activity: idle");
+        }
+        AddInspectorSection(vbox, font, "— Current State —", activityLines.ToArray());
 
-        // TODO: Project 4 — will be restored with Business entities
-        // Job section commented out
+        // Objectives
+        var objLines = new List<string>();
+        foreach (var obj in person.Objectives)
+        {
+            var executing = person.CurrentActivity != null &&
+                person.DayPlan?.Current?.PlannedAction?.SourceObjective == obj;
+            var statusStr = executing ? "Active, executing" : obj.Status.ToString();
+            objLines.Add($"[P{obj.Priority}] {obj.GetType().Name} ({obj.Source}) — {statusStr}");
+        }
+        if (objLines.Count > 0)
+            AddInspectorSection(vbox, font, "— Objectives —", objLines.ToArray());
 
-        // TODO: P3 Task 8 — will be restored with new objective display
-        // Objectives section commented out
+        // Day Plan
+        if (person.DayPlan != null)
+        {
+            var planLines = new List<string>();
+            for (int i = 0; i < person.DayPlan.Entries.Count; i++)
+            {
+                var entry = person.DayPlan.Entries[i];
+                var marker = entry.Status == DayPlanEntryStatus.Completed ? " ✓"
+                    : i == person.DayPlan.CurrentIndex ? " ← current"
+                    : "";
+                var targetAddr = state.Addresses.GetValueOrDefault(entry.PlannedAction.TargetAddressId);
+                var street = targetAddr != null ? state.Streets.GetValueOrDefault(targetAddr.StreetId) : null;
+                var location = targetAddr != null ? $"at {targetAddr.Number} {street?.Name ?? "Unknown"}" : "";
+                planLines.Add($"{entry.StartTime:hh\\:mm} - {entry.EndTime:hh\\:mm}  {entry.PlannedAction.DisplayText} {location}{marker}");
+            }
+            AddInspectorSection(vbox, font, "— Day Plan —", planLines.ToArray());
+        }
 
-        // TODO: P3 Task 8 — will be restored as Day Plan display
-        // Schedule section commented out
+        // TODO: Project 4 — Job section will be restored with Business entities
 
         // Inventory
         var inventoryLines = new List<string>();
