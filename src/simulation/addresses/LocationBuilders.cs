@@ -1,6 +1,7 @@
 // src/simulation/addresses/LocationBuilders.cs
 using System;
 using Stakeout.Simulation.Entities;
+using Stakeout.Simulation.Fixtures;
 
 namespace Stakeout.Simulation.Addresses;
 
@@ -77,5 +78,21 @@ public static class LocationBuilders
     public static SubLocation Restroom(SimulationState state, Location parent)
     {
         return CreateSubLocation(state, parent, "Restroom", new[] { "restroom" });
+    }
+
+    public static Fixture CreateFixture(SimulationState state, FixtureType type,
+        string name, int? locationId, int? subLocationId, string[] tags = null)
+    {
+        var fixture = new Fixture
+        {
+            Id = state.GenerateEntityId(),
+            LocationId = locationId,
+            SubLocationId = subLocationId,
+            Name = name,
+            Type = type,
+            Tags = tags ?? Array.Empty<string>()
+        };
+        state.Fixtures[fixture.Id] = fixture;
+        return fixture;
     }
 }
