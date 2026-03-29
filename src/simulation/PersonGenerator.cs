@@ -4,7 +4,9 @@ using System.Linq;
 using Stakeout.Simulation.Data;
 using Stakeout.Simulation.Entities;
 using Stakeout.Simulation.Events;
+using Stakeout.Simulation.Objectives;
 using Stakeout.Simulation.Scheduling;
+using Stakeout.Simulation.Traits;
 
 namespace Stakeout.Simulation;
 
@@ -56,7 +58,6 @@ public class PersonGenerator
         }
 
         // 3. Create Job
-        // TODO: Project 4 — job objectives will be created here
         var job = CreateJob(state, jobType, workAddress.Id);
         state.Jobs[job.Id] = job;
 
@@ -80,6 +81,29 @@ public class PersonGenerator
             PreferredSleepTime = sleepTime,
             PreferredWakeTime = wakeTime,
         };
+
+        // Assign traits (random selection, 0-2 traits per person)
+        var allTraits = TraitDefinitions.GetAllTraitNames();
+        var traitCount = _random.Next(0, 3); // 0, 1, or 2 traits
+        var shuffled = allTraits.OrderBy(_ => _random.Next()).Take(traitCount);
+        foreach (var trait in shuffled)
+        {
+            person.Traits.Add(trait);
+        }
+
+        // Create objectives: universal + trait-based
+        person.Objectives.Add(new SleepObjective { Id = state.GenerateEntityId() });
+        foreach (var trait in person.Traits)
+        {
+            foreach (var obj in TraitDefinitions.CreateObjectivesForTrait(trait))
+            {
+                obj.Id = state.GenerateEntityId();
+                person.Objectives.Add(obj);
+            }
+        }
+
+        // TODO: Project 4 — job objectives will be created here
+
         state.People[person.Id] = person;
 
         // 6. Create home key

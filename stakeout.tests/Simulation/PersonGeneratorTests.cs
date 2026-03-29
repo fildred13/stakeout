@@ -6,6 +6,7 @@ using Stakeout.Simulation.Addresses;
 using Stakeout.Simulation.City;
 using Stakeout.Simulation.Data;
 using Stakeout.Simulation.Entities;
+using Stakeout.Simulation.Objectives;
 using Xunit;
 using CityEntity = Stakeout.Simulation.Entities.City;
 
@@ -281,6 +282,31 @@ public class PersonGeneratorTests
         {
             Assert.Equal(itemId, ap.KeyItemId);
         }
+    }
+
+    [Fact]
+    public void GeneratePerson_HasObjectives()
+    {
+        var state = CreateState();
+        var person = CreateGenerator().GeneratePerson(state);
+        // At minimum, every person has a SleepObjective
+        Assert.NotEmpty(person.Objectives);
+        Assert.Contains(person.Objectives, o => o is SleepObjective);
+    }
+
+    [Fact]
+    public void GeneratePerson_HasTraits()
+    {
+        var state = CreateState();
+        var gen = CreateGenerator();
+        // Generate enough people that some have traits
+        var hasTrait = false;
+        for (int i = 0; i < 50; i++)
+        {
+            var person = gen.GeneratePerson(state);
+            if (person.Traits.Count > 0) hasTrait = true;
+        }
+        Assert.True(hasTrait);
     }
 
     [Fact]
