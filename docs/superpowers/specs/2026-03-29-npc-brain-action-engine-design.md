@@ -162,7 +162,7 @@ One algorithm. Everything is an objective with a priority. A runner's hobby and 
 
 ### DayPlan
 
-An ordered list of time-slotted entries:
+An ordered list of time-slotted entries with a current-index tracking which entry is active:
 
 ```
 06:00 - 06:30  EatOut at Mario's Diner
@@ -291,6 +291,7 @@ Status: Active [28min remaining]
 - `scheduling/ScheduleBuilder.cs`
 - `scheduling/DailySchedule.cs`
 - `scheduling/TaskResolver.cs`
+- `scheduling/PersonBehavior.cs` (replaced by ActionRunner)
 - `scheduling/decomposition/` (entire directory)
 - `objectives/ObjectiveResolver.cs`
 - `objectives/Task.cs` (SimTask)
