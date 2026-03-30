@@ -24,6 +24,10 @@ City gen creates business shells (name, hours, positions — all empty). When `P
 
 NPCs always work in their home city. PersonGenerator filters to businesses within the NPC's home city when picking a position. Cross-city commuting is deferred.
 
+### No CommuteAction Needed
+
+The master plan mentions `CommuteAction` as a P4 deliverable. This is unnecessary — P3's `ActionRunner` already handles inter-address travel at the engine level. When `WorkShiftObjective` produces a `PlannedAction` targeting the business address, the engine automatically initiates travel if the NPC isn't already there. Commuting is implicit, not a separate action.
+
 ### Schedule-Driven Door Locking
 
 Business entrance doors lock/unlock based on operating hours, not individual worker arrivals. Only resolved businesses participate in door locking. Unresolved business shells use default door state from their address template.
@@ -121,7 +125,7 @@ public interface IBusinessTemplate
 ### DinerTemplate
 
 - **Hours:** 24/7 — all 7 days, open 00:00 to 00:00
-- **Positions:** 1 cook, 1-2 waiters, 0-1 manager. Each gets a randomized shift covering part of the 24-hour day (e.g., cook 5am-1pm, cook 1pm-9pm). Shifts rotate to cover operating hours.
+- **Positions:** Per shift: 1 cook, 1-2 waiters, 0-1 manager. A 24/7 diner needs ~3 shifts to cover the day, so total positions are 3 cooks, 3-6 waiters, 0-3 managers. Each position gets a specific shift window (e.g., cook 5am-1pm, cook 1pm-9pm, cook 9pm-5am). Position counts randomized within ranges per instance.
 - **Names:** Pool-based patterns — "{FirstName}'s Diner", "{LastName}'s", "The {Adjective} Spoon"
 
 ### DiveBarTemplate
@@ -183,51 +187,30 @@ public Person GeneratePerson(SimulationState state, SpawnRequirements requiremen
 2. **If unconstrained:** pick a random business (in the NPC's home city) with an open position
 3. Claim the position: `position.AssignedPersonId = person.Id`
 4. Set `person.BusinessId` and `person.PositionId`
-5. Compute sleep schedule from position shift times via `SleepScheduleCalculator`
+5. Compute commute time from home-to-work distance (same as current), then compute sleep schedule from position shift times + commute via `SleepScheduleCalculator`
 6. Create `WorkShiftObjective(businessId, positionId)`
 7. Everything else unchanged: home, traits, home key, etc.
 
 ### SleepScheduleCalculator
 
-Signature changes from `Compute(Job, float)` to `Compute(Position, float)`. Reads `ShiftStart` and `ShiftEnd` from Position. Same algorithm.
+Signature changes from `Compute(Job, float commuteHours)` to `Compute(Position, float commuteHours)`. Reads `ShiftStart` and `ShiftEnd` from Position instead of Job. Commute hours still passed in from `MapConfig.ComputeTravelTimeHours()`. Same algorithm.
 
 ## Business Resolution
 
 ### BusinessResolver
 
-```csharp
-public static class BusinessResolver
-{
-    public static List<Person> Resolve(
-        SimulationState state,
-        Business business,
-        PersonGenerator generator)
-    {
-        if (business.IsResolved) return new();
+Pseudocode (not final signatures — refer to actual `LocationGenerator` and `PersonGenerator` APIs during implementation):
 
-        // Ensure address interior is resolved
-        var address = state.Addresses[business.AddressId];
-        if (address.LocationIds.Count == 0)
-            LocationGenerator.ResolveAddressInterior(state, address);
-
-        var spawned = new List<Person>();
-        foreach (var position in business.Positions)
-        {
-            if (position.AssignedPersonId != null) continue;
-
-            var person = generator.GeneratePerson(state, new SpawnRequirements
-            {
-                BusinessId = business.Id,
-                PositionId = position.Id
-            });
-
-            spawned.Add(person);
-        }
-
-        business.IsResolved = true;
-        return spawned;
-    }
-}
+```
+Resolve(state, business, generator):
+    if business.IsResolved: return empty
+    ensure address interior is resolved (via LocationGenerator)
+    for each position in business.Positions:
+        if position already assigned: skip
+        spawn person with SpawnRequirements { BusinessId, PositionId }
+        collect spawned person
+    set business.IsResolved = true
+    return spawned list
 ```
 
 ### Resolution Triggers (P4 Scope)
