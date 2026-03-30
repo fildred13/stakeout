@@ -76,17 +76,6 @@ public class PersonGeneratorTests
     }
 
     [Fact]
-    public void GeneratePerson_CreatesJobWithMatchingAddress()
-    {
-        var state = CreateState();
-        var person = CreateGenerator().GeneratePerson(state);
-        Assert.True(state.Jobs.ContainsKey(person.JobId));
-        var job = state.Jobs[person.JobId];
-        Assert.True(state.Addresses.ContainsKey(job.WorkAddressId));
-        Assert.Equal(AddressCategory.Commercial, state.Addresses[job.WorkAddressId].Category);
-    }
-
-    [Fact]
     public void GeneratePerson_StartsWithNoCurrentActivity()
     {
         var state = CreateState();

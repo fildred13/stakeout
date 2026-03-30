@@ -16,7 +16,8 @@ public class Person
     public int? CurrentCityId { get; set; }
     public int HomeAddressId { get; set; }
     public int? HomeLocationId { get; set; }
-    public int JobId { get; set; }
+    public int? BusinessId { get; set; }
+    public int? PositionId { get; set; }
     public int? CurrentAddressId { get; set; }
     public int? CurrentLocationId { get; set; }
     public int? CurrentSubLocationId { get; set; }

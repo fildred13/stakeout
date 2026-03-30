@@ -10,13 +10,13 @@ public class SleepScheduleCalculatorTests
     [Fact]
     public void Compute_OfficeWorker_ReturnsDefaultSleepSchedule()
     {
-        var job = new Job
+        var position = new Position
         {
             ShiftStart = new TimeSpan(9, 0, 0),
             ShiftEnd = new TimeSpan(17, 0, 0)
         };
 
-        var (sleepTime, wakeTime) = SleepScheduleCalculator.Compute(job, commuteHours: 0.5f);
+        var (sleepTime, wakeTime) = SleepScheduleCalculator.Compute(position, commuteHours: 0.5f);
 
         Assert.Equal(new TimeSpan(22, 0, 0), sleepTime);
         Assert.Equal(new TimeSpan(6, 0, 0), wakeTime);
@@ -25,13 +25,13 @@ public class SleepScheduleCalculatorTests
     [Fact]
     public void Compute_Bartender_ShiftsSleepToAfterShift()
     {
-        var job = new Job
+        var position = new Position
         {
             ShiftStart = new TimeSpan(16, 0, 0),
             ShiftEnd = new TimeSpan(2, 0, 0)
         };
 
-        var (sleepTime, wakeTime) = SleepScheduleCalculator.Compute(job, commuteHours: 0.5f);
+        var (sleepTime, wakeTime) = SleepScheduleCalculator.Compute(position, commuteHours: 0.5f);
 
         // Work block ends at 02:00 + 30min commute = 02:30
         // Sleep should start at or after 02:30, wake 8hrs later
@@ -44,13 +44,13 @@ public class SleepScheduleCalculatorTests
     [Fact]
     public void Compute_EarlyDinerShift_PushesSleepEarlier()
     {
-        var job = new Job
+        var position = new Position
         {
             ShiftStart = new TimeSpan(5, 0, 0),
             ShiftEnd = new TimeSpan(17, 0, 0)
         };
 
-        var (sleepTime, wakeTime) = SleepScheduleCalculator.Compute(job, commuteHours: 0.33f);
+        var (sleepTime, wakeTime) = SleepScheduleCalculator.Compute(position, commuteHours: 0.33f);
 
         // Wake must be before shift start minus commute (~04:40)
         Assert.True(wakeTime.TotalHours < 5.0,
@@ -64,17 +64,17 @@ public class SleepScheduleCalculatorTests
     [Fact]
     public void Compute_AlwaysReturns8HourSleepDuration()
     {
-        var jobs = new[]
+        var positions = new[]
         {
-            new Job { ShiftStart = new TimeSpan(9, 0, 0), ShiftEnd = new TimeSpan(17, 0, 0) },
-            new Job { ShiftStart = new TimeSpan(16, 0, 0), ShiftEnd = new TimeSpan(2, 0, 0) },
-            new Job { ShiftStart = new TimeSpan(5, 0, 0), ShiftEnd = new TimeSpan(17, 0, 0) },
-            new Job { ShiftStart = new TimeSpan(21, 0, 0), ShiftEnd = new TimeSpan(9, 0, 0) },
+            new Position { ShiftStart = new TimeSpan(9, 0, 0), ShiftEnd = new TimeSpan(17, 0, 0) },
+            new Position { ShiftStart = new TimeSpan(16, 0, 0), ShiftEnd = new TimeSpan(2, 0, 0) },
+            new Position { ShiftStart = new TimeSpan(5, 0, 0), ShiftEnd = new TimeSpan(17, 0, 0) },
+            new Position { ShiftStart = new TimeSpan(21, 0, 0), ShiftEnd = new TimeSpan(9, 0, 0) },
         };
 
-        foreach (var job in jobs)
+        foreach (var position in positions)
         {
-            var (sleepTime, wakeTime) = SleepScheduleCalculator.Compute(job, commuteHours: 0.5f);
+            var (sleepTime, wakeTime) = SleepScheduleCalculator.Compute(position, commuteHours: 0.5f);
             var duration = (wakeTime - sleepTime).TotalHours;
             if (duration < 0) duration += 24;
             Assert.Equal(8.0, duration, precision: 1);

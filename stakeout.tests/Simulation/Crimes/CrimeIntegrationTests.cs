@@ -31,13 +31,13 @@ public class CrimeIntegrationTests
         var personA = new Person
         {
             Id = state.GenerateEntityId(), FirstName = "Alice", LastName = "A",
-            IsAlive = true, HomeAddressId = homeA.Id, JobId = 0,
+            IsAlive = true, HomeAddressId = homeA.Id,
             CurrentAddressId = homeA.Id, CurrentPosition = homeA.Position
         };
         var personB = new Person
         {
             Id = state.GenerateEntityId(), FirstName = "Bob", LastName = "B",
-            IsAlive = true, HomeAddressId = homeB.Id, JobId = 0,
+            IsAlive = true, HomeAddressId = homeB.Id,
             CurrentAddressId = homeB.Id, CurrentPosition = homeB.Position
         };
         state.People[personA.Id] = personA;

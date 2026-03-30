@@ -5,7 +5,6 @@ using Stakeout.Simulation.Data;
 using Stakeout.Simulation.Entities;
 using Stakeout.Simulation.Events;
 using Stakeout.Simulation.Objectives;
-using Stakeout.Simulation.Scheduling;
 using Stakeout.Simulation.Traits;
 
 namespace Stakeout.Simulation;
@@ -22,22 +21,15 @@ public class PersonGenerator
 
     public Person GeneratePerson(SimulationState state)
     {
-        // Find first city ID
         int cityId = 0;
         foreach (var key in state.Cities.Keys) { cityId = key; break; }
 
-        // 1. Pick job type and claim a matching address from the grid
-        var jobType = PickJobType();
-        var addressType = JobTypeToAddressType(jobType);
-        var workAddress = PickAndResolveAddress(state, addressType);
-
-        // 2. Claim a home address from the grid (random residential type)
+        // Home address (keep existing logic)
         var homeType = _random.NextDouble() < 0.5 ? AddressType.SuburbanHome : AddressType.ApartmentBuilding;
         var homeAddress = homeType == AddressType.ApartmentBuilding
             ? FindApartmentBuilding(state)
             : PickAndResolveAddress(state, homeType);
 
-        // Find the home Location (residential unit or interior)
         int? homeLocationId = null;
         if (homeType == AddressType.ApartmentBuilding)
         {
@@ -45,7 +37,6 @@ public class PersonGenerator
         }
         else
         {
-            // For suburban homes, find the location with "residential" tag
             foreach (var locId in homeAddress.LocationIds)
             {
                 var loc = state.Locations[locId];
@@ -57,15 +48,7 @@ public class PersonGenerator
             }
         }
 
-        // 3. Create Job
-        var job = CreateJob(state, jobType, workAddress.Id);
-        state.Jobs[job.Id] = job;
-
-        // 4. Compute commute and sleep schedule
-        var commuteHours = _mapConfig.ComputeTravelTimeHours(homeAddress.Position, workAddress.Position);
-        var (sleepTime, wakeTime) = SleepScheduleCalculator.Compute(job, commuteHours);
-
-        // 5. Create person — simplified initialization (no scheduling)
+        // TODO: Task 6 will add business/position assignment and sleep schedule
         var person = new Person
         {
             Id = state.GenerateEntityId(),
@@ -75,21 +58,18 @@ public class PersonGenerator
             CurrentCityId = cityId,
             HomeAddressId = homeAddress.Id,
             HomeLocationId = homeLocationId,
-            JobId = job.Id,
             CurrentAddressId = homeAddress.Id,
             CurrentPosition = homeAddress.Position,
-            PreferredSleepTime = sleepTime,
-            PreferredWakeTime = wakeTime,
+            PreferredSleepTime = new TimeSpan(22, 0, 0),
+            PreferredWakeTime = new TimeSpan(6, 0, 0),
         };
 
-        // Assign traits (random selection, 0-2 traits per person)
+        // Assign traits
         var allTraits = TraitDefinitions.GetAllTraitNames();
-        var traitCount = _random.Next(0, 3); // 0, 1, or 2 traits
+        var traitCount = _random.Next(0, 3);
         var shuffled = allTraits.OrderBy(_ => _random.Next()).Take(traitCount);
         foreach (var trait in shuffled)
-        {
             person.Traits.Add(trait);
-        }
 
         // Create objectives: universal + trait-based
         person.Objectives.Add(new SleepObjective { Id = state.GenerateEntityId() });
@@ -102,14 +82,9 @@ public class PersonGenerator
             }
         }
 
-        // TODO: Project 4 — job objectives will be created here
-
         state.People[person.Id] = person;
-
-        // 6. Create home key
         CreateHomeKey(state, person, homeAddress);
 
-        // 7. Log initial event
         state.Journal.Append(new SimulationEvent
         {
             Timestamp = state.Clock.CurrentTime,
@@ -119,58 +94,6 @@ public class PersonGenerator
         });
 
         return person;
-    }
-
-    private JobType PickJobType()
-    {
-        var types = Enum.GetValues<JobType>();
-        return types[_random.Next(types.Length)];
-    }
-
-    private static AddressType JobTypeToAddressType(JobType jobType)
-    {
-        return jobType switch
-        {
-            JobType.DinerWaiter => AddressType.Diner,
-            JobType.OfficeWorker => AddressType.Office,
-            JobType.Bartender => AddressType.DiveBar,
-            _ => AddressType.Office
-        };
-    }
-
-    private Job CreateJob(SimulationState state, JobType jobType, int workAddressId)
-    {
-        var (title, shiftStart, shiftEnd) = jobType switch
-        {
-            JobType.DinerWaiter => ("Waiter", GenerateDinerShiftStart(), TimeSpan.Zero),
-            JobType.OfficeWorker => ("Office Worker", new TimeSpan(9, 0, 0), new TimeSpan(17, 0, 0)),
-            JobType.Bartender => ("Bartender", new TimeSpan(16, 0, 0), new TimeSpan(2, 0, 0)),
-            _ => ("Worker", new TimeSpan(9, 0, 0), new TimeSpan(17, 0, 0))
-        };
-
-        if (jobType == JobType.DinerWaiter)
-        {
-            var totalMinutes = ((int)shiftStart.TotalMinutes + 720) % 1440;
-            shiftEnd = TimeSpan.FromMinutes(totalMinutes);
-        }
-
-        return new Job
-        {
-            Id = state.GenerateEntityId(),
-            Type = jobType,
-            Title = title,
-            WorkAddressId = workAddressId,
-            ShiftStart = shiftStart,
-            ShiftEnd = shiftEnd,
-            WorkDays = new[] { DayOfWeek.Sunday, DayOfWeek.Monday, DayOfWeek.Tuesday,
-                              DayOfWeek.Wednesday, DayOfWeek.Thursday, DayOfWeek.Friday, DayOfWeek.Saturday }
-        };
-    }
-
-    private TimeSpan GenerateDinerShiftStart()
-    {
-        var startHour = 5 + _random.Next(17); // 5 to 21 inclusive
-        return new TimeSpan(startHour, 0, 0);
     }
 
     private Address PickAndResolveAddress(SimulationState state, AddressType type)

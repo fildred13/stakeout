@@ -15,7 +15,6 @@ public class SimulationStateTests
 
         Assert.NotNull(state.Clock);
         Assert.Empty(state.People);
-        Assert.Empty(state.Jobs);
         Assert.Empty(state.Countries);
         Assert.Empty(state.Cities);
         Assert.Empty(state.Streets);
@@ -76,7 +75,7 @@ public class SimulationStateTests
         state.People[10] = new Person
         {
             Id = 10, FirstName = "James", LastName = "Smith",
-            HomeAddressId = 1, JobId = 0, CurrentAddressId = 1
+            HomeAddressId = 1,CurrentAddressId = 1
         };
 
         var names = state.GetEntityNamesAtAddress(address);
@@ -94,12 +93,12 @@ public class SimulationStateTests
         state.People[10] = new Person
         {
             Id = 10, FirstName = "James", LastName = "Smith",
-            HomeAddressId = 1, JobId = 0, CurrentAddressId = 1
+            HomeAddressId = 1,CurrentAddressId = 1
         };
         state.People[11] = new Person
         {
             Id = 11, FirstName = "Mary", LastName = "Johnson",
-            HomeAddressId = 1, JobId = 0, CurrentAddressId = 1
+            HomeAddressId = 1,CurrentAddressId = 1
         };
 
         var names = state.GetEntityNamesAtAddress(address);
@@ -120,12 +119,12 @@ public class SimulationStateTests
         state.People[10] = new Person
         {
             Id = 10, FirstName = "James", LastName = "Smith",
-            HomeAddressId = 1, JobId = 0, CurrentAddressId = 1
+            HomeAddressId = 1,CurrentAddressId = 1
         };
         state.People[11] = new Person
         {
             Id = 11, FirstName = "Mary", LastName = "Johnson",
-            HomeAddressId = 2, JobId = 0, CurrentAddressId = 2
+            HomeAddressId = 2,CurrentAddressId = 2
         };
 
         var names = state.GetEntityNamesAtAddress(addr1);
@@ -154,7 +153,7 @@ public class SimulationStateTests
         state.People[10] = new Person
         {
             Id = 10, FirstName = "James", LastName = "Smith",
-            HomeAddressId = 1, JobId = 0, CurrentAddressId = 2
+            HomeAddressId = 1,CurrentAddressId = 2
         };
 
         var namesAtHome = state.GetEntityNamesAtAddress(home);
