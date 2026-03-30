@@ -477,7 +477,42 @@ public partial class GameShell : Control
             AddInspectorSection(vbox, font, "— Day Plan —", planLines.ToArray());
         }
 
-        // TODO: Project 4 — Job section will be restored with Business entities
+        // Job / Business info
+        var jobLines = new List<string>();
+        if (person.BusinessId.HasValue && state.Businesses.TryGetValue(person.BusinessId.Value, out var personBiz))
+        {
+            jobLines.Add($"Business: {personBiz.Name} ({personBiz.Type})");
+            if (person.PositionId.HasValue)
+            {
+                var personPos = personBiz.Positions.FirstOrDefault(p => p.Id == person.PositionId.Value);
+                if (personPos != null)
+                {
+                    jobLines.Add($"Role: {personPos.Role}");
+                    var shiftEnd = personPos.ShiftEnd <= personPos.ShiftStart
+                        ? $"{personPos.ShiftEnd:hh\\:mm} (+1d)"
+                        : $"{personPos.ShiftEnd:hh\\:mm}";
+                    jobLines.Add($"Shift: {personPos.ShiftStart:hh\\:mm} - {shiftEnd}");
+                    var days = string.Join(", ", personPos.WorkDays.Select(d => d.ToString()[..3]));
+                    jobLines.Add($"Days: {days}");
+
+                    // Current work status
+                    var now = state.Clock.CurrentTime;
+                    var isWorkDay = personPos.WorkDays.Contains(now.DayOfWeek);
+                    if (!isWorkDay)
+                        jobLines.Add("Status: day off");
+                    else
+                    {
+                        var onShift = IsOnShift(personPos, now.TimeOfDay);
+                        jobLines.Add(onShift ? "Status: on shift" : "Status: off duty");
+                    }
+                }
+            }
+        }
+        else
+        {
+            jobLines.Add("(unassigned)");
+        }
+        AddInspectorSection(vbox, font, "— Job —", jobLines.ToArray());
 
         // Inventory
         var inventoryLines = new List<string>();
@@ -514,6 +549,14 @@ public partial class GameShell : Control
         ).ToArray();
         if (recentEvents.Length > 0)
             AddInspectorSection(vbox, font, "— Recent Events —", recentEvents);
+    }
+
+    private static bool IsOnShift(Position pos, TimeSpan timeOfDay)
+    {
+        if (pos.ShiftEnd > pos.ShiftStart)
+            return timeOfDay >= pos.ShiftStart && timeOfDay < pos.ShiftEnd;
+        // Crosses midnight
+        return timeOfDay >= pos.ShiftStart || timeOfDay < pos.ShiftEnd;
     }
 
     private static void AddInspectorSection(VBoxContainer vbox, Font font, string header, string[] lines)
