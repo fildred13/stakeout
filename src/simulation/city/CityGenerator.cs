@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Godot;
 using Stakeout.Simulation.Addresses;
+using Stakeout.Simulation.Businesses;
 using Stakeout.Simulation.Data;
 using Stakeout.Simulation.Entities;
 using CityEntity = Stakeout.Simulation.Entities.City;
@@ -39,6 +40,8 @@ public class CityGenerator
         AssignPlotTypes(grid);
         ResolveFacingAndCreateAddresses(grid, state, city);
         PlaceAirport(grid, state, city);
+        BusinessTemplateRegistry.RegisterAll();
+        BusinessGenerator.CreateBusinessesForCity(state, _rng);
         return grid;
     }
 
