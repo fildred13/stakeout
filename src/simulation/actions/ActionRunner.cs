@@ -31,13 +31,15 @@ public class ActionRunner
         if (person.CurrentActivity != null)
         {
             var ctx = CreateContext(person, state);
-            var status = person.CurrentActivity.Tick(ctx, delta);
+            var entry = person.DayPlan.Current;
+            // Respect the scheduled end time to prevent cumulative drift
+            var pastEndTime = entry != null && state.Clock.CurrentTime >= entry.EndTime;
+            var status = pastEndTime ? ActionStatus.Completed : person.CurrentActivity.Tick(ctx, delta);
             if (status == ActionStatus.Completed || status == ActionStatus.Failed)
             {
                 person.CurrentActivity.OnComplete(ctx);
                 LogActivityCompleted(person, state);
 
-                var entry = person.DayPlan.Current;
                 if (entry?.PlannedAction?.SourceObjective != null)
                 {
                     var obj = entry.PlannedAction.SourceObjective;

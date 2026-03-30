@@ -31,11 +31,11 @@ public static class NpcBrain
             var actions = objective.GetActions(person, state, planStart, planEnd);
             foreach (var action in actions)
             {
-                var travelHours = EstimateTravelTime(
-                    person, action.TargetAddressId, state, mapConfig);
-                var totalDuration = action.Duration + TimeSpan.FromHours(travelHours);
+                var travelTime = TimeSpan.FromHours(EstimateTravelTime(
+                    person, action.TargetAddressId, state, mapConfig));
+                var totalDuration = action.Duration + travelTime;
 
-                var slot = FindSlot(scheduled, action.TimeWindowStart,
+                var slot = FindSlot(scheduled, action.TimeWindowStart - travelTime,
                     action.TimeWindowEnd, totalDuration, planStart, planEnd);
                 if (slot.HasValue)
                 {

@@ -449,7 +449,7 @@ public partial class GameShell : Control
 
         // Objectives
         var objLines = new List<string>();
-        foreach (var obj in person.Objectives)
+        foreach (var obj in person.Objectives.OrderByDescending(o => o.Priority))
         {
             var executing = person.CurrentActivity != null &&
                 person.DayPlan?.Current?.PlannedAction?.SourceObjective == obj;
@@ -495,15 +495,26 @@ public partial class GameShell : Control
                     var days = string.Join(", ", personPos.WorkDays.Select(d => d.ToString()[..3]));
                     jobLines.Add($"Days: {days}");
 
-                    // Current work status
+                    // Current work status — check actual day plan, not just clock
                     var now = state.Clock.CurrentTime;
                     var isWorkDay = personPos.WorkDays.Contains(now.DayOfWeek);
                     if (!isWorkDay)
+                    {
                         jobLines.Add("Status: day off");
+                    }
                     else
                     {
+                        var currentEntry = person.DayPlan?.Current;
+                        var isActuallyWorking = currentEntry?.PlannedAction?.SourceObjective
+                            is Stakeout.Simulation.Objectives.WorkShiftObjective;
                         var onShift = IsOnShift(personPos, now.TimeOfDay);
-                        jobLines.Add(onShift ? "Status: on shift" : "Status: off duty");
+
+                        if (isActuallyWorking)
+                            jobLines.Add("Status: working");
+                        else if (onShift)
+                            jobLines.Add("Status: on shift (not at work)");
+                        else
+                            jobLines.Add("Status: off duty");
                     }
                 }
             }

@@ -36,7 +36,8 @@
       "Bash(C:/Users/fildr/.claude/plugins/marketplaces/superpowers-dev/skills/brainstorming/scripts/start-server.sh --project-dir \"h:/Dropbox/sean-tower/Documents/git/stakeout\")",
       "Bash(wc -c \"C:/Users/fildr/AppData/Local/Temp/claude/h--Dropbox-sean-tower-Documents-git-stakeout/9dd6d7f8-b9ce-4716-bb81-909e1a37ac3b/tasks/a7e01770a1d552e9d.output\")",
       "Bash(/tmp/zoom_analysis.txt:*)",
-      "Read(//tmp/**)"
+      "Read(//tmp/**)",
+      "Bash(wc -l /h/Dropbox/sean-tower/Documents/git/stakeout/src/simulation/entities/*.cs)"
     ],
     "additionalDirectories": [
       "C:\\Users\\fildr\\.claude\\plugins\\cache\\superpowers-dev",
