@@ -22,7 +22,7 @@ public class DinerBusinessTemplate : IBusinessTemplate
             {
                 Day = day,
                 OpenTime = TimeSpan.Zero,
-                CloseTime = new TimeSpan(23, 59, 59)
+                CloseTime = TimeSpan.Zero
             });
         }
         return hours;
