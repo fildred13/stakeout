@@ -9,6 +9,7 @@ using Stakeout.Simulation.City;
 using Stakeout.Simulation.Crimes;
 using Stakeout.Simulation.Entities;
 using Stakeout.Simulation.Events;
+using Stakeout.Simulation.Scheduling;
 using CityEntity = Stakeout.Simulation.Entities.City;
 
 namespace Stakeout.Simulation;
@@ -122,6 +123,8 @@ public partial class SimulationManager : Node
 
             _actionRunner.Tick(person, State, TimeSpan.FromSeconds(scaledDelta));
         }
+
+        DoorLockingService.UpdateDoorStates(State, State.Clock.CurrentTime);
 
         UpdatePlayerTravel(State);
     }
