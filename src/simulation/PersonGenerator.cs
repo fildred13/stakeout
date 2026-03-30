@@ -5,6 +5,7 @@ using Stakeout.Simulation.Data;
 using Stakeout.Simulation.Entities;
 using Stakeout.Simulation.Events;
 using Stakeout.Simulation.Objectives;
+using Stakeout.Simulation.Scheduling;
 using Stakeout.Simulation.Traits;
 
 namespace Stakeout.Simulation;
@@ -21,34 +22,73 @@ public class PersonGenerator
 
     public Person GeneratePerson(SimulationState state)
     {
+        return GeneratePerson(state, new SpawnRequirements());
+    }
+
+    public Person GeneratePerson(SimulationState state, SpawnRequirements requirements)
+    {
         int cityId = 0;
         foreach (var key in state.Cities.Keys) { cityId = key; break; }
 
-        // Home address (keep existing logic)
-        var homeType = _random.NextDouble() < 0.5 ? AddressType.SuburbanHome : AddressType.ApartmentBuilding;
-        var homeAddress = homeType == AddressType.ApartmentBuilding
-            ? FindApartmentBuilding(state)
-            : PickAndResolveAddress(state, homeType);
+        // 1. Determine business and position
+        Business business;
+        Position position;
 
-        int? homeLocationId = null;
-        if (homeType == AddressType.ApartmentBuilding)
+        if (requirements.BusinessId.HasValue && requirements.PositionId.HasValue)
         {
-            homeLocationId = AssignVacantUnit(state, homeAddress);
+            business = state.Businesses[requirements.BusinessId.Value];
+            position = business.Positions.First(p => p.Id == requirements.PositionId.Value);
         }
         else
         {
-            foreach (var locId in homeAddress.LocationIds)
+            (business, position) = FindOpenPosition(state, cityId);
+        }
+
+        // Ensure work address interior is resolved
+        var workAddress = state.Addresses[business.AddressId];
+        if (workAddress.LocationIds.Count == 0)
+            LocationGenerator.ResolveAddressInterior(workAddress, state, _random);
+
+        // 2. Claim home address
+        Address homeAddress;
+        int? homeLocationId;
+
+        if (requirements.HomeAddressId.HasValue)
+        {
+            homeAddress = state.Addresses[requirements.HomeAddressId.Value];
+            homeLocationId = requirements.HomeLocationId;
+        }
+        else
+        {
+            var homeType = _random.NextDouble() < 0.5 ? AddressType.SuburbanHome : AddressType.ApartmentBuilding;
+            homeAddress = homeType == AddressType.ApartmentBuilding
+                ? FindApartmentBuilding(state)
+                : PickAndResolveAddress(state, homeType);
+
+            homeLocationId = null;
+            if (homeType == AddressType.ApartmentBuilding)
             {
-                var loc = state.Locations[locId];
-                if (loc.HasTag("residential"))
+                homeLocationId = AssignVacantUnit(state, homeAddress);
+            }
+            else
+            {
+                foreach (var locId in homeAddress.LocationIds)
                 {
-                    homeLocationId = loc.Id;
-                    break;
+                    var loc = state.Locations[locId];
+                    if (loc.HasTag("residential"))
+                    {
+                        homeLocationId = loc.Id;
+                        break;
+                    }
                 }
             }
         }
 
-        // TODO: Task 6 will add business/position assignment and sleep schedule
+        // 3. Compute sleep schedule from position
+        var commuteHours = _mapConfig.ComputeTravelTimeHours(homeAddress.Position, workAddress.Position);
+        var (sleepTime, wakeTime) = SleepScheduleCalculator.Compute(position, commuteHours);
+
+        // 4. Create person
         var person = new Person
         {
             Id = state.GenerateEntityId(),
@@ -58,11 +98,16 @@ public class PersonGenerator
             CurrentCityId = cityId,
             HomeAddressId = homeAddress.Id,
             HomeLocationId = homeLocationId,
+            BusinessId = business.Id,
+            PositionId = position.Id,
             CurrentAddressId = homeAddress.Id,
             CurrentPosition = homeAddress.Position,
-            PreferredSleepTime = new TimeSpan(22, 0, 0),
-            PreferredWakeTime = new TimeSpan(6, 0, 0),
+            PreferredSleepTime = sleepTime,
+            PreferredWakeTime = wakeTime,
         };
+
+        // Claim position
+        position.AssignedPersonId = person.Id;
 
         // Assign traits
         var allTraits = TraitDefinitions.GetAllTraitNames();
@@ -82,6 +127,8 @@ public class PersonGenerator
             }
         }
 
+        // TODO: Task 7 will add WorkShiftObjective here
+
         state.People[person.Id] = person;
         CreateHomeKey(state, person, homeAddress);
 
@@ -94,6 +141,23 @@ public class PersonGenerator
         });
 
         return person;
+    }
+
+    private (Business business, Position position) FindOpenPosition(SimulationState state, int cityId)
+    {
+        foreach (var biz in state.Businesses.Values)
+        {
+            var addr = state.Addresses[biz.AddressId];
+            if (addr.CityId != cityId) continue;
+
+            foreach (var pos in biz.Positions)
+            {
+                if (pos.AssignedPersonId == null)
+                    return (biz, pos);
+            }
+        }
+
+        throw new InvalidOperationException("No open positions available in any business in this city");
     }
 
     private Address PickAndResolveAddress(SimulationState state, AddressType type)

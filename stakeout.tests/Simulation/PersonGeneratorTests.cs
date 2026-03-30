@@ -274,6 +274,47 @@ public class PersonGeneratorTests
     }
 
     [Fact]
+    public void GeneratePerson_HasBusinessAndPosition()
+    {
+        var state = CreateState();
+        var person = CreateGenerator().GeneratePerson(state);
+        Assert.NotNull(person.BusinessId);
+        Assert.NotNull(person.PositionId);
+        var biz = state.Businesses[person.BusinessId.Value];
+        Assert.Equal(AddressCategory.Commercial, state.Addresses[biz.AddressId].Category);
+        var pos = biz.Positions.First(p => p.Id == person.PositionId.Value);
+        Assert.Equal(person.Id, pos.AssignedPersonId);
+    }
+
+    [Fact]
+    public void GeneratePerson_WithRequirements_UsesSpecifiedPosition()
+    {
+        var state = CreateState();
+        var biz = state.Businesses.Values.First();
+        var pos = biz.Positions.First();
+
+        var person = CreateGenerator().GeneratePerson(state, new SpawnRequirements
+        {
+            BusinessId = biz.Id,
+            PositionId = pos.Id
+        });
+
+        Assert.Equal(biz.Id, person.BusinessId);
+        Assert.Equal(pos.Id, person.PositionId);
+        Assert.Equal(person.Id, pos.AssignedPersonId);
+    }
+
+    [Fact]
+    public void GeneratePerson_WorksInSameCity()
+    {
+        var state = CreateState();
+        var person = CreateGenerator().GeneratePerson(state);
+        var biz = state.Businesses[person.BusinessId.Value];
+        var workAddr = state.Addresses[biz.AddressId];
+        Assert.Equal(person.CurrentCityId, workAddr.CityId);
+    }
+
+    [Fact]
     public void GeneratePerson_HasObjectives()
     {
         var state = CreateState();
