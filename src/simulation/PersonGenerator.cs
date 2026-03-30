@@ -127,7 +127,10 @@ public class PersonGenerator
             }
         }
 
-        // TODO: Task 7 will add WorkShiftObjective here
+        person.Objectives.Add(new WorkShiftObjective(business.Id, position.Id)
+        {
+            Id = state.GenerateEntityId()
+        });
 
         state.People[person.Id] = person;
         CreateHomeKey(state, person, homeAddress);
