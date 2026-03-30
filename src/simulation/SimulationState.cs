@@ -16,6 +16,7 @@ public class SimulationState
     public GameClock Clock { get; }
     public Dictionary<int, Person> People { get; } = new();
     public Dictionary<int, Job> Jobs { get; } = new();
+    public Dictionary<int, Business> Businesses { get; } = new();
     public Player Player { get; set; }
     public List<Country> Countries { get; } = new();
     public Dictionary<int, CityEntity> Cities { get; } = new();
