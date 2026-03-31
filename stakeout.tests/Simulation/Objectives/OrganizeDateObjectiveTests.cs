@@ -59,7 +59,8 @@ public class OrganizeDateObjectiveTests
 
         Assert.Single(actions);
         Assert.IsType<PhoneCallAction>(actions[0].Action);
-        Assert.Equal(recipientHome.Id, actions[0].TargetAddressId);
+        // Caller makes the call from their own home, not the recipient's home
+        Assert.Equal(callerHome.Id, actions[0].TargetAddressId);
     }
 
     [Fact]

@@ -93,6 +93,37 @@ public class DateCoordinationIntegrationTests
         return person;
     }
 
+    private static void AssignJob(SimulationState state, Person person, Address workAddress,
+        TimeSpan shiftStart, TimeSpan shiftEnd, DayOfWeek[] workDays)
+    {
+        var business = new Business
+        {
+            Id = state.GenerateEntityId(),
+            AddressId = workAddress.Id,
+            Name = "Test Corp",
+            Type = BusinessType.Office,
+            IsResolved = true
+        };
+        var position = new Position
+        {
+            Id = state.GenerateEntityId(),
+            BusinessId = business.Id,
+            Role = "Worker",
+            ShiftStart = shiftStart,
+            ShiftEnd = shiftEnd,
+            WorkDays = workDays,
+            AssignedPersonId = person.Id
+        };
+        business.Positions.Add(position);
+        state.Businesses[business.Id] = business;
+        person.BusinessId = business.Id;
+        person.PositionId = position.Id;
+        person.Objectives.Add(new WorkShiftObjective(business.Id, position.Id)
+        {
+            Id = state.GenerateEntityId()
+        });
+    }
+
     private static void RunSimulation(SimulationState state, int minutes, params Person[] people)
     {
         var mapConfig = new MapConfig();
@@ -543,6 +574,156 @@ public class DateCoordinationIntegrationTests
 
         // Girl returned home at end
         Assert.Equal(girlHome.Id, girl.CurrentAddressId);
+    }
+
+    [Fact]
+    public void WorkingCouple_BothHaveJobs_DateStillHappens()
+    {
+        AddressTemplateRegistry.RegisterAll();
+        // Start Monday so there are two work days in the 48h window.
+        // The date is proposed for today or tomorrow — work happens on both days,
+        // and the scheduler correctly fits the date around work (or after work on the same day).
+        var monday = new DateTime(1984, 1, 2, 7, 0, 0);
+        var state = new SimulationState(new GameClock(monday));
+
+        var guyHome = CreateAddress(state, AddressType.SuburbanHome, 2, 2);
+        var girlHome = CreateAddress(state, AddressType.SuburbanHome, 10, 2);
+        var diner = CreateAddress(state, AddressType.Diner, 6, 6);
+        var office = CreateAddress(state, AddressType.Office, 5, 5);
+
+        var guyPhone = GetTelephone(state, guyHome.Id);
+        var girlPhone = GetTelephone(state, girlHome.Id);
+
+        var guy = CreatePerson(state, guyHome, guyPhone, "Jack", hasVehicle: true);
+        var girl = CreatePerson(state, girlHome, girlPhone, "Susan");
+
+        // Both have 9am-5pm jobs, Mon-Fri
+        var weekdays = new[] { DayOfWeek.Monday, DayOfWeek.Tuesday, DayOfWeek.Wednesday,
+            DayOfWeek.Thursday, DayOfWeek.Friday };
+        AssignJob(state, guy, office, TimeSpan.FromHours(9), TimeSpan.FromHours(17), weekdays);
+        AssignJob(state, girl, office, TimeSpan.FromHours(9), TimeSpan.FromHours(17), weekdays);
+
+        state.AddRelationship(new Relationship
+        {
+            Id = state.GenerateEntityId(),
+            PersonAId = guy.Id,
+            PersonBId = girl.Id,
+            Type = RelationshipType.Dating,
+            StartedAt = monday.AddDays(-30)
+        });
+
+        // Run 48 hours: Monday + Tuesday. Both work on Monday, date happens on Monday evening or Tuesday.
+        RunSimulation(state, 48 * 60, guy, girl);
+
+        var guyEvents = state.Journal.GetEventsForPerson(guy.Id);
+        var girlEvents = state.Journal.GetEventsForPerson(girl.Id);
+
+        // At least one person went to work at some point over the 48h window
+        var anyoneWorked = guyEvents.Any(e => e.EventType == SimulationEventType.ActivityStarted
+                && e.Description != null && e.Description.Contains("working as"))
+            || girlEvents.Any(e => e.EventType == SimulationEventType.ActivityStarted
+                && e.Description != null && e.Description.Contains("working as"));
+        Assert.True(anyoneWorked, "Neither person went to work over 48 hours");
+
+        // Date happened
+        var disbandedGroups = state.Groups.Values.Where(g =>
+            g.Type == GroupType.Date && g.Status == GroupStatus.Disbanded).ToList();
+        Assert.NotEmpty(disbandedGroups);
+
+        // Both had dinner
+        Assert.Contains(guyEvents, e =>
+            e.EventType == SimulationEventType.ActivityStarted && e.Description == "having dinner");
+        Assert.Contains(girlEvents, e =>
+            e.EventType == SimulationEventType.ActivityStarted && e.Description == "having dinner");
+    }
+
+    [Fact]
+    public void PhoneCall_MadeFromCallersHome_NotRecipientHome()
+    {
+        AddressTemplateRegistry.RegisterAll();
+        var state = new SimulationState(new GameClock(SimStart));
+
+        var guyHome = CreateAddress(state, AddressType.SuburbanHome, 2, 2);
+        var girlHome = CreateAddress(state, AddressType.SuburbanHome, 10, 2);
+        var diner = CreateAddress(state, AddressType.Diner, 6, 6);
+
+        var guyPhone = GetTelephone(state, guyHome.Id);
+        var girlPhone = GetTelephone(state, girlHome.Id);
+
+        var guy = CreatePerson(state, guyHome, guyPhone, "Jack", hasVehicle: true);
+        var girl = CreatePerson(state, girlHome, girlPhone, "Susan");
+
+        state.AddRelationship(new Relationship
+        {
+            Id = state.GenerateEntityId(),
+            PersonAId = guy.Id,
+            PersonBId = girl.Id,
+            Type = RelationshipType.Dating,
+            StartedAt = SimStart.AddDays(-30)
+        });
+        girl.Objectives.RemoveAll(o => o is MaintainRelationshipObjective);
+
+        // Run until the phone call happens (before pickup)
+        RunSimulation(state, 12 * 60, guy, girl);
+
+        // The phone call should have been made from Guy's home, not Girl's home.
+        var guyEvents = state.Journal.GetEventsForPerson(guy.Id);
+        var callEvent = guyEvents.FirstOrDefault(e =>
+            e.EventType == SimulationEventType.ActivityStarted
+            && e.Description != null
+            && e.Description.Contains("phone call"));
+        Assert.NotNull(callEvent);
+        Assert.Equal(guyHome.Id, callEvent.AddressId);
+    }
+
+    [Fact]
+    public void OrganizeDateObjective_CallWindowBlockedByWork_EventuallyScheduled()
+    {
+        AddressTemplateRegistry.RegisterAll();
+        var tuesday = new DateTime(1984, 1, 3, 7, 0, 0);
+        var state = new SimulationState(new GameClock(tuesday));
+
+        var guyHome = CreateAddress(state, AddressType.SuburbanHome, 2, 2);
+        var girlHome = CreateAddress(state, AddressType.SuburbanHome, 10, 2);
+        var diner = CreateAddress(state, AddressType.Diner, 6, 6);
+        var office = CreateAddress(state, AddressType.Office, 5, 5);
+
+        var guyPhone = GetTelephone(state, guyHome.Id);
+        var girlPhone = GetTelephone(state, girlHome.Id);
+
+        var guy = CreatePerson(state, guyHome, guyPhone, "Jack", hasVehicle: true);
+        var girl = CreatePerson(state, girlHome, girlPhone, "Susan");
+
+        // Guy works 7am-6pm — blocks most of the day
+        AssignJob(state, guy, office, TimeSpan.FromHours(7), TimeSpan.FromHours(18),
+            new[] { DayOfWeek.Monday, DayOfWeek.Tuesday, DayOfWeek.Wednesday,
+                DayOfWeek.Thursday, DayOfWeek.Friday });
+
+        state.AddRelationship(new Relationship
+        {
+            Id = state.GenerateEntityId(),
+            PersonAId = guy.Id,
+            PersonBId = girl.Id,
+            Type = RelationshipType.Dating,
+            StartedAt = tuesday.AddDays(-30)
+        });
+        girl.Objectives.RemoveAll(o => o is MaintainRelationshipObjective);
+
+        // Run for 48 hours — even if today's call window is blocked, the date should
+        // eventually happen (tomorrow, or after work today)
+        RunSimulation(state, 48 * 60, guy, girl);
+
+        // A phone call was made at some point
+        var guyEvents = state.Journal.GetEventsForPerson(guy.Id);
+        Assert.Contains(guyEvents, e =>
+            e.EventType == SimulationEventType.ActivityStarted
+            && e.Description != null
+            && e.Description.Contains("phone call"));
+
+        // Date happened
+        var disbandedGroups = state.Groups.Values.Where(g =>
+            g.Type == GroupType.Date && g.Status == GroupStatus.Disbanded).ToList();
+        Assert.NotEmpty(disbandedGroups);
     }
 }
 

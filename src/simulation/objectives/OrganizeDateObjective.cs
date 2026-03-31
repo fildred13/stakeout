@@ -70,21 +70,25 @@ public class OrganizeDateObjective : Objective
             callerId: person.Id,
             recipientId: TargetPersonId);
 
-        _state = State.AwaitingAnswer;
-
         return new List<PlannedAction>
         {
             new()
             {
                 Action = callAction,
-                TargetAddressId = recipient.HomeAddressId,
+                TargetAddressId = person.HomeAddressId,
                 TimeWindowStart = _proposedCallTime,
-                TimeWindowEnd = _proposedCallTime + TimeSpan.FromHours(2),
+                TimeWindowEnd = _proposedPickupTime - TimeSpan.FromMinutes(30),
                 Duration = TimeSpan.FromMinutes(10),
                 DisplayText = "calling to arrange a date",
                 SourceObjective = this
             }
         };
+    }
+
+    public override void OnActionCompleted(PlannedAction action, bool success)
+    {
+        if (_state == State.NeedToCall)
+            _state = State.AwaitingAnswer;
     }
 
     public void OnMessageLeft()
