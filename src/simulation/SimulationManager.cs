@@ -82,6 +82,28 @@ public partial class SimulationManager : Node
             PersonAdded?.Invoke(person);
         }
 
+        // Generate a dating couple for manual testing of the group coordination system
+        var guy = _personGenerator.GeneratePerson(State);
+        guy.FirstName = "Jack";
+        guy.LastName = "Malone";
+        PersonAdded?.Invoke(guy);
+
+        var girl = _personGenerator.GeneratePerson(State);
+        girl.FirstName = "Susan";
+        girl.LastName = "Hayes";
+        PersonAdded?.Invoke(girl);
+
+        var relationship = new Relationship
+        {
+            Id = State.GenerateEntityId(),
+            PersonAId = guy.Id,
+            PersonBId = girl.Id,
+            Type = RelationshipType.Dating,
+            StartedAt = State.Clock.CurrentTime.AddDays(-90)
+        };
+        State.AddRelationship(relationship);
+
+
         // Create player at an unresolved suburban home from the first city grid
         var playerHome = LocationGenerator.PickAndResolveAddress(State, AddressType.SuburbanHome, _random, boston.Id);
 
