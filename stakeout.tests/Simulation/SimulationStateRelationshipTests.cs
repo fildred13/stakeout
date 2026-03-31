@@ -74,6 +74,8 @@ public class SimulationStateRelationshipTests
 
         Assert.Single(personA.Objectives.OfType<MaintainRelationshipObjective>()
             .Where(m => m.PartnerPersonId == personB.Id));
+        Assert.Single(personB.Objectives.OfType<MaintainRelationshipObjective>()
+            .Where(m => m.PartnerPersonId == personA.Id));
     }
 
     [Fact]
