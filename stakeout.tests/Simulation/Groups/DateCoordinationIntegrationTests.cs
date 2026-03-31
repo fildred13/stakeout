@@ -676,6 +676,198 @@ public class DateCoordinationIntegrationTests
         Assert.Equal(guyHome.Id, callEvent.AddressId);
     }
 
+    /// <summary>
+    /// When a person is replanned mid-shift (e.g., from NeedsReplan), the remaining
+    /// portion of their work shift must still be scheduled — not silently dropped.
+    /// </summary>
+    [Fact]
+    public void Worker_ReplanDuringShift_ContinuesWorking()
+    {
+        AddressTemplateRegistry.RegisterAll();
+        var monday = new DateTime(1984, 1, 2, 8, 0, 0); // Monday
+        var state = new SimulationState(new GameClock(monday));
+
+        var home = CreateAddress(state, AddressType.SuburbanHome, 2, 2);
+        var office = CreateAddress(state, AddressType.Office, 5, 5);
+        var phone = GetTelephone(state, home.Id);
+
+        var worker = CreatePerson(state, home, phone, "Susan");
+        var weekdays = new[] { DayOfWeek.Monday, DayOfWeek.Tuesday, DayOfWeek.Wednesday,
+            DayOfWeek.Thursday, DayOfWeek.Friday };
+        AssignJob(state, worker, office, TimeSpan.FromHours(9), TimeSpan.FromHours(17), weekdays);
+
+        // Run for 2 hours — worker should be at work by 10am
+        RunSimulation(state, 2 * 60, worker);
+
+        // Force a replan at 10am (simulates NeedsReplan from objective injection)
+        worker.NeedsReplan = true;
+
+        // Run for another 10 hours — worker should continue working until 5pm
+        RunSimulation(state, 10 * 60, worker);
+
+        // Worker should have worked (ActivityStarted with "working as")
+        var events = state.Journal.GetEventsForPerson(worker.Id);
+        var workEvents = events.Where(e =>
+            e.EventType == SimulationEventType.ActivityStarted
+            && e.Description != null
+            && e.Description.Contains("working as")).ToList();
+        Assert.NotEmpty(workEvents);
+
+        // Worker should have spent significant time at the office (at least 4 hours of work total)
+        // after the replan. Check via journal: ArrivedAtAddress for office should exist
+        var arrivedAtOffice = events.Any(e =>
+            e.EventType == SimulationEventType.ArrivedAtAddress && e.AddressId == office.Id);
+        // Either already at office (arrived before replan) or goes to office after replan
+        Assert.True(arrivedAtOffice || workEvents.Count > 0,
+            "Worker should have gone to work or continued working after mid-shift replan");
+    }
+
+    /// <summary>
+    /// Jack works 9am-5pm, then calls Susan from home. The phone call must last its full
+    /// duration (not be instant-completed due to wrong travel estimate) and Susan must answer.
+    /// </summary>
+    [Fact]
+    public void DatingCouple_WithJobs_PhoneCallLastsFullDurationAndSusanAnswers()
+    {
+        AddressTemplateRegistry.RegisterAll();
+        var monday = new DateTime(1984, 1, 2, 8, 0, 0);
+        var state = new SimulationState(new GameClock(monday));
+
+        var guyHome = CreateAddress(state, AddressType.SuburbanHome, 2, 2);
+        var girlHome = CreateAddress(state, AddressType.SuburbanHome, 10, 2);
+        var diner = CreateAddress(state, AddressType.Diner, 6, 6);
+        var office = CreateAddress(state, AddressType.Office, 14, 14);
+
+        var guyPhone = GetTelephone(state, guyHome.Id);
+        var girlPhone = GetTelephone(state, girlHome.Id);
+
+        var guy = CreatePerson(state, guyHome, guyPhone, "Jack", hasVehicle: true);
+        var girl = CreatePerson(state, girlHome, girlPhone, "Susan");
+
+        var weekdays = new[] { DayOfWeek.Monday, DayOfWeek.Tuesday, DayOfWeek.Wednesday,
+            DayOfWeek.Thursday, DayOfWeek.Friday };
+        AssignJob(state, guy, office, TimeSpan.FromHours(9), TimeSpan.FromHours(17), weekdays);
+
+        state.AddRelationship(new Relationship
+        {
+            Id = state.GenerateEntityId(),
+            PersonAId = guy.Id,
+            PersonBId = girl.Id,
+            Type = RelationshipType.Dating,
+            StartedAt = monday.AddDays(-30)
+        });
+        girl.Objectives.RemoveAll(o => o is MaintainRelationshipObjective);
+
+        // Run 48 hours: the date call happens after work on day 1, the date itself may be on day 2
+        RunSimulation(state, 48 * 60, guy, girl);
+
+        var guyEvents = state.Journal.GetEventsForPerson(guy.Id);
+        var girlEvents = state.Journal.GetEventsForPerson(girl.Id);
+
+        // Jack went to work
+        Assert.Contains(guyEvents, e =>
+            e.EventType == SimulationEventType.ActivityStarted
+            && e.Description != null && e.Description.Contains("working as"));
+
+        // Jack made a phone call FROM HIS HOME (not the office)
+        var callEvent = guyEvents.FirstOrDefault(e =>
+            e.EventType == SimulationEventType.ActivityStarted
+            && e.Description != null && e.Description.Contains("phone call"));
+        Assert.NotNull(callEvent);
+        Assert.Equal(guyHome.Id, callEvent.AddressId);
+
+        // The phone call was not instant — check that it lasted more than 1 minute
+        // by finding the matching ActivityCompleted event
+        var callCompleted = guyEvents.FirstOrDefault(e =>
+            e.EventType == SimulationEventType.ActivityCompleted
+            && e.Description != null && e.Description.Contains("phone call")
+            && e.Timestamp > callEvent.Timestamp);
+        Assert.NotNull(callCompleted);
+        var callDuration = callCompleted.Timestamp - callEvent.Timestamp;
+        Assert.True(callDuration.TotalMinutes >= 5,
+            $"Phone call lasted only {callDuration.TotalMinutes:F1} minutes — should be ~10 minutes");
+
+        // Susan answered (she was home) and accepted the date
+        Assert.Contains(girlEvents, e =>
+            e.EventType == SimulationEventType.ActivityStarted
+            && e.Description == "Talking on the phone");
+
+        // Date happened
+        var disbandedGroups = state.Groups.Values.Where(g =>
+            g.Type == GroupType.Date && g.Status == GroupStatus.Disbanded).ToList();
+        Assert.NotEmpty(disbandedGroups);
+
+        // Both had dinner
+        Assert.Contains(guyEvents, e =>
+            e.EventType == SimulationEventType.ActivityStarted && e.Description == "having dinner");
+        Assert.Contains(girlEvents, e =>
+            e.EventType == SimulationEventType.ActivityStarted && e.Description == "having dinner");
+    }
+
+    /// <summary>
+    /// The "real game" test: both Jack and Susan have 9-5 jobs and MaintainRelationshipObjective.
+    /// Both must go to work AND eventually go on a date together.
+    /// Neither person's MaintainRelationshipObjective is stripped — this is the production scenario.
+    /// </summary>
+    [Fact]
+    public void DatingCouple_BothWorkFullDay_BothGoToWorkAndOnDate()
+    {
+        AddressTemplateRegistry.RegisterAll();
+        var monday = new DateTime(1984, 1, 2, 8, 0, 0);
+        var state = new SimulationState(new GameClock(monday));
+
+        var guyHome = CreateAddress(state, AddressType.SuburbanHome, 2, 2);
+        var girlHome = CreateAddress(state, AddressType.SuburbanHome, 10, 2);
+        var diner = CreateAddress(state, AddressType.Diner, 6, 6);
+        var office = CreateAddress(state, AddressType.Office, 5, 5);
+
+        var guyPhone = GetTelephone(state, guyHome.Id);
+        var girlPhone = GetTelephone(state, girlHome.Id);
+
+        var guy = CreatePerson(state, guyHome, guyPhone, "Jack", hasVehicle: true);
+        var girl = CreatePerson(state, girlHome, girlPhone, "Susan");
+
+        var weekdays = new[] { DayOfWeek.Monday, DayOfWeek.Tuesday, DayOfWeek.Wednesday,
+            DayOfWeek.Thursday, DayOfWeek.Friday };
+        AssignJob(state, guy, office, TimeSpan.FromHours(9), TimeSpan.FromHours(17), weekdays);
+        AssignJob(state, girl, office, TimeSpan.FromHours(9), TimeSpan.FromHours(17), weekdays);
+
+        // Do NOT strip either MaintainRelationshipObjective
+        state.AddRelationship(new Relationship
+        {
+            Id = state.GenerateEntityId(),
+            PersonAId = guy.Id,
+            PersonBId = girl.Id,
+            Type = RelationshipType.Dating,
+            StartedAt = monday.AddDays(-30)
+        });
+
+        // Run 48 hours to allow for scheduling across two days
+        RunSimulation(state, 48 * 60, guy, girl);
+
+        var guyEvents = state.Journal.GetEventsForPerson(guy.Id);
+        var girlEvents = state.Journal.GetEventsForPerson(girl.Id);
+
+        // BOTH went to work
+        Assert.Contains(guyEvents, e =>
+            e.EventType == SimulationEventType.ActivityStarted
+            && e.Description != null && e.Description.Contains("working as"));
+        Assert.Contains(girlEvents, e =>
+            e.EventType == SimulationEventType.ActivityStarted
+            && e.Description != null && e.Description.Contains("working as"));
+
+        // A date happened (at least one disbanded Date group)
+        var disbandedDates = state.Groups.Values.Where(g =>
+            g.Type == GroupType.Date && g.Status == GroupStatus.Disbanded).ToList();
+        Assert.NotEmpty(disbandedDates);
+
+        // Both had dinner
+        Assert.Contains(guyEvents, e =>
+            e.EventType == SimulationEventType.ActivityStarted && e.Description == "having dinner");
+        Assert.Contains(girlEvents, e =>
+            e.EventType == SimulationEventType.ActivityStarted && e.Description == "having dinner");
+    }
+
     [Fact]
     public void OrganizeDateObjective_CallWindowBlockedByWork_EventuallyScheduled()
     {

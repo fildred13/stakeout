@@ -26,13 +26,25 @@ public static class NpcBrain
         // Schedule greedily by priority
         var scheduled = new List<(DateTime start, DateTime end, PlannedAction action)>();
 
+        // The person's starting address (current or home if in transit)
+        var startAddressId = (person.CurrentAddressId.HasValue && person.CurrentAddressId.Value != 0)
+            ? person.CurrentAddressId
+            : (int?)person.HomeAddressId;
+
         foreach (var objective in objectives)
         {
             var actions = objective.GetActions(person, state, planStart, planEnd);
             foreach (var action in actions)
             {
-                var travelTime = TimeSpan.FromHours(EstimateTravelTime(
-                    person, action.TargetAddressId, state, mapConfig));
+                // To correctly estimate travel, find where the person will be just before this
+                // action's window closes — i.e., the destination of the last scheduled item that
+                // ends at or before the action's window end. Using window end (rather than start)
+                // correctly handles cases where a higher-priority item (e.g., work 9am-5pm) fills
+                // the window, pushing this action to the end of the window.
+                var fromAddress = GetProjectedAddressAtTime(
+                    scheduled, action.TimeWindowEnd, startAddressId);
+                var travelTime = TimeSpan.FromHours(EstimateTravelTimeFromAddress(
+                    fromAddress, action.TargetAddressId, state, mapConfig));
                 var totalDuration = action.Duration + travelTime;
 
                 var slot = FindSlot(scheduled, action.TimeWindowStart - travelTime,
@@ -125,14 +137,42 @@ public static class NpcBrain
         });
     }
 
-    private static float EstimateTravelTime(Person person, int targetAddressId,
+    /// <summary>
+    /// Returns the projected address the person will be at when <paramref name="atTime"/> arrives,
+    /// based on already-scheduled actions. Uses the destination of the latest scheduled item
+    /// that ends at or before <paramref name="atTime"/>, falling back to <paramref name="startAddressId"/>.
+    /// </summary>
+    private static int? GetProjectedAddressAtTime(
+        List<(DateTime start, DateTime end, PlannedAction action)> scheduled,
+        DateTime atTime,
+        int? startAddressId)
+    {
+        int? result = startAddressId;
+        DateTime latestEnd = DateTime.MinValue;
+
+        foreach (var (start, end, action) in scheduled)
+        {
+            if (end <= atTime && end > latestEnd)
+            {
+                latestEnd = end;
+                result = action.TargetAddressId;
+            }
+        }
+
+        return result;
+    }
+
+    private static float EstimateTravelTimeFromAddress(int? fromAddressId, int targetAddressId,
         SimulationState state, MapConfig mapConfig)
     {
-        if (person.CurrentAddressId == targetAddressId) return 0f;
+        if (fromAddressId == targetAddressId) return 0f;
         if (!state.Addresses.TryGetValue(targetAddressId, out var target)) return 0f;
+        if (!fromAddressId.HasValue || !state.Addresses.TryGetValue(fromAddressId.Value, out var fromAddr))
+            return 0f;
+
         if (mapConfig != null)
-            return mapConfig.ComputeTravelTimeHours(person.CurrentPosition, target.Position);
+            return mapConfig.ComputeTravelTimeHours(fromAddr.Position, target.Position);
         var diagonal = new Godot.Vector2(4800, 4800).Length();
-        return person.CurrentPosition.DistanceTo(target.Position) / diagonal * 1.0f;
+        return fromAddr.Position.DistanceTo(target.Position) / diagonal * 1.0f;
     }
 }

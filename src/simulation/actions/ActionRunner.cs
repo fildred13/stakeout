@@ -26,6 +26,12 @@ public class ActionRunner
         {
             person.NeedsReplan = false;
             person.CurrentActivity = null;
+            if (person.TravelInfo != null)
+            {
+                // Cancel ongoing travel — person stays at their current interpolated position
+                person.TravelInfo = null;
+                person.CurrentAddressId = null;
+            }
             person.DayPlan = NpcBrain.PlanDay(person, state, state.Clock.CurrentTime, _mapConfig);
         }
 

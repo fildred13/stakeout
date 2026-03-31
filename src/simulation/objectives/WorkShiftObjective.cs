@@ -43,14 +43,15 @@ public class WorkShiftObjective : Objective
 
                 if (shiftEnd > planStart && shiftStart < planEnd)
                 {
-                    var duration = shiftEnd - shiftStart;
+                    var effectiveStart = shiftStart < planStart ? planStart : shiftStart;
+                    var duration = shiftEnd - effectiveStart;
                     var displayText = $"working as {position.Role}";
 
                     actions.Add(new PlannedAction
                     {
                         Action = new WaitAction(duration, displayText),
                         TargetAddressId = business.AddressId,
-                        TimeWindowStart = shiftStart,
+                        TimeWindowStart = effectiveStart,
                         TimeWindowEnd = shiftEnd,
                         Duration = duration,
                         DisplayText = displayText,
