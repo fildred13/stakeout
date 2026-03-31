@@ -38,9 +38,17 @@ public class ActionRunner
             return;
         }
 
-        // If currently doing an activity, tick it
+        // If currently doing an activity, check for phone interrupts first
         if (person.CurrentActivity != null)
         {
+            // A ringing phone interrupts the current activity (person answers immediately)
+            if (HasPendingInvitation(person, state))
+            {
+                person.CurrentActivity = null;
+                TryInjectPendingInvitation(person, state);
+                return;
+            }
+
             var ctx = CreateContext(person, state);
             var entry = person.DayPlan.Current;
             // Respect the scheduled end time to prevent cumulative drift
@@ -73,6 +81,12 @@ public class ActionRunner
         StartNextEntry(person, state);
     }
 
+    private static bool HasPendingInvitation(Person person, SimulationState state)
+    {
+        return state.PendingInvitationsByPersonId.TryGetValue(person.Id, out var invitations)
+            && invitations.Count > 0;
+    }
+
     private bool TryInjectPendingInvitation(Person person, SimulationState state)
     {
         if (!state.PendingInvitationsByPersonId.TryGetValue(person.Id, out var invitations)
@@ -82,7 +96,7 @@ public class ActionRunner
         var inv = invitations[0];
         invitations.RemoveAt(0);
 
-        var action = new AcceptPhoneCallAction(inv.Id);
+        var action = new AcceptPhoneCallAction(inv);
         var ctx = CreateContext(person, state);
         action.OnStart(ctx);
         person.CurrentActivity = action;

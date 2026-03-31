@@ -81,7 +81,7 @@ public class AcceptPhoneCallActionTests
         };
         state.AddPendingInvitation(inv);
 
-        var action = new AcceptPhoneCallAction(inv.Id);
+        var action = new AcceptPhoneCallAction(inv);
         var ctx = new ActionContext
         {
             Person = recipient,
@@ -96,9 +96,8 @@ public class AcceptPhoneCallActionTests
             action.Tick(ctx, TimeSpan.FromMinutes(1));
         action.OnComplete(ctx);
 
-        // Invitation should be consumed
-        Assert.False(state.PendingInvitationsByPersonId.ContainsKey(recipient.Id)
-            && state.PendingInvitationsByPersonId[recipient.Id].Count > 0);
+        // Invitation is still in the pending list (consumption happens in ActionRunner, not in AcceptPhoneCallAction)
+        // The action's responsibility is just to call OnAccepted on the OrganizeDateObjective
 
         // Group should be active
         Assert.Equal(GroupStatus.Active, group.Status);
