@@ -6,7 +6,7 @@
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "build",
-            "program": "G:/Godot_v4.6.1-stable_mono_win64/Godot_v4.6.1-stable_mono_win64.exe",
+            "program": "${env:GODOT_BIN}",
             "args": [],
             "cwd": "${workspaceFolder}",
             "stopAtEntry": false,
