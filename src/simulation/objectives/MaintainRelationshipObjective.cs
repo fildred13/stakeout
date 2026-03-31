@@ -35,7 +35,8 @@ public class MaintainRelationshipObjective : Objective
         if (WentOnDateRecently(person, state, planStart))
             return new List<PlannedAction>();
 
-        // Need a diner to propose as the meetup venue
+        // Need a diner to propose as the meetup venue.
+        // Intentionally naive: picks the first available diner. Multi-venue selection can be added later.
         var diner = state.Addresses.Values.FirstOrDefault(a => a.Type == AddressType.Diner);
         if (diner == null) return new List<PlannedAction>();
 
@@ -45,6 +46,9 @@ public class MaintainRelationshipObjective : Objective
             meetupTime = planStart.Date.AddDays(1).AddHours(19);
 
         var pickupTime = meetupTime - TimeSpan.FromMinutes(70);
+        // clamp callTime so it is at most 3 hours before the meetup.
+        // The 4-hour lead time guard above guarantees meetupTime - 3h >= planStart + 1h,
+        // so the clamp never pushes callTime before planStart + 1h.
         var callTime = planStart.AddHours(1);
         if (callTime > meetupTime - TimeSpan.FromHours(3))
             callTime = meetupTime - TimeSpan.FromHours(3);
@@ -65,6 +69,8 @@ public class MaintainRelationshipObjective : Objective
 
     private bool WentOnDateRecently(Person person, SimulationState state, DateTime now)
     {
+        // Cooldown is measured from MeetupTime (the start of the date), not the end.
+        // This is intentional — dates are only a few hours long, so the difference is negligible.
         return state.Groups.Values.Any(g =>
             g.Type == GroupType.Date &&
             g.Status == GroupStatus.Disbanded &&

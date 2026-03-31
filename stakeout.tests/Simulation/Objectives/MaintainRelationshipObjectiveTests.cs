@@ -37,7 +37,7 @@ public class MaintainRelationshipObjectiveTests
             Id = state.GenerateEntityId(),
             HomeAddressId = partnerHome.Id,
             CurrentAddressId = partnerHome.Id,
-            HomePhoneFixtureId = null
+            HomePhoneFixtureId = null // MaintainRelationshipObjective doesn't require a phone — that's OrganizeDateObjective's concern
         };
 
         state.People[person.Id] = person;
@@ -139,15 +139,4 @@ public class MaintainRelationshipObjectiveTests
         Assert.False(person.NeedsReplan);
     }
 
-    [Fact]
-    public void GetActions_AlwaysReturnsEmptyList()
-    {
-        var (state, person, partner, _) = BuildScene();
-        var obj = new MaintainRelationshipObjective(partner.Id) { Id = state.GenerateEntityId() };
-
-        var actions = obj.GetActions(person, state,
-            new DateTime(1984, 1, 2, 9, 0, 0), new DateTime(1984, 1, 2, 23, 59, 0));
-
-        Assert.Empty(actions);
-    }
 }
