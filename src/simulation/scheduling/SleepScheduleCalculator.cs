@@ -9,11 +9,11 @@ public static class SleepScheduleCalculator
     private static readonly TimeSpan DefaultWakeTime = new(6, 0, 0);
     private static readonly TimeSpan SleepDuration = new(8, 0, 0);
 
-    public static (TimeSpan sleepTime, TimeSpan wakeTime) Compute(Job job, float commuteHours)
+    public static (TimeSpan sleepTime, TimeSpan wakeTime) Compute(Position position, float commuteHours)
     {
         var commute = TimeSpan.FromHours(commuteHours);
-        var workBlockStart = Mod24(job.ShiftStart - commute);
-        var workBlockEnd = Mod24(job.ShiftEnd + commute);
+        var workBlockStart = Mod24(position.ShiftStart - commute);
+        var workBlockEnd = Mod24(position.ShiftEnd + commute);
 
         if (!Overlaps(DefaultSleepTime, DefaultWakeTime, workBlockStart, workBlockEnd))
         {

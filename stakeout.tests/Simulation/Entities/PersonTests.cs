@@ -14,10 +14,10 @@ public class PersonTests
     }
 
     [Fact]
-    public void HomeUnitTag_DefaultsToNull()
+    public void HomeLocationId_DefaultsToNull()
     {
         var person = new Person();
-        Assert.Null(person.HomeUnitTag);
+        Assert.Null(person.HomeLocationId);
     }
 
     [Fact]

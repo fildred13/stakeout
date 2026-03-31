@@ -1,10 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Godot;
 using Stakeout;
 using Stakeout.Evidence;
 using Stakeout.Simulation;
-using Stakeout.Simulation.Actions;
 using Stakeout.Simulation.City;
 using Stakeout.Simulation.Entities;
 
@@ -79,6 +79,15 @@ public partial class CityView : Control, IContentView
         CenterViewport();
     }
 
+    private CityGrid GetCurrentCityGrid()
+    {
+        var state = _simulationManager.State;
+        var player = state.Player;
+        if (player?.CurrentCityId != null && state.CityGrids.TryGetValue(player.CurrentCityId.Value, out var grid))
+            return grid;
+        return state.CityGrids.Values.FirstOrDefault();
+    }
+
     private void CenterViewport()
     {
         var localSize = Size;
@@ -111,15 +120,23 @@ public partial class CityView : Control, IContentView
     public override void _Draw()
     {
         var state = _simulationManager.State;
-        var grid = state.CityGrid;
+        var grid = GetCurrentCityGrid();
         if (grid == null) return;
 
-        // Compute visible grid range for culling
+        // Fill background so zooming out doesn't show grey void
         var localSize = Size;
-        int minGX = Math.Max(0, (int)((-_panOffset.X) / (_zoom * CellSize)));
-        int maxGX = Math.Min(GridWidth - 1, (int)((-_panOffset.X + localSize.X) / (_zoom * CellSize)));
-        int minGY = Math.Max(0, (int)((-_panOffset.Y) / (_zoom * CellSize)));
-        int maxGY = Math.Min(GridHeight - 1, (int)((-_panOffset.Y + localSize.Y) / (_zoom * CellSize)));
+        DrawRect(new Rect2(Vector2.Zero, localSize), EmptyColor);
+        var scaledCell = _zoom * CellSize;
+        // Expand min bounds to catch multi-cell buildings whose origin is off-screen
+        const int CullMargin = 20; // largest building dimension (airport 10x20)
+        int minGX = Math.Max(0, (int)Math.Floor(-_panOffset.X / scaledCell) - CullMargin);
+        int maxGX = Math.Min(grid.Width - 1, (int)Math.Ceiling((-_panOffset.X + localSize.X) / scaledCell));
+        int minGY = Math.Max(0, (int)Math.Floor(-_panOffset.Y / scaledCell) - CullMargin);
+        int maxGY = Math.Min(grid.Height - 1, (int)Math.Ceiling((-_panOffset.Y + localSize.Y) / scaledCell));
+
+        // Guard against out-of-bounds from CullMargin or rounding
+        minGX = Math.Max(0, minGX);
+        minGY = Math.Max(0, minGY);
 
         // Collect highlight sets
         var playerCells = new HashSet<(int, int)>();
@@ -167,7 +184,6 @@ public partial class CityView : Control, IContentView
             {
                 var cell = grid.GetCell(gx, gy);
                 var screenPos = GridToScreen(gx, gy);
-                var scaledCell = CellSize * _zoom;
 
                 // Draw base cell
                 switch (cell.PlotType)
@@ -184,7 +200,11 @@ public partial class CityView : Control, IContentView
                         if (cell.AddressId.HasValue && !drawnAddresses.Contains(cell.AddressId.Value))
                         {
                             drawnAddresses.Add(cell.AddressId.Value);
-                            DrawPark(screenPos, scaledCell, cell);
+                            if (state.Addresses.TryGetValue(cell.AddressId.Value, out var parkAddr))
+                            {
+                                var parkOrigin = GridToScreen(parkAddr.GridX, parkAddr.GridY);
+                                DrawPark(parkOrigin, scaledCell, cell);
+                            }
                         }
                         else if (!cell.AddressId.HasValue)
                         {
@@ -199,7 +219,11 @@ public partial class CityView : Control, IContentView
                             if (cell.AddressId.HasValue && !drawnAddresses.Contains(cell.AddressId.Value))
                             {
                                 drawnAddresses.Add(cell.AddressId.Value);
-                                DrawBuilding(screenPos, scaledCell, cell);
+                                if (state.Addresses.TryGetValue(cell.AddressId.Value, out var bldgAddr))
+                                {
+                                    var bldgOrigin = GridToScreen(bldgAddr.GridX, bldgAddr.GridY);
+                                    DrawBuilding(bldgOrigin, scaledCell, cell);
+                                }
                             }
                             else if (!cell.AddressId.HasValue)
                             {
@@ -253,10 +277,9 @@ public partial class CityView : Control, IContentView
         DrawRect(new Rect2(screenPos + new Vector2(inset, inset), new Vector2(totalW, totalH)), BuildingColor);
 
         // Draw driveway only if it would connect to a road
-        if (cell.AddressId.HasValue)
+        if (cell.AddressId.HasValue && _simulationManager.State.Addresses.TryGetValue(cell.AddressId.Value, out var addr))
         {
-            var grid = _simulationManager.State.CityGrid;
-            var addr = _simulationManager.State.Addresses[cell.AddressId.Value];
+            var grid = GetCurrentCityGrid();
             int checkX = addr.GridX, checkY = addr.GridY;
             // Offset to the edge of the building in the facing direction
             switch (cell.FacingDirection)
@@ -341,7 +364,7 @@ public partial class CityView : Control, IContentView
         if (fontSize < 4) return; // Too small to read
 
         // Determine if this is a horizontal or vertical road segment
-        var grid = state.CityGrid;
+        var grid = GetCurrentCityGrid();
         bool isHorizontal = (grid.IsInBounds(gx - 1, gy) && grid.GetCell(gx - 1, gy).PlotType == PlotType.Road) ||
                             (grid.IsInBounds(gx + 1, gy) && grid.GetCell(gx + 1, gy).PlotType == PlotType.Road);
 
@@ -376,8 +399,6 @@ public partial class CityView : Control, IContentView
             Color color;
             if (!person.IsAlive)
                 color = DeadPersonColor;
-            else if (person.CurrentAction == ActionType.Sleep)
-                color = SleepingPersonColor;
             else
                 color = PersonColor;
 
@@ -465,6 +486,7 @@ public partial class CityView : Control, IContentView
             _didDrag = true;
 
         _panOffset = _panStartOffset + delta;
+        ClampPanOffset();
         GetViewport().SetInputAsHandled();
     }
 
@@ -474,6 +496,31 @@ public partial class CityView : Control, IContentView
         _zoom = Mathf.Clamp(_zoom + delta, MinZoom, MaxZoom);
         var zoomRatio = _zoom / oldZoom;
         _panOffset = mousePos - (mousePos - _panOffset) * zoomRatio;
+        ClampPanOffset();
+    }
+
+    /// <summary>
+    /// Clamp pan offset so at least a portion of the grid remains visible.
+    /// Prevents the grid from being panned entirely off-screen.
+    /// </summary>
+    private void ClampPanOffset()
+    {
+        var localSize = Size;
+        var gridPixelW = GridWidth * CellSize * _zoom;
+        var gridPixelH = GridHeight * CellSize * _zoom;
+
+        // Don't let the grid's right edge go past the left edge of the viewport
+        // or the grid's left edge go past the right edge of the viewport
+        _panOffset = new Vector2(
+            Mathf.Clamp(_panOffset.X, localSize.X - gridPixelW, 0),
+            Mathf.Clamp(_panOffset.Y, localSize.Y - gridPixelH, 0)
+        );
+
+        // If the grid is smaller than the viewport at this zoom, center it
+        if (gridPixelW < localSize.X)
+            _panOffset = new Vector2((localSize.X - gridPixelW) / 2, _panOffset.Y);
+        if (gridPixelH < localSize.Y)
+            _panOffset = new Vector2(_panOffset.X, (localSize.Y - gridPixelH) / 2);
     }
 
     // --- Coordinate conversion ---
@@ -500,7 +547,7 @@ public partial class CityView : Control, IContentView
     private void HandleClick(Vector2 screenPos)
     {
         var (gx, gy) = ScreenToGrid(screenPos);
-        var grid = _simulationManager.State.CityGrid;
+        var grid = GetCurrentCityGrid();
         if (grid == null) return;
 
         if (grid.IsInBounds(gx, gy))
@@ -522,7 +569,7 @@ public partial class CityView : Control, IContentView
     private void HandleRightClick(Vector2 screenPos, Vector2 globalPos)
     {
         var (gx, gy) = ScreenToGrid(screenPos);
-        var grid = _simulationManager.State.CityGrid;
+        var grid = GetCurrentCityGrid();
         if (grid == null) return;
 
         if (grid.IsInBounds(gx, gy))
@@ -692,7 +739,7 @@ public partial class CityView : Control, IContentView
         var mousePos = GetLocalMousePosition();
         var (gx, gy) = ScreenToGrid(mousePos);
         var state = _simulationManager.State;
-        var grid = state.CityGrid;
+        var grid = GetCurrentCityGrid();
         var lines = new List<string>();
 
         // Check player dot hover
@@ -728,15 +775,7 @@ public partial class CityView : Control, IContentView
                 }
                 else
                 {
-                    var actionLabel = person.CurrentAction switch
-                    {
-                        ActionType.Work => FormatWorkLabel(person),
-                        ActionType.Sleep => "Sleep",
-                        ActionType.TravelByCar => FormatTravelLabel(person),
-                        ActionType.Idle => "Idle",
-                        ActionType.KillPerson => "KillPerson",
-                        _ => person.CurrentAction.ToString()
-                    };
+                    var actionLabel = person.CurrentActivity?.DisplayText ?? "idle";
                     label = $"{person.FullName}: {actionLabel}";
                 }
                 if (!lines.Contains(label) && !lines.Contains(person.FullName))
@@ -756,22 +795,4 @@ public partial class CityView : Control, IContentView
         }
     }
 
-    private string FormatTravelLabel(Person person)
-    {
-        if (person.TravelInfo == null) return "TravelByCar";
-        var toAddr = _simulationManager.State.Addresses.GetValueOrDefault(person.TravelInfo.ToAddressId);
-        if (toAddr == null) return "TravelByCar";
-        var street = _simulationManager.State.Streets.GetValueOrDefault(toAddr.StreetId);
-        return $"TravelByCar -> {toAddr.Number} {street?.Name ?? "Unknown"}";
-    }
-
-    private string FormatWorkLabel(Person person)
-    {
-        var job = _simulationManager.State.Jobs.GetValueOrDefault(person.JobId);
-        if (job == null) return "Work";
-        var workAddr = _simulationManager.State.Addresses.GetValueOrDefault(job.WorkAddressId);
-        if (workAddr == null) return "Work";
-        var street = _simulationManager.State.Streets.GetValueOrDefault(workAddr.StreetId);
-        return $"Work at {workAddr.Number} {street?.Name ?? "Unknown"}";
-    }
 }

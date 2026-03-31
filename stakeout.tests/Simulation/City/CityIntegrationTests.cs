@@ -1,8 +1,8 @@
 using System.Linq;
 using Stakeout.Simulation;
+using Stakeout.Simulation.Addresses;
 using Stakeout.Simulation.City;
 using Stakeout.Simulation.Entities;
-using Stakeout.Simulation.Sublocations;
 using Xunit;
 
 namespace Stakeout.Tests.Simulation.City;
@@ -12,21 +12,27 @@ public class CityIntegrationTests
     [Fact]
     public void FullCityGeneration_ProducesValidState()
     {
-        SublocationGeneratorRegistry.RegisterAll();
+        AddressTemplateRegistry.RegisterAll();
         var state = new SimulationState();
         var mapConfig = new MapConfig();
 
         // Generate city scaffolding
-        var locationGen = new LocationGenerator(mapConfig);
-        locationGen.GenerateCityScaffolding(state);
+        var city = new Stakeout.Simulation.Entities.City
+        {
+            Id = state.GenerateEntityId(),
+            Name = "Boston",
+            CountryName = "United States"
+        };
+        state.Cities[city.Id] = city;
 
         // Generate city grid
         var cityGen = new CityGenerator(seed: 42);
-        state.CityGrid = cityGen.Generate(state);
+        var grid = cityGen.Generate(state, city);
+        state.CityGrids[city.Id] = grid;
 
         // Verify grid exists and has content
-        Assert.NotNull(state.CityGrid);
-        Assert.Equal(100, state.CityGrid.Width);
+        Assert.NotNull(grid);
+        Assert.Equal(100, grid.Width);
 
         // Verify addresses were created
         Assert.NotEmpty(state.Addresses);
@@ -39,7 +45,7 @@ public class CityIntegrationTests
         {
             Assert.True(addr.GridX >= 0 && addr.GridX < 100);
             Assert.True(addr.GridY >= 0 && addr.GridY < 100);
-            var cell = state.CityGrid.GetCell(addr.GridX, addr.GridY);
+            var cell = grid.GetCell(addr.GridX, addr.GridY);
             Assert.True(cell.PlotType.IsBuilding());
             Assert.Equal(addr.Id, cell.AddressId);
         }

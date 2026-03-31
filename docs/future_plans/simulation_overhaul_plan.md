@@ -138,22 +138,36 @@ Fixtures (stable objects from templates, can contain traces) and traces (dynamic
 
 ### Project 3: NPC Brain & Action Engine
 
-The unified NPC brain: action selection (obligations + drives + defaults) and action execution (fluent builder, composable event primitives, sub-action stacking). The action library of reusable templates. Event log for history.
+The unified NPC brain: objective-driven daily planning and action execution. All NPC behavior flows through one system — objectives produce actions, the brain schedules them into a daily plan, and the action runner executes them.
+
+**Design decisions made during P3 brainstorming:**
+- **Unified objective model.** The original three-layer brain (obligations/drives/defaults) was simplified. Everything is an objective with a priority. The daily planner sorts objectives by priority and schedules greedily. A runner's hobby and a killer's murder use the same algorithm — they differ in priority, not in kind.
+- **Objective composition.** Objectives can have child objectives. A parent delegates a phase to a child (e.g., HeistObjective → RecruitCrew → FindCandidate). Multiple children can be active in parallel. This enables reusable building blocks for crime templates in P7.
+- **Daily planning, not per-tick evaluation.** The brain plans the full day on wake-up (and re-plans after interrupts, when added). Between planning moments, the NPC executes the plan sequentially.
+- **Travel is the engine's job.** Actions define a destination + activity. The engine handles inter-address travel universally. Actions never contain "go to X" boilerplate — each action is self-contained as "what to do once there."
+- **No fast-forward optimization yet.** All NPCs use the same action stack path. The time→location optimization for routine NPCs is deferred until there's a real performance need and the action library is mature enough to define "routine."
+- **Job-related features deferred to P4.** WorkShift, Commute, job assignment in PersonGenerator, and DoorLockingService are commented out with TODO markers. P3 builds the clean base; P4 restores job functionality via Business entities.
+- **Only build primitives P3's actions use.** WaitAction and MoveToAction (intra-address). ForcedEntry, Violence, Social, Search are deferred to P5+/P7.
 
 **Delivers:**
-- Action stack (push/pop sub-actions, priority-based interruption)
-- Brain: obligation/drive/default evaluation → action selection
-- ActionSequence fluent builder (Do, MoveTo, Maybe, If, OneOf)
-- ActionContext (state bag threaded through events)
-- Event primitives: ForcedEntry, Movement, Violence, Social, Search
-- Initial action library: Sleep, IdleAtHome, Commute, WorkShift, EatOut, GoForARun
-- NPC travel between addresses (triggered by action, not pre-scheduled)
-- Fast-forward (routine NPCs as time→location, active NPCs step-through)
-- Event log for history/investigation
-- Trait → drive mapping (initial set: runner, addict, devout, etc.)
-- Remove: ScheduleBuilder, ObjectiveResolver, DailySchedule, PersonBehavior, TaskResolver, all decomposition strategies
+- Objective base class (priority, state, phases, child objectives, GetActionsForToday)
+- NpcBrain daily planner (sort objectives by priority, schedule greedily, fill gaps)
+- DayPlan (ordered action list with time slots for today)
+- ActionRunner (per-frame: handle travel, tick actions, advance plan)
+- IAction interface + ActionSequence fluent builder (Do, MoveTo, Wait, Maybe, If)
+- ActionContext (state bag: Person, SimulationState, TraceEmitter, EventJournal, Random)
+- Event primitives: WaitAction, MoveToAction (intra-address)
+- Initial objective library: SleepObjective, GoForARunObjective, EatOutObjective, IdleAtHome (gap-filler)
+- Trait system: traits on Person, TraitDefinitions registry mapping traits → objectives (runner, foodie)
+- NPC travel between addresses (engine-level, reusing existing MapConfig/TravelInfo)
+- Event log extensions (ActivityStarted, ActivityCompleted event types)
+- Debug inspector updates (day plan view, objective list, current activity display)
+- Remove: ScheduleBuilder, DailySchedule, TaskResolver, ObjectiveResolver, all decomposition strategies
+- Gut with TODO: PersonBehavior (→ ActionRunner), job assignment in PersonGenerator (→ P4), DoorLockingService (→ P4)
 
 **Why third:** The brain is the core engine. Needs locations (P1) and traces (P2) as foundations. Everything after this builds on the brain.
+
+**Full design spec:** `docs/superpowers/specs/2026-03-29-npc-brain-action-engine-design.md`
 
 ### Project 4: Business Entities & Staffing
 
@@ -165,7 +179,9 @@ Businesses as first-class entities. Operating hours, shift definitions, day-of-w
 - Shift ↔ NPC assignment during generation
 - Business ↔ Address linkage
 - Day-of-week and shift variation
-- Job obligation integration with NPC brain
+- Job obligation integration with NPC brain (WorkShiftObjective, CommuteAction)
+- Restore job assignment in PersonGenerator (commented out in P3 with TODO: Project 4)
+- DoorLockingService implementation (commented out in P3 with TODO: Project 4)
 
 **Why fourth:** Businesses provide the data that job obligations consume. Brain (P3) must exist first so we can wire shifts into action selection.
 

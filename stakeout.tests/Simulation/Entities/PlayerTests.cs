@@ -21,18 +21,25 @@ public class PlayerTests
         var address = new Address { Id = state.GenerateEntityId(), Type = AddressType.SuburbanHome };
         state.Addresses[address.Id] = address;
 
-        // Simulate a front door connection with entrance tag and LockableProperty
-        var frontDoor = new SublocationConnection
+        // Create a Location with an entrance tag and an AccessPoint with main_entrance tag
+        var location = new Location
         {
             Id = state.GenerateEntityId(),
-            FromSublocationId = 100,
-            ToSublocationId = 200,
-            Type = ConnectionType.Door,
-            Name = "Front Door",
-            Tags = new[] { "entrance" },
-            Lockable = new LockableProperty { Mechanism = LockMechanism.Key }
+            AddressId = address.Id,
+            Name = "Interior",
+            Tags = new[] { "residential", "private", "entrance" }
         };
-        address.Connections.Add(frontDoor);
+        location.AccessPoints.Add(new AccessPoint
+        {
+            Id = state.GenerateEntityId(),
+            Name = "Front Door",
+            Type = AccessPointType.Door,
+            Tags = new[] { "main_entrance" },
+            IsLocked = true,
+            LockMechanism = LockMechanism.Key
+        });
+        state.Locations[location.Id] = location;
+        address.LocationIds.Add(location.Id);
 
         var player = new Player
         {
@@ -49,7 +56,8 @@ public class PlayerTests
         var key = state.Items[player.InventoryItemIds[0]];
         Assert.Equal(ItemType.Key, key.ItemType);
         Assert.Equal(player.Id, key.HeldByEntityId);
-        Assert.Equal(frontDoor.Id, (int)key.Data["TargetConnectionId"]);
-        Assert.Equal(key.Id, frontDoor.Lockable.KeyItemId);
+        var targetApId = (int)key.Data["TargetAccessPointId"];
+        Assert.Equal(location.AccessPoints[0].Id, targetApId);
+        Assert.Equal(key.Id, location.AccessPoints[0].KeyItemId);
     }
 }

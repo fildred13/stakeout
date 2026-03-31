@@ -1,144 +1,92 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using Stakeout.Simulation;
+using Stakeout.Simulation.Addresses;
+using Stakeout.Simulation.Businesses;
+using Stakeout.Simulation.City;
 using Stakeout.Simulation.Entities;
 using Stakeout.Simulation.Scheduling;
-using Stakeout.Simulation.Traces;
 using Xunit;
+using CityEntity = Stakeout.Simulation.Entities.City;
 
 namespace Stakeout.Tests.Simulation.Scheduling;
 
 public class DoorLockingServiceTests
 {
-    private static SimulationState CreateState()
+    private static (SimulationState state, Business biz) SetupResolved()
     {
-        return new SimulationState(new GameClock(new DateTime(1980, 1, 1, 8, 0, 0)));
-    }
+        AddressTemplateRegistry.RegisterAll();
+        BusinessTemplateRegistry.RegisterAll();
+        var state = new SimulationState();
+        var city = new CityEntity { Id = state.GenerateEntityId(), Name = "Boston", CountryName = "US" };
+        state.Cities[city.Id] = city;
+        var cityGen = new CityGenerator(seed: 42);
+        state.CityGrids[city.Id] = cityGen.Generate(state, city);
 
-    private static (SimulationState state, Person person, Address home, Item key, List<SublocationConnection> lockableConns) CreateSuburbanScenario()
-    {
-        var state = CreateState();
-        var home = new Address
-        {
-            Id = state.GenerateEntityId(),
-            Type = AddressType.SuburbanHome,
-            GridX = 2,
-            GridY = 2,
-            Number = 1,
-            StreetId = 1
-        };
-        state.Addresses[home.Id] = home;
+        var gen = new PersonGenerator(new MapConfig());
+        var biz = state.Businesses.Values.First();
+        BusinessResolver.Resolve(state, biz, gen);
 
-        var frontDoor = new SublocationConnection
-        {
-            Id = state.GenerateEntityId(),
-            FromSublocationId = 100,
-            ToSublocationId = 200,
-            Type = ConnectionType.Door,
-            Tags = new[] { "entrance" },
-            Lockable = new LockableProperty(),
-            Fingerprints = new FingerprintSurface()
-        };
-        var backDoor = new SublocationConnection
-        {
-            Id = state.GenerateEntityId(),
-            FromSublocationId = 200,
-            ToSublocationId = 300,
-            Type = ConnectionType.Door,
-            Tags = new[] { "covert_entry" },
-            Lockable = new LockableProperty(),
-            Fingerprints = new FingerprintSurface()
-        };
-        home.Connections.Add(frontDoor);
-        home.Connections.Add(backDoor);
-
-        var key = new Item
-        {
-            Id = state.GenerateEntityId(),
-            ItemType = ItemType.Key,
-            Fingerprints = new FingerprintSurface(),
-            Data = new Dictionary<string, object> { ["TargetConnectionId"] = frontDoor.Id }
-        };
-        state.Items[key.Id] = key;
-        frontDoor.Lockable.KeyItemId = key.Id;
-        backDoor.Lockable.KeyItemId = key.Id;
-
-        var person = new Person
-        {
-            Id = state.GenerateEntityId(),
-            HomeAddressId = home.Id,
-            CurrentAddressId = home.Id,
-            InventoryItemIds = new List<int> { key.Id }
-        };
-        key.HeldByEntityId = person.Id;
-        state.People[person.Id] = person;
-
-        return (state, person, home, key, new List<SublocationConnection> { frontDoor, backDoor });
+        return (state, biz);
     }
 
     [Fact]
-    public void LockEntrances_LocksAllDoors_WhenNoForget()
+    public void UpdateDoorStates_DuringBusinessHours_UnlocksEntrance()
     {
-        var (state, person, home, key, conns) = CreateSuburbanScenario();
+        var (state, biz) = SetupResolved();
+        var hours = biz.Hours.First(h => h.OpenTime.HasValue);
+        var duringHours = new DateTime(2026, 3, 30).Date + hours.OpenTime.Value + TimeSpan.FromHours(1);
+        while (duringHours.DayOfWeek != hours.Day)
+            duringHours = duringHours.AddDays(1);
 
-        bool allLockedOnce = false;
-        for (int i = 0; i < 100; i++)
+        DoorLockingService.UpdateDoorStates(state, duringHours);
+
+        var locations = state.GetLocationsForAddress(biz.AddressId);
+        var entrance = locations.SelectMany(l => l.AccessPoints)
+            .FirstOrDefault(ap => ap.HasTag("main_entrance"));
+        if (entrance != null)
+            Assert.False(entrance.IsLocked);
+    }
+
+    [Fact]
+    public void UpdateDoorStates_OutsideBusinessHours_LocksEntrance()
+    {
+        var (state, biz) = SetupResolved();
+        var officeBiz = state.Businesses.Values.FirstOrDefault(b => b.Type == BusinessType.Office);
+        if (officeBiz == null) return;
+        if (!officeBiz.IsResolved)
         {
-            foreach (var c in conns) c.Lockable.IsLocked = false;
-            DoorLockingService.LockEntrances(state, person);
-            if (conns.All(c => c.Lockable.IsLocked))
-            {
-                allLockedOnce = true;
-                break;
-            }
+            var gen = new PersonGenerator(new MapConfig());
+            BusinessResolver.Resolve(state, officeBiz, gen);
         }
-        Assert.True(allLockedOnce);
+
+        // Saturday = closed for offices
+        var saturday = new DateTime(2026, 3, 28, 12, 0, 0);
+        while (saturday.DayOfWeek != DayOfWeek.Saturday)
+            saturday = saturday.AddDays(1);
+
+        DoorLockingService.UpdateDoorStates(state, saturday);
+
+        var locations = state.GetLocationsForAddress(officeBiz.AddressId);
+        var entrance = locations.SelectMany(l => l.AccessPoints)
+            .FirstOrDefault(ap => ap.HasTag("main_entrance"));
+        if (entrance != null)
+            Assert.True(entrance.IsLocked);
     }
 
     [Fact]
-    public void LockEntrances_DepositsKeyFingerprint()
+    public void UpdateDoorStates_SkipsUnresolvedBusinesses()
     {
-        var (state, person, home, key, conns) = CreateSuburbanScenario();
+        AddressTemplateRegistry.RegisterAll();
+        BusinessTemplateRegistry.RegisterAll();
+        var state = new SimulationState();
+        var city = new CityEntity { Id = state.GenerateEntityId(), Name = "Boston", CountryName = "US" };
+        state.Cities[city.Id] = city;
+        var cityGen = new CityGenerator(seed: 42);
+        state.CityGrids[city.Id] = cityGen.Generate(state, city);
 
-        DoorLockingService.LockEntrances(state, person);
-
-        Assert.NotEmpty(key.Fingerprints.TraceIds);
-    }
-
-    [Fact]
-    public void LockEntrances_ForgetChance_SomeDoorsRemainUnlocked()
-    {
-        int forgottenCount = 0;
-        for (int t = 0; t < 200; t++)
-        {
-            var (state, person, home, key, conns) = CreateSuburbanScenario();
-            DoorLockingService.LockEntrances(state, person);
-            if (conns.Any(c => !c.Lockable.IsLocked))
-                forgottenCount++;
-        }
-        Assert.InRange(forgottenCount, 10, 80);
-    }
-
-    [Fact]
-    public void UnlockEntrances_UnlocksAllDoors()
-    {
-        var (state, person, home, key, conns) = CreateSuburbanScenario();
-        foreach (var c in conns) c.Lockable.IsLocked = true;
-
-        DoorLockingService.UnlockEntrances(state, person);
-
-        Assert.All(conns, c => Assert.False(c.Lockable.IsLocked));
-    }
-
-    [Fact]
-    public void UnlockEntrances_DepositsKeyFingerprint()
-    {
-        var (state, person, home, key, conns) = CreateSuburbanScenario();
-        foreach (var c in conns) c.Lockable.IsLocked = true;
-
-        DoorLockingService.UnlockEntrances(state, person);
-
-        Assert.NotEmpty(key.Fingerprints.TraceIds);
+        var now = new DateTime(2026, 3, 30, 12, 0, 0);
+        DoorLockingService.UpdateDoorStates(state, now);
+        // Should not throw
     }
 }

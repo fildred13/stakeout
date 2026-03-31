@@ -1,72 +1,59 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using Stakeout.Simulation.Entities;
-using Stakeout.Simulation.Traces;
 
 namespace Stakeout.Simulation.Scheduling;
 
 public static class DoorLockingService
 {
-    private const double ForgetChance = 0.10;
-
-    public static void LockEntrances(SimulationState state, Person person)
+    public static void UpdateDoorStates(SimulationState state, DateTime currentTime)
     {
-        var home = state.Addresses[person.HomeAddressId];
-        var lockableConns = GetResidenceLockableConnections(home, person.HomeUnitTag);
-        var key = FindHomeKey(state, person);
-
-        var random = new Random();
-        foreach (var conn in lockableConns)
+        foreach (var business in state.Businesses.Values)
         {
-            if (random.NextDouble() < ForgetChance)
-                continue; // Forgot to lock this door
+            if (!business.IsResolved) continue;
 
-            conn.Lockable.IsLocked = true;
+            var hours = business.Hours.FirstOrDefault(h => h.Day == currentTime.DayOfWeek);
+            var isOpen = IsWithinOperatingHours(hours, currentTime.TimeOfDay);
 
-            if (key?.Fingerprints != null)
-                FingerprintService.DepositFingerprint(state, person.Id, key);
+            SetEntranceLockState(state, business.AddressId, locked: !isOpen);
         }
     }
 
-    public static void UnlockEntrances(SimulationState state, Person person)
+    private static bool IsWithinOperatingHours(BusinessHours hours, TimeSpan timeOfDay)
     {
-        var home = state.Addresses[person.HomeAddressId];
-        var lockableConns = GetResidenceLockableConnections(home, person.HomeUnitTag);
-        var key = FindHomeKey(state, person);
+        if (hours == null || !hours.OpenTime.HasValue || !hours.CloseTime.HasValue)
+            return false;
 
-        foreach (var conn in lockableConns)
+        var open = hours.OpenTime.Value;
+        var close = hours.CloseTime.Value;
+
+        if (close > open)
         {
-            conn.Lockable.IsLocked = false;
-
-            if (key?.Fingerprints != null)
-                FingerprintService.DepositFingerprint(state, person.Id, key);
+            // Same day: e.g., 7:00 - 19:00
+            return timeOfDay >= open && timeOfDay < close;
         }
+        else if (close < open || (close == open && open == TimeSpan.Zero))
+        {
+            // Crosses midnight or 24/7 (00:00 - 00:00)
+            if (close == open) return true; // 24/7
+            return timeOfDay >= open || timeOfDay < close;
+        }
+
+        return false;
     }
 
-    internal static List<SublocationConnection> GetResidenceLockableConnections(Address home, string homeUnitTag)
+    private static void SetEntranceLockState(SimulationState state, int addressId, bool locked)
     {
-        if (homeUnitTag != null)
-        {
-            return home.Connections
-                .Where(c => c.Lockable != null && c.Tags != null && c.Tags.Contains(homeUnitTag))
-                .ToList();
-        }
-        else
-        {
-            return home.Connections
-                .Where(c => c.Lockable != null)
-                .ToList();
-        }
-    }
+        if (!state.Addresses.TryGetValue(addressId, out var address)) return;
 
-    private static Item FindHomeKey(SimulationState state, Person person)
-    {
-        foreach (var itemId in person.InventoryItemIds)
+        foreach (var locId in address.LocationIds)
         {
-            if (state.Items.TryGetValue(itemId, out var item) && item.ItemType == ItemType.Key)
-                return item;
+            if (!state.Locations.TryGetValue(locId, out var location)) continue;
+            foreach (var ap in location.AccessPoints)
+            {
+                if (ap.HasTag("main_entrance"))
+                    ap.IsLocked = locked;
+            }
         }
-        return null;
     }
 }

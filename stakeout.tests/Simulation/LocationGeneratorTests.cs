@@ -1,6 +1,7 @@
+using System.Linq;
 using Stakeout.Simulation;
+using Stakeout.Simulation.Addresses;
 using Stakeout.Simulation.Entities;
-using Stakeout.Simulation.Sublocations;
 using Xunit;
 
 namespace Stakeout.Tests.Simulation;
@@ -21,7 +22,7 @@ public class LocationGeneratorTests
     [Fact]
     public void GenerateAddress_CreatesAddressInState()
     {
-        SublocationGeneratorRegistry.RegisterAll();
+        AddressTemplateRegistry.RegisterAll();
         var state = new SimulationState();
         var generator = new LocationGenerator(new MapConfig());
         generator.GenerateCityScaffolding(state);
@@ -35,7 +36,7 @@ public class LocationGeneratorTests
     [Fact]
     public void GenerateAddress_PositionWithinMapBounds()
     {
-        SublocationGeneratorRegistry.RegisterAll();
+        AddressTemplateRegistry.RegisterAll();
         var state = new SimulationState();
         var config = new MapConfig();
         var generator = new LocationGenerator(config);
@@ -48,17 +49,17 @@ public class LocationGeneratorTests
     }
 
     [Fact]
-    public void GenerateAddress_CreatesSublocationsinState()
+    public void GenerateAddress_CreatesLocationsInState()
     {
-        SublocationGeneratorRegistry.RegisterAll();
+        AddressTemplateRegistry.RegisterAll();
         var state = new SimulationState();
         var generator = new LocationGenerator(new MapConfig());
         generator.GenerateCityScaffolding(state);
 
         var address = generator.GenerateAddress(state, AddressType.SuburbanHome);
 
-        Assert.NotEmpty(address.Sublocations);
-        Assert.Contains(address.Sublocations.Values, s => s.HasTag("road"));
-        Assert.Contains(address.Connections, c => c.HasTag("entrance"));
+        Assert.NotEmpty(address.LocationIds);
+        var locations = address.LocationIds.Select(id => state.Locations[id]).ToList();
+        Assert.Contains(locations, l => l.HasTag("entrance"));
     }
 }

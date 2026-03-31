@@ -1,12 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Stakeout.Simulation.Actions;
 using Stakeout.Simulation.Data;
 using Stakeout.Simulation.Entities;
 using Stakeout.Simulation.Events;
 using Stakeout.Simulation.Objectives;
 using Stakeout.Simulation.Scheduling;
+using Stakeout.Simulation.Traits;
 
 namespace Stakeout.Simulation;
 
@@ -22,149 +22,145 @@ public class PersonGenerator
 
     public Person GeneratePerson(SimulationState state)
     {
-        // 1. Pick job type and claim a matching address from the grid
-        var jobType = PickJobType();
-        var addressType = JobTypeToAddressType(jobType);
-        var workAddress = PickAndResolveAddress(state, addressType);
+        return GeneratePerson(state, new SpawnRequirements());
+    }
 
-        // 2. Claim a home address from the grid (random residential type)
-        var homeType = _random.NextDouble() < 0.5 ? AddressType.SuburbanHome : AddressType.ApartmentBuilding;
-        var homeAddress = homeType == AddressType.ApartmentBuilding
-            ? FindApartmentBuilding(state)
-            : PickAndResolveAddress(state, homeType);
-        string homeUnitTag = null;
-        if (homeType == AddressType.ApartmentBuilding)
+    public Person GeneratePerson(SimulationState state, SpawnRequirements requirements)
+    {
+        int cityId = 0;
+        foreach (var key in state.Cities.Keys) { cityId = key; break; }
+
+        // 1. Determine business and position
+        Business business;
+        Position position;
+
+        if (requirements.BusinessId.HasValue && requirements.PositionId.HasValue)
         {
-            homeUnitTag = AssignVacantUnit(state, homeAddress);
-        }
-
-        // 3. Create Job
-        var job = CreateJob(state, jobType, workAddress.Id);
-        state.Jobs[job.Id] = job;
-
-        // 4. Compute commute and sleep schedule
-        var commuteHours = _mapConfig.ComputeTravelTimeHours(homeAddress.Position, workAddress.Position);
-        var (sleepTime, wakeTime) = SleepScheduleCalculator.Compute(job, commuteHours);
-
-        // 5. Build objectives and schedule from them
-        var objectives = new List<Objective>
-        {
-            ObjectiveResolver.CreateGetSleepObjective(sleepTime, wakeTime, homeAddress.Id, homeUnitTag),
-            ObjectiveResolver.CreateMaintainJobObjective(job.ShiftStart, job.ShiftEnd, workAddress.Id),
-            ObjectiveResolver.CreateDefaultIdleObjective(homeAddress.Id, homeUnitTag)
-        };
-
-        var tasks = ObjectiveResolver.ResolveTasks(objectives, state);
-        var schedule = ScheduleBuilder.BuildFromTasks(tasks, state, _mapConfig);
-
-        // 6. Determine initial state from schedule and current time
-        var timeOfDay = state.Clock.CurrentTime.TimeOfDay;
-        var currentEntry = schedule.GetEntryAtTime(timeOfDay);
-        var initialActivity = currentEntry.Action;
-
-        int? currentAddressId;
-        var currentPosition = homeAddress.Position;
-        if (initialActivity == ActionType.TravelByCar)
-        {
-            initialActivity = ActionType.Idle;
-            currentAddressId = homeAddress.Id;
-        }
-        else if (initialActivity == ActionType.Work)
-        {
-            currentAddressId = workAddress.Id;
-            currentPosition = workAddress.Position;
+            business = state.Businesses[requirements.BusinessId.Value];
+            position = business.Positions.First(p => p.Id == requirements.PositionId.Value);
         }
         else
         {
-            currentAddressId = homeAddress.Id;
+            (business, position) = FindOpenPosition(state, cityId);
         }
 
-        // 7. Create person
+        // Ensure work address interior is resolved
+        var workAddress = state.Addresses[business.AddressId];
+        if (workAddress.LocationIds.Count == 0)
+            LocationGenerator.ResolveAddressInterior(workAddress, state, _random);
+
+        // 2. Claim home address
+        Address homeAddress;
+        int? homeLocationId;
+
+        if (requirements.HomeAddressId.HasValue)
+        {
+            homeAddress = state.Addresses[requirements.HomeAddressId.Value];
+            homeLocationId = requirements.HomeLocationId;
+        }
+        else
+        {
+            var homeType = _random.NextDouble() < 0.5 ? AddressType.SuburbanHome : AddressType.ApartmentBuilding;
+            homeAddress = homeType == AddressType.ApartmentBuilding
+                ? FindApartmentBuilding(state)
+                : PickAndResolveAddress(state, homeType);
+
+            homeLocationId = null;
+            if (homeType == AddressType.ApartmentBuilding)
+            {
+                homeLocationId = AssignVacantUnit(state, homeAddress);
+            }
+            else
+            {
+                foreach (var locId in homeAddress.LocationIds)
+                {
+                    var loc = state.Locations[locId];
+                    if (loc.HasTag("residential"))
+                    {
+                        homeLocationId = loc.Id;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // 3. Compute sleep schedule from position
+        var commuteHours = _mapConfig.ComputeTravelTimeHours(homeAddress.Position, workAddress.Position);
+        var (sleepTime, wakeTime) = SleepScheduleCalculator.Compute(position, commuteHours);
+
+        // 4. Create person
         var person = new Person
         {
             Id = state.GenerateEntityId(),
             FirstName = NameData.FirstNames[_random.Next(NameData.FirstNames.Length)],
             LastName = NameData.LastNames[_random.Next(NameData.LastNames.Length)],
             CreatedAt = state.Clock.CurrentTime,
+            CurrentCityId = cityId,
             HomeAddressId = homeAddress.Id,
-            HomeUnitTag = homeUnitTag,
-            JobId = job.Id,
-            CurrentAddressId = currentAddressId,
-            CurrentPosition = currentPosition,
-            CurrentAction = initialActivity,
-            CurrentSublocationId = currentEntry.TargetSublocationId,
+            HomeLocationId = homeLocationId,
+            BusinessId = business.Id,
+            PositionId = position.Id,
+            CurrentAddressId = homeAddress.Id,
+            CurrentPosition = homeAddress.Position,
             PreferredSleepTime = sleepTime,
             PreferredWakeTime = wakeTime,
-            Objectives = objectives,
-            Schedule = schedule
         };
-        state.People[person.Id] = person;
 
-        // 8. Create home key
+        // Claim position
+        position.AssignedPersonId = person.Id;
+
+        // Assign traits
+        var allTraits = TraitDefinitions.GetAllTraitNames();
+        var traitCount = _random.Next(0, 3);
+        var shuffled = allTraits.OrderBy(_ => _random.Next()).Take(traitCount);
+        foreach (var trait in shuffled)
+            person.Traits.Add(trait);
+
+        // Create objectives: universal + trait-based
+        person.Objectives.Add(new SleepObjective { Id = state.GenerateEntityId() });
+        foreach (var trait in person.Traits)
+        {
+            foreach (var obj in TraitDefinitions.CreateObjectivesForTrait(trait))
+            {
+                obj.Id = state.GenerateEntityId();
+                person.Objectives.Add(obj);
+            }
+        }
+
+        person.Objectives.Add(new WorkShiftObjective(business.Id, position.Id)
+        {
+            Id = state.GenerateEntityId()
+        });
+
+        state.People[person.Id] = person;
         CreateHomeKey(state, person, homeAddress);
 
-        // 9. Log initial event
         state.Journal.Append(new SimulationEvent
         {
             Timestamp = state.Clock.CurrentTime,
             PersonId = person.Id,
-            EventType = SimulationEventType.ActionChanged,
-            NewAction = initialActivity
+            EventType = SimulationEventType.ActivityStarted,
+            Description = "Spawned"
         });
 
         return person;
     }
 
-    private JobType PickJobType()
+    private (Business business, Position position) FindOpenPosition(SimulationState state, int cityId)
     {
-        var types = Enum.GetValues<JobType>();
-        return types[_random.Next(types.Length)];
-    }
-
-    private static AddressType JobTypeToAddressType(JobType jobType)
-    {
-        return jobType switch
+        foreach (var biz in state.Businesses.Values)
         {
-            JobType.DinerWaiter => AddressType.Diner,
-            JobType.OfficeWorker => AddressType.Office,
-            JobType.Bartender => AddressType.DiveBar,
-            _ => AddressType.Office
-        };
-    }
+            var addr = state.Addresses[biz.AddressId];
+            if (addr.CityId != cityId) continue;
 
-    private Job CreateJob(SimulationState state, JobType jobType, int workAddressId)
-    {
-        var (title, shiftStart, shiftEnd) = jobType switch
-        {
-            JobType.DinerWaiter => ("Waiter", GenerateDinerShiftStart(), TimeSpan.Zero),
-            JobType.OfficeWorker => ("Office Worker", new TimeSpan(9, 0, 0), new TimeSpan(17, 0, 0)),
-            JobType.Bartender => ("Bartender", new TimeSpan(16, 0, 0), new TimeSpan(2, 0, 0)),
-            _ => ("Worker", new TimeSpan(9, 0, 0), new TimeSpan(17, 0, 0))
-        };
-
-        if (jobType == JobType.DinerWaiter)
-        {
-            var totalMinutes = ((int)shiftStart.TotalMinutes + 720) % 1440;
-            shiftEnd = TimeSpan.FromMinutes(totalMinutes);
+            foreach (var pos in biz.Positions)
+            {
+                if (pos.AssignedPersonId == null)
+                    return (biz, pos);
+            }
         }
 
-        return new Job
-        {
-            Id = state.GenerateEntityId(),
-            Type = jobType,
-            Title = title,
-            WorkAddressId = workAddressId,
-            ShiftStart = shiftStart,
-            ShiftEnd = shiftEnd,
-            WorkDays = new[] { DayOfWeek.Sunday, DayOfWeek.Monday, DayOfWeek.Tuesday,
-                              DayOfWeek.Wednesday, DayOfWeek.Thursday, DayOfWeek.Friday, DayOfWeek.Saturday }
-        };
-    }
-
-    private TimeSpan GenerateDinerShiftStart()
-    {
-        var startHour = 5 + _random.Next(17); // 5 to 21 inclusive
-        return new TimeSpan(startHour, 0, 0);
+        throw new InvalidOperationException("No open positions available in any business in this city");
     }
 
     private Address PickAndResolveAddress(SimulationState state, AddressType type)
@@ -180,7 +176,7 @@ public class PersonGenerator
             var apartments = new List<Address>();
             foreach (var addr in state.Addresses.Values)
             {
-                if (addr.Type == AddressType.ApartmentBuilding && addr.Sublocations.Count > 0)
+                if (addr.Type == AddressType.ApartmentBuilding && addr.LocationIds.Count > 0)
                     apartments.Add(addr);
             }
             if (apartments.Count > 0)
@@ -196,86 +192,105 @@ public class PersonGenerator
 
     private static bool HasVacancy(SimulationState state, Address building)
     {
-        var occupiedTags = new HashSet<string>();
+        var occupiedLocationIds = new HashSet<int>();
         foreach (var person in state.People.Values)
         {
-            if (person.HomeAddressId == building.Id && person.HomeUnitTag != null)
-                occupiedTags.Add(person.HomeUnitTag);
+            if (person.HomeAddressId == building.Id && person.HomeLocationId.HasValue)
+                occupiedLocationIds.Add(person.HomeLocationId.Value);
         }
 
-        foreach (var sub in building.Sublocations.Values)
+        foreach (var locId in building.LocationIds)
         {
-            foreach (var tag in sub.Tags)
-            {
-                if (tag.StartsWith("unit_f") && !occupiedTags.Contains(tag))
-                    return true;
-            }
+            var loc = state.Locations[locId];
+            if (loc.HasTag("residential") && !occupiedLocationIds.Contains(loc.Id))
+                return true;
         }
         return false;
     }
 
-    private string AssignVacantUnit(SimulationState state, Address building)
+    private int? AssignVacantUnit(SimulationState state, Address building)
     {
-        var occupiedTags = new HashSet<string>();
+        var occupiedLocationIds = new HashSet<int>();
         foreach (var person in state.People.Values)
         {
-            if (person.HomeAddressId == building.Id && person.HomeUnitTag != null)
-                occupiedTags.Add(person.HomeUnitTag);
+            if (person.HomeAddressId == building.Id && person.HomeLocationId.HasValue)
+                occupiedLocationIds.Add(person.HomeLocationId.Value);
         }
 
-        var vacantTags = new HashSet<string>();
-        foreach (var sub in building.Sublocations.Values)
+        var vacantLocations = new List<int>();
+        foreach (var locId in building.LocationIds)
         {
-            foreach (var tag in sub.Tags)
-            {
-                if (tag.StartsWith("unit_f") && !occupiedTags.Contains(tag))
-                    vacantTags.Add(tag);
-            }
+            var loc = state.Locations[locId];
+            if (loc.HasTag("residential") && !occupiedLocationIds.Contains(loc.Id))
+                vacantLocations.Add(loc.Id);
         }
 
-        if (vacantTags.Count == 0)
+        if (vacantLocations.Count == 0)
             throw new InvalidOperationException($"No vacant units in building {building.Id}");
 
-        var list = new List<string>(vacantTags);
-        return list[_random.Next(list.Count)];
+        return vacantLocations[_random.Next(vacantLocations.Count)];
     }
 
     private static void CreateHomeKey(SimulationState state, Person person, Address homeAddress)
     {
-        // Find the primary entrance connection for this person's home
-        SublocationConnection entranceConn = null;
-        if (person.HomeUnitTag != null)
+        // Find the main entrance AccessPoint for this person's home
+        AccessPoint entranceAP = null;
+        if (person.HomeLocationId.HasValue)
         {
-            entranceConn = homeAddress.Connections
-                .FirstOrDefault(c => c.Tags != null && c.Tags.Contains(person.HomeUnitTag));
-        }
-        else
-        {
-            entranceConn = homeAddress.Connections
-                .FirstOrDefault(c => c.Tags != null && c.Tags.Contains("entrance"));
+            var homeLoc = state.Locations[person.HomeLocationId.Value];
+            entranceAP = homeLoc.AccessPoints.FirstOrDefault(ap => ap.HasTag("main_entrance"));
         }
 
-        if (entranceConn?.Lockable == null) return;
+        if (entranceAP == null)
+        {
+            // Fall back: find any entrance location's main entrance
+            foreach (var locId in homeAddress.LocationIds)
+            {
+                var loc = state.Locations[locId];
+                if (!loc.HasTag("entrance")) continue;
+                entranceAP = loc.AccessPoints.FirstOrDefault(ap => ap.HasTag("main_entrance"));
+                if (entranceAP != null) break;
+            }
+        }
+
+        if (entranceAP == null || entranceAP.LockMechanism == null) return;
 
         var key = new Item
         {
             Id = state.GenerateEntityId(),
             ItemType = ItemType.Key,
             HeldByEntityId = person.Id,
-            Fingerprints = new FingerprintSurface(),
             Data = new Dictionary<string, object>
             {
-                ["TargetConnectionId"] = entranceConn.Id
+                ["TargetAccessPointId"] = entranceAP.Id
             }
         };
         state.Items[key.Id] = key;
         person.InventoryItemIds.Add(key.Id);
 
-        // Assign key to all lockable connections belonging to this person's residence
-        var residenceConnections = DoorLockingService.GetResidenceLockableConnections(homeAddress, person.HomeUnitTag);
-        foreach (var conn in residenceConnections)
+        // Assign key to lockable access points
+        if (homeAddress.Type == AddressType.ApartmentBuilding && person.HomeLocationId.HasValue)
         {
-            conn.Lockable.KeyItemId = key.Id;
+            // Apartment: only assign to the unit's access points
+            var homeLoc = state.Locations[person.HomeLocationId.Value];
+            foreach (var ap in homeLoc.AccessPoints)
+            {
+                if (ap.LockMechanism != null)
+                    ap.KeyItemId = key.Id;
+            }
+        }
+        else
+        {
+            // Suburban home / other: assign key to all lockable access points across all locations
+            foreach (var locId in homeAddress.LocationIds)
+            {
+                var loc = state.Locations[locId];
+                foreach (var ap in loc.AccessPoints)
+                {
+                    if (ap.LockMechanism != null)
+                        ap.KeyItemId = key.Id;
+                }
+            }
         }
     }
 }

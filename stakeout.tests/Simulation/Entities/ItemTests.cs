@@ -14,7 +14,7 @@ public class ItemTests
         Assert.Equal(ItemType.Key, item.ItemType);
         Assert.Null(item.HeldByEntityId);
         Assert.Null(item.LocationAddressId);
-        Assert.Null(item.LocationSublocationId);
+        Assert.Null(item.LocationId);
         Assert.NotNull(item.Data);
         Assert.Empty(item.Data);
     }
@@ -41,10 +41,10 @@ public class ItemTests
             Id = 2,
             ItemType = ItemType.Key,
             LocationAddressId = 5,
-            LocationSublocationId = 15
+            LocationId = 15
         };
         Assert.Null(item.HeldByEntityId);
         Assert.Equal(5, item.LocationAddressId);
-        Assert.Equal(15, item.LocationSublocationId);
+        Assert.Equal(15, item.LocationId);
     }
 }

@@ -44,16 +44,7 @@ public partial class DossierWindow : Panel
                 var street = state.Streets[home.StreetId];
                 lines.Add($"Home: {home.Number} {street.Name}");
             }
-            if (state.Jobs.TryGetValue(person.JobId, out var job) &&
-                state.Addresses.TryGetValue(job.WorkAddressId, out var work))
-            {
-                var workStreet = state.Streets[work.StreetId];
-                lines.Add($"Job: {job.Title}");
-                lines.Add($"Work: {work.Number} {workStreet.Name}");
-                var startTime = DateTime.Today.Add(job.ShiftStart).ToString("h:mm tt");
-                var endTime = DateTime.Today.Add(job.ShiftEnd).ToString("h:mm tt");
-                lines.Add($"Shift: {startTime} - {endTime}");
-            }
+            // TODO: Project 4 — Job/Business section will be restored with Business entities
 
             _bodyLabel.Text = string.Join("\n", lines);
         }
@@ -63,8 +54,7 @@ public partial class DossierWindow : Panel
             _titleLabel.Text = $"{address.Number} {street.Name} — {address.Type}";
 
             var people = state.People.Values
-                .Where(p => p.HomeAddressId == address.Id ||
-                            (state.Jobs.TryGetValue(p.JobId, out var j) && j.WorkAddressId == address.Id))
+                .Where(p => p.HomeAddressId == address.Id)
                 .ToList();
 
             if (people.Count > 0)
