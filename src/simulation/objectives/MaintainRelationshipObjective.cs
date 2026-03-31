@@ -26,6 +26,13 @@ public class MaintainRelationshipObjective : Objective
             .Any(o => o.TargetPersonId == PartnerPersonId && o.Status == ObjectiveStatus.Active))
             return new List<PlannedAction>();
 
+        // Don't schedule if the partner is already organizing a date with us
+        // (prevents both partners from simultaneously trying to set up dates)
+        if (state.People.TryGetValue(PartnerPersonId, out var partnerPerson) &&
+            partnerPerson.Objectives.OfType<OrganizeDateObjective>()
+                .Any(o => o.TargetPersonId == person.Id && o.Status == ObjectiveStatus.Active))
+            return new List<PlannedAction>();
+
         // Don't schedule if currently on a date
         if (person.Objectives.OfType<GoOnDateObjective>()
             .Any(o => o.Status == ObjectiveStatus.Active))

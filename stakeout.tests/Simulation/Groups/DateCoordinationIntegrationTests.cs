@@ -277,6 +277,138 @@ public class DateCoordinationIntegrationTests
     }
 
     /// <summary>
+    /// Both partners have MaintainRelationshipObjective (the real production scenario).
+    /// Only one group should ever be created — not two.
+    /// </summary>
+    [Fact]
+    public void DatingCouple_BothHaveMaintainObjective_OnlyOneGroupCreated()
+    {
+        AddressTemplateRegistry.RegisterAll();
+        var state = new SimulationState(new GameClock(SimStart));
+
+        var guyHome = CreateAddress(state, AddressType.SuburbanHome, 2, 2);
+        var girlHome = CreateAddress(state, AddressType.SuburbanHome, 10, 2);
+        var diner = CreateAddress(state, AddressType.Diner, 6, 6);
+
+        var guyPhone = GetTelephone(state, guyHome.Id);
+        var girlPhone = GetTelephone(state, girlHome.Id);
+
+        var guy = CreatePerson(state, guyHome, guyPhone, "Jack", hasVehicle: true);
+        var girl = CreatePerson(state, girlHome, girlPhone, "Susan");
+
+        // Do NOT strip either person's MaintainRelationshipObjective
+        state.AddRelationship(new Relationship
+        {
+            Id = state.GenerateEntityId(),
+            PersonAId = guy.Id,
+            PersonBId = girl.Id,
+            Type = RelationshipType.Dating,
+            StartedAt = SimStart.AddDays(-30)
+        });
+
+        RunSimulation(state, 24 * 60, guy, girl);
+
+        // At most one group should have been created
+        Assert.Single(state.Groups);
+        var group = state.Groups.Values.Single();
+        Assert.Equal(GroupStatus.Disbanded, group.Status);
+    }
+
+    /// <summary>
+    /// After the date is accepted, Susan's competing OrganizeDateObjective (targeting Jack)
+    /// should be cleaned up, not left Active.
+    /// </summary>
+    [Fact]
+    public void Date_Accepted_CompetingOrganizeDateObjectiveOnRecipientIsCompleted()
+    {
+        AddressTemplateRegistry.RegisterAll();
+        var state = new SimulationState(new GameClock(SimStart));
+
+        var guyHome = CreateAddress(state, AddressType.SuburbanHome, 2, 2);
+        var girlHome = CreateAddress(state, AddressType.SuburbanHome, 10, 2);
+        var diner = CreateAddress(state, AddressType.Diner, 6, 6);
+
+        var guyPhone = GetTelephone(state, guyHome.Id);
+        var girlPhone = GetTelephone(state, girlHome.Id);
+
+        var guy = CreatePerson(state, guyHome, guyPhone, "Jack", hasVehicle: true);
+        var girl = CreatePerson(state, girlHome, girlPhone, "Susan");
+
+        state.AddRelationship(new Relationship
+        {
+            Id = state.GenerateEntityId(),
+            PersonAId = guy.Id,
+            PersonBId = girl.Id,
+            Type = RelationshipType.Dating,
+            StartedAt = SimStart.AddDays(-30)
+        });
+
+        // Run long enough for the date to be organized (phone call happens around noon)
+        RunSimulation(state, 16 * 60, guy, girl);
+
+        // After date is organized, Susan should have no active OrganizeDateObjective targeting Jack
+        Assert.DoesNotContain(girl.Objectives,
+            o => o is OrganizeDateObjective od &&
+                 od.TargetPersonId == guy.Id &&
+                 o.Status == ObjectiveStatus.Active);
+    }
+
+    /// <summary>
+    /// Full end-to-end with both partners having MaintainRelationshipObjective (production scenario).
+    /// Both must end up at the diner — not just the guy.
+    /// </summary>
+    [Fact]
+    public void DatingCouple_BothHaveMaintainObjective_BothEndUpAtDiner()
+    {
+        AddressTemplateRegistry.RegisterAll();
+        var state = new SimulationState(new GameClock(SimStart));
+
+        var guyHome = CreateAddress(state, AddressType.SuburbanHome, 2, 2);
+        var girlHome = CreateAddress(state, AddressType.SuburbanHome, 10, 2);
+        var diner = CreateAddress(state, AddressType.Diner, 6, 6);
+
+        var guyPhone = GetTelephone(state, guyHome.Id);
+        var girlPhone = GetTelephone(state, girlHome.Id);
+
+        var guy = CreatePerson(state, guyHome, guyPhone, "Jack", hasVehicle: true);
+        var girl = CreatePerson(state, girlHome, girlPhone, "Susan");
+
+        // Do NOT strip either person's MaintainRelationshipObjective
+        state.AddRelationship(new Relationship
+        {
+            Id = state.GenerateEntityId(),
+            PersonAId = guy.Id,
+            PersonBId = girl.Id,
+            Type = RelationshipType.Dating,
+            StartedAt = SimStart.AddDays(-30)
+        });
+
+        RunSimulation(state, 24 * 60, guy, girl);
+
+        var guyEvents = state.Journal.GetEventsForPerson(guy.Id);
+        var girlEvents = state.Journal.GetEventsForPerson(girl.Id);
+
+        // Both must have "having dinner" activity — not just the guy
+        Assert.Contains(guyEvents, e =>
+            e.EventType == SimulationEventType.ActivityStarted && e.Description == "having dinner");
+        Assert.Contains(girlEvents, e =>
+            e.EventType == SimulationEventType.ActivityStarted && e.Description == "having dinner");
+
+        // Both must have arrived at the diner, and within 30 minutes of each other
+        var guyArrival = guyEvents.FirstOrDefault(e =>
+            e.EventType == SimulationEventType.ArrivedAtAddress && e.AddressId == diner.Id);
+        var girlArrival = girlEvents.FirstOrDefault(e =>
+            e.EventType == SimulationEventType.ArrivedAtAddress && e.AddressId == diner.Id);
+        Assert.NotNull(guyArrival);
+        Assert.NotNull(girlArrival);
+        Assert.True(Math.Abs((guyArrival.Timestamp - girlArrival.Timestamp).TotalMinutes) < 30,
+            $"Guy arrived at diner at {guyArrival.Timestamp:HH:mm}, girl at {girlArrival.Timestamp:HH:mm}");
+
+        // Girl should be home at end of simulation
+        Assert.Equal(girlHome.Id, girl.CurrentAddressId);
+    }
+
+    /// <summary>
     /// Verifies the full chain: Dating relationship → MaintainRelationshipObjective (auto-added
     /// by AddRelationship) → OrganizeDateObjective injected on first planning pass → phone call
     /// → date organized → both people end up at the diner.

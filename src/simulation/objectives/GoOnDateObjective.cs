@@ -165,6 +165,13 @@ public class GoOnDateObjective : Objective
                 break;
 
             case GroupPhase.AtPickup:
+                // Only advance if the passenger is actually at the pickup address.
+                // If she's not there yet, keep the driver waiting (NeedsReplan re-schedules the wait).
+                if (passenger.CurrentAddressId != group.PickupAddressId)
+                {
+                    person.NeedsReplan = true;
+                    break;
+                }
                 group.CurrentPhase = GroupPhase.DrivingToVenue;
                 person.NeedsReplan = true;
                 passenger.NeedsReplan = true;

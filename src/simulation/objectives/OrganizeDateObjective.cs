@@ -108,6 +108,16 @@ public class OrganizeDateObjective : Objective
 
         group.Status = GroupStatus.Active;
 
+        // Clean up any competing OrganizeDateObjective that the recipient may have targeting the caller.
+        // This prevents the recipient's orphaned objective from creating a second group.
+        var recipient = state.People[TargetPersonId];
+        foreach (var competing in recipient.Objectives.OfType<OrganizeDateObjective>()
+            .Where(o => o.TargetPersonId == group.DriverPersonId && o.Status == ObjectiveStatus.Active)
+            .ToList())
+        {
+            competing.Status = ObjectiveStatus.Completed;
+        }
+
         // Create GoOnDateObjective for both members
         foreach (var memberId in group.MemberPersonIds)
         {
