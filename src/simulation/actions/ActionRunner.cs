@@ -1,8 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using Stakeout.Simulation.Actions.Telephone;
 using Stakeout.Simulation.Brain;
 using Stakeout.Simulation.Entities;
 using Stakeout.Simulation.Events;
+using Stakeout.Simulation.Traces;
 
 namespace Stakeout.Simulation.Actions;
 
@@ -10,6 +13,7 @@ public class ActionRunner
 {
     private readonly MapConfig _mapConfig;
     private readonly Dictionary<int, Random> _personRandoms = new();
+    private readonly Dictionary<int, bool> _pendingAnsweringMachineCheck = new();
 
     public ActionRunner(MapConfig mapConfig)
     {
@@ -18,6 +22,13 @@ public class ActionRunner
 
     public void Tick(Person person, SimulationState state, TimeSpan delta)
     {
+        if (person.NeedsReplan)
+        {
+            person.NeedsReplan = false;
+            person.CurrentActivity = null;
+            person.DayPlan = NpcBrain.PlanDay(person, state, state.Clock.CurrentTime, _mapConfig);
+        }
+
         if (person.DayPlan == null) return;
 
         // If traveling, update travel
@@ -62,8 +73,64 @@ public class ActionRunner
         StartNextEntry(person, state);
     }
 
+    private bool TryInjectPendingInvitation(Person person, SimulationState state)
+    {
+        if (!state.PendingInvitationsByPersonId.TryGetValue(person.Id, out var invitations)
+            || invitations.Count == 0)
+            return false;
+
+        var inv = invitations[0];
+        invitations.RemoveAt(0);
+
+        var action = new AcceptPhoneCallAction(inv.Id);
+        var ctx = CreateContext(person, state);
+        action.OnStart(ctx);
+        person.CurrentActivity = action;
+
+        state.Journal.Append(new SimulationEvent
+        {
+            Timestamp = state.Clock.CurrentTime,
+            PersonId = person.Id,
+            EventType = SimulationEventType.ActivityStarted,
+            AddressId = person.CurrentAddressId,
+            Description = action.DisplayText
+        });
+
+        return true;
+    }
+
+    private bool TryInjectAnsweringMachineCheck(Person person, SimulationState state)
+    {
+        if (!_pendingAnsweringMachineCheck.TryGetValue(person.Id, out var pending) || !pending)
+            return false;
+
+        _pendingAnsweringMachineCheck[person.Id] = false;
+
+        var action = new CheckAnsweringMachineAction();
+        var ctx = CreateContext(person, state);
+        action.OnStart(ctx);
+        person.CurrentActivity = action;
+
+        state.Journal.Append(new SimulationEvent
+        {
+            Timestamp = state.Clock.CurrentTime,
+            PersonId = person.Id,
+            EventType = SimulationEventType.ActivityStarted,
+            AddressId = person.CurrentAddressId,
+            Description = action.DisplayText
+        });
+
+        return true;
+    }
+
     private void StartNextEntry(Person person, SimulationState state)
     {
+        if (TryInjectPendingInvitation(person, state))
+            return;
+
+        if (TryInjectAnsweringMachineCheck(person, state))
+            return;
+
         var entry = person.DayPlan.Current;
         if (entry == null) return;
 
@@ -142,6 +209,21 @@ public class ActionRunner
             person.CurrentPosition = travel.ToPosition;
             person.CurrentAddressId = travel.ToAddressId;
             person.TravelInfo = null;
+
+            // Check for answering machine messages when arriving home
+            if (travel.ToAddressId == person.HomeAddressId && person.HomePhoneFixtureId.HasValue)
+            {
+                var messageTraces = state.GetTracesForFixture(person.HomePhoneFixtureId.Value, state.Clock.CurrentTime)
+                    .Where(t => t.Type == TraceType.Record
+                             && t.Description != null
+                             && t.Description.Contains("please call back"))
+                    .ToList();
+
+                if (messageTraces.Count > 0)
+                {
+                    _pendingAnsweringMachineCheck[person.Id] = true;
+                }
+            }
 
             state.Journal.Append(new SimulationEvent
             {
