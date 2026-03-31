@@ -9,6 +9,7 @@ using Stakeout.Simulation.Actions;
 using Stakeout.Simulation.Brain;
 using Stakeout.Simulation.Crimes;
 using Stakeout.Simulation.Entities;
+using Stakeout.Simulation.Events;
 using Stakeout.Simulation.Objectives;
 
 /// <summary>
@@ -553,13 +554,61 @@ public partial class GameShell : Control
         }
         AddInspectorSection(vbox, font, "— Inventory —", inventoryLines.ToArray());
 
-        // Recent Events
+        // Recent Activity — shows completed (and interrupted) actions with time ranges
         var events = state.Journal.GetEventsForPerson(person.Id);
-        var recentEvents = events.TakeLast(10).Reverse().Select(e =>
-            $"{e.Timestamp:HH:mm:ss} {e.EventType}"
-        ).ToArray();
-        if (recentEvents.Length > 0)
-            AddInspectorSection(vbox, font, "— Recent Events —", recentEvents);
+        var historyLines = new List<string>();
+        var startEvents = new Stack<SimulationEvent>();
+
+        foreach (var e in events)
+        {
+            switch (e.EventType)
+            {
+                case SimulationEventType.ActivityStarted:
+                    startEvents.Push(e);
+                    break;
+                case SimulationEventType.ActivityCompleted:
+                    if (startEvents.Count > 0)
+                    {
+                        var start = startEvents.Pop();
+                        var desc = e.Description ?? start.Description ?? "unknown";
+                        historyLines.Add($"{start.Timestamp:HH:mm} – {e.Timestamp:HH:mm}  {desc}");
+                    }
+                    else
+                    {
+                        var desc = e.Description ?? "unknown";
+                        historyLines.Add($"       – {e.Timestamp:HH:mm}  {desc}");
+                    }
+                    break;
+                case SimulationEventType.DepartedAddress:
+                {
+                    // Flush any unmatched ActivityStarted as interrupted
+                    while (startEvents.Count > 0)
+                    {
+                        var orphan = startEvents.Pop();
+                        var desc = orphan.Description ?? "unknown";
+                        historyLines.Add($"{orphan.Timestamp:HH:mm} – {e.Timestamp:HH:mm}  {desc} (interrupted)");
+                    }
+                    var toAddr = e.ToAddressId.HasValue ? state.Addresses.GetValueOrDefault(e.ToAddressId.Value) : null;
+                    var street = toAddr != null ? state.Streets.GetValueOrDefault(toAddr.StreetId) : null;
+                    var dest = toAddr != null ? $"{toAddr.Number} {street?.Name ?? "Unknown"}" : "unknown";
+                    historyLines.Add($"{e.Timestamp:HH:mm}          departed → {dest}");
+                    break;
+                }
+                case SimulationEventType.ArrivedAtAddress:
+                {
+                    var addr = e.AddressId.HasValue ? state.Addresses.GetValueOrDefault(e.AddressId.Value) : null;
+                    var street = addr != null ? state.Streets.GetValueOrDefault(addr.StreetId) : null;
+                    var loc = addr != null ? $"{addr.Number} {street?.Name ?? "Unknown"}" : "unknown";
+                    historyLines.Add($"{e.Timestamp:HH:mm}          arrived @ {loc}");
+                    break;
+                }
+            }
+        }
+
+        // Show last 15 entries, most recent first
+        var recentActivity = historyLines.TakeLast(15).Reverse().ToArray();
+        if (recentActivity.Length > 0)
+            AddInspectorSection(vbox, font, "— Recent Activity —", recentActivity);
     }
 
     private static bool IsOnShift(Position pos, TimeSpan timeOfDay)

@@ -41,7 +41,8 @@
       "Bash(git fetch:*)",
       "Bash(gh auth:*)",
       "Bash(git push:*)",
-      "Bash(git config:*)"
+      "Bash(git config:*)",
+      "Bash(dotnet run:*)"
     ],
     "additionalDirectories": [
       "C:\\Users\\fildr\\.claude\\plugins\\cache\\superpowers-dev",
