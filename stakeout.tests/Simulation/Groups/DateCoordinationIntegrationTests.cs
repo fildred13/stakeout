@@ -441,8 +441,9 @@ public class DateCoordinationIntegrationTests
             StartedAt = SimStart.AddDays(-30)
         });
 
-        // Strip girl's MaintainRelationshipObjective so she doesn't also try to organize a date,
-        // which would create a second group and break Assert.Single below
+        // Keep this test focused on Jack's MaintainRelationshipObjective chain.
+        // The scenario where both partners have the objective is covered by
+        // DatingCouple_BothHaveMaintainObjective_BothEndUpAtDiner.
         girl.Objectives.RemoveAll(o => o is MaintainRelationshipObjective);
 
         // Verify the objective was injected before simulation starts
@@ -466,6 +467,83 @@ public class DateCoordinationIntegrationTests
         Assert.Contains(girlEvents, e =>
             e.EventType == SimulationEventType.ActivityStarted && e.Description == "having dinner");
     }
+    /// <summary>
+    /// If the girl is away from home when the guy arrives for pickup, he should wait for her —
+    /// not drive to the diner alone. Tests the AtPickup passenger-presence guard.
+    /// </summary>
+    [Fact]
+    public void Date_GirlAwayAtPickupTime_DriverWaitsUntilSheReturns()
+    {
+        AddressTemplateRegistry.RegisterAll();
+        var state = new SimulationState(new GameClock(SimStart));
+
+        var guyHome = CreateAddress(state, AddressType.SuburbanHome, 2, 2);
+        var girlHome = CreateAddress(state, AddressType.SuburbanHome, 10, 2);
+        var diner = CreateAddress(state, AddressType.Diner, 6, 6);
+        var awayAddr = CreateAddress(state, AddressType.Park, 15, 15);
+
+        var guyPhone = GetTelephone(state, guyHome.Id);
+        var girlPhone = GetTelephone(state, girlHome.Id);
+
+        var guy = CreatePerson(state, guyHome, guyPhone, "Guy", hasVehicle: true);
+        var girl = CreatePerson(state, girlHome, girlPhone, "Girl");
+
+        var rel = new Relationship
+        {
+            Id = state.GenerateEntityId(),
+            PersonAId = guy.Id,
+            PersonBId = girl.Id,
+            Type = RelationshipType.Dating,
+            StartedAt = SimStart.AddDays(-30)
+        };
+        state.AddRelationship(rel);
+        guy.Objectives.RemoveAll(o => o is MaintainRelationshipObjective);
+        girl.Objectives.RemoveAll(o => o is MaintainRelationshipObjective);
+
+        // Pickup at 5:50pm. Girl leaves home at 2pm and won't be back until 6:10pm — 20 min after pickup.
+        var pickupTime = SimStart.Date.AddHours(17).AddMinutes(50);
+        var girlLeaveTime = SimStart.Date.AddHours(14);
+        var girlReturnTime = SimStart.Date.AddHours(18).AddMinutes(10);
+
+        guy.Objectives.Add(new OrganizeDateObjective(
+            targetPersonId: girl.Id,
+            proposedMeetupAddressId: diner.Id,
+            proposedCallTime: SimStart.Date.AddHours(12),
+            proposedMeetupTime: SimStart.Date.AddHours(19),
+            proposedPickupTime: pickupTime)
+        {
+            Id = state.GenerateEntityId()
+        });
+
+        // Girl is home for the noon call, then leaves and won't return until after the scheduled pickup
+        girl.Objectives.Add(new WaitAwayUntilObjective(awayAddr.Id, girlReturnTime, leaveTime: girlLeaveTime)
+        {
+            Id = state.GenerateEntityId()
+        });
+
+        RunSimulation(state, 24 * 60, guy, girl);
+
+        // Both must have had dinner — driver must have waited for the passenger
+        var guyEvents = state.Journal.GetEventsForPerson(guy.Id);
+        var girlEvents = state.Journal.GetEventsForPerson(girl.Id);
+        Assert.Contains(guyEvents, e =>
+            e.EventType == SimulationEventType.ActivityStarted && e.Description == "having dinner");
+        Assert.Contains(girlEvents, e =>
+            e.EventType == SimulationEventType.ActivityStarted && e.Description == "having dinner");
+
+        // Both arrived at the diner, and within 30 minutes of each other
+        var guyArrival = guyEvents.FirstOrDefault(e =>
+            e.EventType == SimulationEventType.ArrivedAtAddress && e.AddressId == diner.Id);
+        var girlArrival = girlEvents.FirstOrDefault(e =>
+            e.EventType == SimulationEventType.ArrivedAtAddress && e.AddressId == diner.Id);
+        Assert.NotNull(guyArrival);
+        Assert.NotNull(girlArrival);
+        Assert.True(Math.Abs((guyArrival.Timestamp - girlArrival.Timestamp).TotalMinutes) < 30,
+            $"Guy arrived at diner at {guyArrival.Timestamp:HH:mm}, girl at {girlArrival.Timestamp:HH:mm}");
+
+        // Girl returned home at end
+        Assert.Equal(girlHome.Id, girl.CurrentAddressId);
+    }
 }
 
 /// <summary>Test helper: keeps an NPC at an away address until a given time.</summary>
@@ -473,14 +551,19 @@ internal class WaitAwayUntilObjective : Objective
 {
     private readonly int _awayAddressId;
     private readonly DateTime _returnTime;
+    private readonly DateTime? _leaveTime;
 
     public override int Priority => 30;
     public override ObjectiveSource Source => ObjectiveSource.Universal;
 
-    public WaitAwayUntilObjective(int awayAddressId, DateTime returnTime)
+    /// <param name="awayAddressId">Address to wait at.</param>
+    /// <param name="returnTime">When the NPC returns home.</param>
+    /// <param name="leaveTime">Earliest time the NPC leaves for the away address. Null = immediately.</param>
+    public WaitAwayUntilObjective(int awayAddressId, DateTime returnTime, DateTime? leaveTime = null)
     {
         _awayAddressId = awayAddressId;
         _returnTime = returnTime;
+        _leaveTime = leaveTime;
     }
 
     public override List<PlannedAction> GetActions(
@@ -490,14 +573,17 @@ internal class WaitAwayUntilObjective : Objective
         if (planStart >= _returnTime || Status == ObjectiveStatus.Completed)
             return new List<PlannedAction>();
 
-        var duration = _returnTime - planStart;
+        var windowStart = _leaveTime.HasValue && _leaveTime.Value > planStart ? _leaveTime.Value : planStart;
+        var duration = _returnTime - windowStart;
+        if (duration <= TimeSpan.Zero) return new List<PlannedAction>();
+
         return new List<PlannedAction>
         {
             new()
             {
                 Action = new WaitAction(duration, "out and about"),
                 TargetAddressId = _awayAddressId,
-                TimeWindowStart = planStart,
+                TimeWindowStart = windowStart,
                 TimeWindowEnd = _returnTime,
                 Duration = duration,
                 DisplayText = "out and about",
