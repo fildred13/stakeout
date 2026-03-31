@@ -27,6 +27,9 @@ public class Person
     public TimeSpan PreferredWakeTime { get; set; }
     public bool IsAlive { get; set; } = true;
     public List<int> InventoryItemIds { get; set; } = new();
+    public int? HomePhoneFixtureId { get; set; }
+    public int? VehicleId { get; set; }
+    public bool NeedsReplan { get; set; }
 
     // New P3 fields
     public List<Objective> Objectives { get; set; } = new();

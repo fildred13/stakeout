@@ -29,6 +29,11 @@ public class SimulationState
     public Dictionary<int, Item> Items { get; } = new();
     public Dictionary<int, Fixture> Fixtures { get; } = new();
     public Dictionary<int, CityGrid> CityGrids { get; } = new();
+    public Dictionary<int, Group> Groups { get; } = new();
+    public Dictionary<int, Relationship> Relationships { get; } = new();
+    public Dictionary<int, List<Relationship>> RelationshipsByPersonId { get; } = new();
+    public Dictionary<int, List<PendingInvitation>> PendingInvitationsByPersonId { get; } = new();
+    public Dictionary<int, Vehicle> Vehicles { get; } = new();
 
     private int _nextEntityId = 1;
 
@@ -118,5 +123,36 @@ public class SimulationState
         if (!trace.IsActive) return false;
         if (trace.DecayDays.HasValue && trace.CreatedAt.AddDays(trace.DecayDays.Value) < currentTime) return false;
         return true;
+    }
+
+    public void AddRelationship(Relationship rel)
+    {
+        Relationships[rel.Id] = rel;
+        if (!RelationshipsByPersonId.ContainsKey(rel.PersonAId))
+            RelationshipsByPersonId[rel.PersonAId] = new();
+        RelationshipsByPersonId[rel.PersonAId].Add(rel);
+        if (!RelationshipsByPersonId.ContainsKey(rel.PersonBId))
+            RelationshipsByPersonId[rel.PersonBId] = new();
+        RelationshipsByPersonId[rel.PersonBId].Add(rel);
+    }
+
+    public Relationship GetRelationship(int personAId, int personBId)
+    {
+        if (RelationshipsByPersonId.TryGetValue(personAId, out var list))
+            return list.FirstOrDefault(r => r.PersonBId == personBId || r.PersonAId == personBId);
+        return null;
+    }
+
+    public void AddPendingInvitation(PendingInvitation inv)
+    {
+        if (!PendingInvitationsByPersonId.ContainsKey(inv.ToPersonId))
+            PendingInvitationsByPersonId[inv.ToPersonId] = new();
+        PendingInvitationsByPersonId[inv.ToPersonId].Add(inv);
+    }
+
+    public List<Fixture> GetFixturesForAddress(int addressId)
+    {
+        var locationIds = GetLocationsForAddress(addressId).Select(l => l.Id).ToHashSet();
+        return Fixtures.Values.Where(f => f.LocationId.HasValue && locationIds.Contains(f.LocationId.Value)).ToList();
     }
 }
