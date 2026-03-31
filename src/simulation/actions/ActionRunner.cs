@@ -43,8 +43,10 @@ public class ActionRunner
                 if (entry?.PlannedAction?.SourceObjective != null)
                 {
                     var obj = entry.PlannedAction.SourceObjective;
-                    obj.OnActionCompleted(entry.PlannedAction, status == ActionStatus.Completed);
-                    if (status == ActionStatus.Completed)
+                    var success = status == ActionStatus.Completed;
+                    obj.OnActionCompleted(entry.PlannedAction, success);
+                    obj.OnActionCompletedWithState(entry.PlannedAction, person, state, success);
+                    if (success)
                         obj.EmitTraces(entry.PlannedAction, person, state);
                 }
 

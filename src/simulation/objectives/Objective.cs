@@ -20,6 +20,9 @@ public abstract class Objective
 
     public virtual void OnActionCompleted(PlannedAction action, bool success) { }
 
+    public virtual void OnActionCompletedWithState(
+        PlannedAction action, Person person, SimulationState state, bool success) { }
+
     /// <summary>
     /// Called by ActionRunner after an action completes successfully.
     /// Override to emit traces at the action's location.

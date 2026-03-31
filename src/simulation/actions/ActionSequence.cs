@@ -7,6 +7,7 @@ public class ActionSequence : IAction
 {
     private readonly List<IStep> _steps = new();
     private int _currentStepIndex;
+    private int _savedStepIndex;
     private IAction _currentAction;
 
     public string Name { get; }
@@ -45,6 +46,18 @@ public class ActionSequence : IAction
     }
 
     public void OnComplete(ActionContext ctx) { }
+
+    public void OnSuspend(ActionContext ctx)
+    {
+        _savedStepIndex = _currentStepIndex;
+        _currentAction?.OnSuspend(ctx);
+    }
+
+    public void OnResume(ActionContext ctx)
+    {
+        _currentStepIndex = _savedStepIndex;
+        AdvanceToNextRunnableStep(ctx);
+    }
 
     private void AdvanceToNextRunnableStep(ActionContext ctx)
     {
