@@ -136,6 +136,9 @@ public class DateCoordinationIntegrationTests
             StartedAt = SimStart.AddDays(-30)
         };
         state.AddRelationship(rel);
+        // Strip auto-injected MaintainRelationshipObjectives so the test controls date scheduling directly.
+        guy.Objectives.RemoveAll(o => o is MaintainRelationshipObjective);
+        girl.Objectives.RemoveAll(o => o is MaintainRelationshipObjective);
 
         // Guy will call at noon, propose dinner at 7pm (pickup 5:50pm)
         guy.Objectives.Add(new OrganizeDateObjective(
@@ -212,6 +215,9 @@ public class DateCoordinationIntegrationTests
             StartedAt = SimStart.AddDays(-30)
         };
         state.AddRelationship(rel);
+        // Strip auto-injected MaintainRelationshipObjectives so the test controls date scheduling directly.
+        guy.Objectives.RemoveAll(o => o is MaintainRelationshipObjective);
+        girl.Objectives.RemoveAll(o => o is MaintainRelationshipObjective);
 
         // Guy calls at noon, proposes dinner at 7pm (pickup 5:50pm)
         guy.Objectives.Add(new OrganizeDateObjective(

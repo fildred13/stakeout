@@ -6,6 +6,7 @@ using Stakeout.Simulation.Entities;
 using Stakeout.Simulation.Events;
 using Stakeout.Simulation.Crimes;
 using Stakeout.Simulation.Fixtures;
+using Stakeout.Simulation.Objectives;
 using Stakeout.Simulation.Traces;
 using CityEntity = Stakeout.Simulation.Entities.City;
 
@@ -134,6 +135,24 @@ public class SimulationState
         if (!RelationshipsByPersonId.ContainsKey(rel.PersonBId))
             RelationshipsByPersonId[rel.PersonBId] = new();
         RelationshipsByPersonId[rel.PersonBId].Add(rel);
+
+        if (rel.Type == RelationshipType.Dating)
+        {
+            AddMaintainRelationshipObjectiveIfMissing(rel.PersonAId, rel.PersonBId);
+            AddMaintainRelationshipObjectiveIfMissing(rel.PersonBId, rel.PersonAId);
+        }
+    }
+
+    private void AddMaintainRelationshipObjectiveIfMissing(int personId, int partnerId)
+    {
+        if (!People.TryGetValue(personId, out var person)) return;
+        if (person.Objectives.OfType<MaintainRelationshipObjective>()
+                .Any(o => o.PartnerPersonId == partnerId))
+            return;
+        person.Objectives.Add(new MaintainRelationshipObjective(partnerId)
+        {
+            Id = GenerateEntityId()
+        });
     }
 
     public Relationship GetRelationship(int personAId, int personBId)
