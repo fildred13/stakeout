@@ -36,8 +36,9 @@ public class DiveBarTemplate : IAddressTemplate
 
         LocationBuilders.CreateLocation(state, address, "Storage",
             new[] { "staff_only", "storage" });
-        LocationBuilders.CreateLocation(state, address, "Manager's Office",
+        var managersOffice = LocationBuilders.CreateLocation(state, address, "Manager's Office",
             new[] { "staff_only", "private" });
+        LocationBuilders.CreateFixture(state, FixtureType.Telephone, "Office Telephone", locationId: managersOffice.Id, subLocationId: null);
         LocationBuilders.CreateLocation(state, address, "Restroom",
             new[] { "publicly_accessible", "restroom" });
     }

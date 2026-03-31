@@ -5,5 +5,6 @@ public enum ObjectiveSource
     Universal,
     Trait,
     Job,
-    Crime
+    Crime,
+    Social
 }

@@ -69,7 +69,8 @@ public static class LocationBuilders
 
         CreateSubLocation(state, unit, "Bedroom", new[] { "bedroom", "private" });
         CreateSubLocation(state, unit, "Kitchen", new[] { "kitchen", "food" });
-        CreateSubLocation(state, unit, "Living Room", new[] { "living", "social" });
+        var livingRoom = CreateSubLocation(state, unit, "Living Room", new[] { "living", "social" });
+        CreateFixture(state, FixtureType.Telephone, "Telephone", locationId: null, subLocationId: livingRoom.Id);
         CreateSubLocation(state, unit, "Bathroom", new[] { "restroom" });
 
         return unit;

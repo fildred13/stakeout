@@ -6,6 +6,7 @@ using Stakeout.Simulation.Addresses;
 using Stakeout.Simulation.City;
 using Stakeout.Simulation.Data;
 using Stakeout.Simulation.Entities;
+using Stakeout.Simulation.Fixtures;
 using Stakeout.Simulation.Objectives;
 using Xunit;
 using CityEntity = Stakeout.Simulation.Entities.City;
@@ -357,5 +358,33 @@ public class PersonGeneratorTests
         var homeLoc = state.Locations[aptResident.HomeLocationId.Value];
         var apsWithKey = homeLoc.AccessPoints.Where(ap => ap.KeyItemId == itemId).ToList();
         Assert.NotEmpty(apsWithKey);
+    }
+
+    [Fact]
+    public void GeneratedPerson_AtSuburbanHome_HasHomePhoneFixtureId()
+    {
+        AddressTemplateRegistry.RegisterAll();
+        var state = new SimulationState(new GameClock(new DateTime(1984, 1, 2, 8, 0, 0)));
+        var city = new CityEntity { Id = state.GenerateEntityId(), Name = "Test", CountryName = "US" };
+        state.Cities[city.Id] = city;
+        state.CityGrids[city.Id] = new CityGenerator(seed: 1).Generate(state, city);
+
+        var gen = new PersonGenerator(new MapConfig());
+        // Generate enough people to find a suburban home resident
+        Person suburbanPerson = null;
+        for (int i = 0; i < 100; i++)
+        {
+            var p = gen.GeneratePerson(state);
+            if (state.Addresses[p.HomeAddressId].Type == AddressType.SuburbanHome)
+            {
+                suburbanPerson = p;
+                break;
+            }
+        }
+
+        Assert.NotNull(suburbanPerson);
+        Assert.NotNull(suburbanPerson.HomePhoneFixtureId);
+        var fixture = state.Fixtures[suburbanPerson.HomePhoneFixtureId.Value];
+        Assert.Equal(FixtureType.Telephone, fixture.Type);
     }
 }

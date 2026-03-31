@@ -20,8 +20,9 @@ public class OfficeTemplate : IAddressTemplate
             var floor = LocationBuilders.CreateLocation(state, address, $"Floor {f}",
                 new[] { "commercial" }, f);
 
-            LocationBuilders.CreateSubLocation(state, floor, "Reception",
+            var reception = LocationBuilders.CreateSubLocation(state, floor, "Reception",
                 new[] { "publicly_accessible" });
+            LocationBuilders.CreateFixture(state, FixtureType.Telephone, "Reception Telephone", locationId: null, subLocationId: reception.Id);
             LocationBuilders.CreateSubLocation(state, floor, "Cubicle Area",
                 new[] { "work_area" });
             LocationBuilders.CreateSubLocation(state, floor, "Manager's Office",

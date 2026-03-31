@@ -47,6 +47,7 @@ public class SuburbanHomeTemplate : IAddressTemplate
         LocationBuilders.CreateSubLocation(state, interior, "Hallway", new[] { "hallway" });
         var kitchen = LocationBuilders.CreateSubLocation(state, interior, "Kitchen", new[] { "kitchen", "food" });
         LocationBuilders.CreateFixture(state, FixtureType.TrashCan, "Trash Can", locationId: null, subLocationId: kitchen.Id);
+        LocationBuilders.CreateFixture(state, FixtureType.Telephone, "Kitchen Telephone", locationId: null, subLocationId: kitchen.Id);
         LocationBuilders.CreateSubLocation(state, interior, "Living Room", new[] { "living", "social" });
         LocationBuilders.CreateSubLocation(state, interior, "Bathroom", new[] { "restroom" });
 

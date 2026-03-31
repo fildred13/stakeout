@@ -132,6 +132,9 @@ public class PersonGenerator
             Id = state.GenerateEntityId()
         });
 
+        // Set home phone fixture
+        person.HomePhoneFixtureId = FindHomeTelephoneFixtureId(state, homeAddress, homeLocationId);
+
         state.People[person.Id] = person;
         CreateHomeKey(state, person, homeAddress);
 
@@ -229,6 +232,38 @@ public class PersonGenerator
             throw new InvalidOperationException($"No vacant units in building {building.Id}");
 
         return vacantLocations[_random.Next(vacantLocations.Count)];
+    }
+
+    private static int? FindHomeTelephoneFixtureId(SimulationState state, Address homeAddress, int? homeLocationId)
+    {
+        // For apartment buildings, only search the person's specific unit and its sublocations
+        // For other home types, search all locations and their sublocations
+        var locationIds = homeLocationId.HasValue
+            ? new[] { homeLocationId.Value }
+            : homeAddress.LocationIds.ToArray();
+
+        foreach (var locId in locationIds)
+        {
+            // Check fixtures directly on the location
+            foreach (var fixture in state.Fixtures.Values)
+            {
+                if (fixture.LocationId == locId && fixture.Type == Stakeout.Simulation.Fixtures.FixtureType.Telephone)
+                    return fixture.Id;
+            }
+
+            // Check fixtures on sublocations of this location
+            var loc = state.Locations[locId];
+            foreach (var subLocId in loc.SubLocationIds)
+            {
+                foreach (var fixture in state.Fixtures.Values)
+                {
+                    if (fixture.SubLocationId == subLocId && fixture.Type == Stakeout.Simulation.Fixtures.FixtureType.Telephone)
+                        return fixture.Id;
+                }
+            }
+        }
+
+        return null;
     }
 
     private static void CreateHomeKey(SimulationState state, Person person, Address homeAddress)
