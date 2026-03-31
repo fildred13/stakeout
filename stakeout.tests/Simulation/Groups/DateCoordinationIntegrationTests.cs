@@ -275,6 +275,65 @@ public class DateCoordinationIntegrationTests
         Assert.NotNull(guyDinerDay2);
         Assert.NotNull(girlDinerDay2);
     }
+
+    /// <summary>
+    /// Verifies the full chain: Dating relationship → MaintainRelationshipObjective (auto-added
+    /// by AddRelationship) → OrganizeDateObjective injected on first planning pass → phone call
+    /// → date organized → both people end up at the diner.
+    /// No OrganizeDateObjective is pre-added; it must emerge from the simulation.
+    /// </summary>
+    [Fact]
+    public void DatingCouple_NoPreAddedObjective_EventuallyGoOnDate()
+    {
+        AddressTemplateRegistry.RegisterAll();
+        var state = new SimulationState(new GameClock(SimStart));
+
+        var guyHome = CreateAddress(state, AddressType.SuburbanHome, 2, 2);
+        var girlHome = CreateAddress(state, AddressType.SuburbanHome, 10, 2);
+        var diner = CreateAddress(state, AddressType.Diner, 6, 6);
+
+        var guyPhone = GetTelephone(state, guyHome.Id);
+        var girlPhone = GetTelephone(state, girlHome.Id);
+
+        // Create people — neither gets an OrganizeDateObjective pre-added
+        var guy = CreatePerson(state, guyHome, guyPhone, "Jack", hasVehicle: true);
+        var girl = CreatePerson(state, girlHome, girlPhone, "Susan");
+
+        // AddRelationship automatically adds MaintainRelationshipObjective to both
+        state.AddRelationship(new Relationship
+        {
+            Id = state.GenerateEntityId(),
+            PersonAId = guy.Id,
+            PersonBId = girl.Id,
+            Type = RelationshipType.Dating,
+            StartedAt = SimStart.AddDays(-30)
+        });
+
+        // Strip girl's MaintainRelationshipObjective so she doesn't also try to organize a date,
+        // which would create a second group and break Assert.Single below
+        girl.Objectives.RemoveAll(o => o is MaintainRelationshipObjective);
+
+        // Verify the objective was injected before simulation starts
+        Assert.Contains(guy.Objectives,
+            o => o is MaintainRelationshipObjective m && m.PartnerPersonId == girl.Id);
+
+        // Run for 24 hours — the MaintainRelationshipObjective should trigger
+        // an OrganizeDateObjective, which calls the girl, which leads to a date
+        RunSimulation(state, 24 * 60, guy, girl);
+
+        // Group was formed and disbanded
+        Assert.Single(state.Groups);
+        var group = state.Groups.Values.Single();
+        Assert.Equal(GroupStatus.Disbanded, group.Status);
+
+        // Both attended the diner
+        var guyEvents = state.Journal.GetEventsForPerson(guy.Id);
+        var girlEvents = state.Journal.GetEventsForPerson(girl.Id);
+        Assert.Contains(guyEvents, e =>
+            e.EventType == SimulationEventType.ActivityStarted && e.Description == "having dinner");
+        Assert.Contains(girlEvents, e =>
+            e.EventType == SimulationEventType.ActivityStarted && e.Description == "having dinner");
+    }
 }
 
 /// <summary>Test helper: keeps an NPC at an away address until a given time.</summary>
