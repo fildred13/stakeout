@@ -1,7 +1,9 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using Stakeout.Simulation;
 using Stakeout.Simulation.Actions;
+using Stakeout.Simulation.Actions.Primitives;
 using Stakeout.Simulation.Addresses;
 using Stakeout.Simulation.Brain;
 using Stakeout.Simulation.Entities;
@@ -182,5 +184,133 @@ public class DateCoordinationIntegrationTests
 
         // Girl ended the day at her home
         Assert.Equal(girlHome.Id, girl.CurrentAddressId);
+    }
+
+    [Fact]
+    public void Date_AnsweringMachinePath_DateOrganizedForNextDay()
+    {
+        AddressTemplateRegistry.RegisterAll();
+        var state = new SimulationState(new GameClock(SimStart));
+
+        var guyHome = CreateAddress(state, AddressType.SuburbanHome, 2, 2);
+        var girlHome = CreateAddress(state, AddressType.SuburbanHome, 10, 2);
+        var diner = CreateAddress(state, AddressType.Diner, 6, 6);
+        var awayAddr = CreateAddress(state, AddressType.Park, 15, 15);
+
+        var guyPhone = GetTelephone(state, guyHome.Id);
+        var girlPhone = GetTelephone(state, girlHome.Id);
+
+        var guy = CreatePerson(state, guyHome, guyPhone, "Guy", hasVehicle: true);
+        var girl = CreatePerson(state, girlHome, girlPhone, "Girl", hasVehicle: false);
+
+        var rel = new Relationship
+        {
+            Id = state.GenerateEntityId(),
+            PersonAId = guy.Id,
+            PersonBId = girl.Id,
+            Type = RelationshipType.Dating,
+            StartedAt = SimStart.AddDays(-30)
+        };
+        state.AddRelationship(rel);
+
+        // Guy calls at noon, proposes dinner at 7pm (pickup 5:50pm)
+        guy.Objectives.Add(new OrganizeDateObjective(
+            targetPersonId: girl.Id,
+            proposedMeetupAddressId: diner.Id,
+            proposedCallTime: SimStart.Date.AddHours(12),
+            proposedMeetupTime: SimStart.Date.AddHours(19),
+            proposedPickupTime: SimStart.Date.AddHours(17).AddMinutes(50))
+        {
+            Id = state.GenerateEntityId()
+        });
+
+        // Girl is away at noon, will return home around 6pm
+        girl.CurrentAddressId = awayAddr.Id;
+        girl.CurrentPosition = awayAddr.Position;
+        girl.Objectives.Add(new WaitAwayUntilObjective(awayAddr.Id, SimStart.Date.AddHours(18))
+        {
+            Id = state.GenerateEntityId()
+        });
+
+        // Run 48 hours
+        RunSimulation(state, 48 * 60, guy, girl);
+
+        // --- Assertions ---
+
+        // Message was left on girl's phone
+        var girlPhoneTraces = state.GetTracesForFixture(girlPhone.Id, state.Clock.CurrentTime);
+        Assert.Contains(girlPhoneTraces, t => t.Description != null && t.Description.Contains("please call back"));
+
+        // Group was formed and disbanded
+        Assert.Single(state.Groups);
+        var group = state.Groups.Values.Single();
+        Assert.Equal(GroupStatus.Disbanded, group.Status);
+
+        // Date happened on day 2
+        Assert.Equal(SimStart.Date.AddDays(1), group.MeetupTime.Date);
+
+        // Both attended the diner on day 2
+        var guyEvents = state.Journal.GetEventsForPerson(guy.Id);
+        var girlEvents = state.Journal.GetEventsForPerson(girl.Id);
+        Assert.Contains(guyEvents, e =>
+            e.EventType == SimulationEventType.ActivityStarted && e.Description == "having dinner");
+        Assert.Contains(girlEvents, e =>
+            e.EventType == SimulationEventType.ActivityStarted && e.Description == "having dinner");
+
+        // Both at diner on day 2
+        var guyDinerDay2 = guyEvents.FirstOrDefault(e =>
+            e.EventType == SimulationEventType.ArrivedAtAddress
+            && e.AddressId == diner.Id
+            && e.Timestamp.Date == SimStart.Date.AddDays(1));
+        var girlDinerDay2 = girlEvents.FirstOrDefault(e =>
+            e.EventType == SimulationEventType.ArrivedAtAddress
+            && e.AddressId == diner.Id
+            && e.Timestamp.Date == SimStart.Date.AddDays(1));
+        Assert.NotNull(guyDinerDay2);
+        Assert.NotNull(girlDinerDay2);
+    }
+}
+
+/// <summary>Test helper: keeps an NPC at an away address until a given time.</summary>
+internal class WaitAwayUntilObjective : Objective
+{
+    private readonly int _awayAddressId;
+    private readonly DateTime _returnTime;
+
+    public override int Priority => 30;
+    public override ObjectiveSource Source => ObjectiveSource.Universal;
+
+    public WaitAwayUntilObjective(int awayAddressId, DateTime returnTime)
+    {
+        _awayAddressId = awayAddressId;
+        _returnTime = returnTime;
+    }
+
+    public override List<PlannedAction> GetActions(
+        Person person, SimulationState state,
+        DateTime planStart, DateTime planEnd)
+    {
+        if (planStart >= _returnTime || Status == ObjectiveStatus.Completed)
+            return new List<PlannedAction>();
+
+        var duration = _returnTime - planStart;
+        return new List<PlannedAction>
+        {
+            new()
+            {
+                Action = new WaitAction(duration, "out and about"),
+                TargetAddressId = _awayAddressId,
+                TimeWindowStart = planStart,
+                TimeWindowEnd = _returnTime,
+                Duration = duration,
+                DisplayText = "out and about",
+                SourceObjective = this
+            }
+        };
+    }
+
+    public override void OnActionCompleted(PlannedAction action, bool success)
+    {
+        Status = ObjectiveStatus.Completed;
     }
 }
