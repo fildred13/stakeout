@@ -6,11 +6,13 @@ using Stakeout.Simulation.Actions;
 using Stakeout.Simulation.Actions.Primitives;
 using Stakeout.Simulation.Addresses;
 using Stakeout.Simulation.Brain;
+using Stakeout.Simulation.City;
 using Stakeout.Simulation.Entities;
 using Stakeout.Simulation.Events;
 using Stakeout.Simulation.Fixtures;
 using Stakeout.Simulation.Objectives;
 using Xunit;
+using CityEntity = Stakeout.Simulation.Entities.City;
 
 namespace Stakeout.Tests.Simulation.Groups;
 
@@ -58,7 +60,13 @@ public class DateCoordinationIntegrationTests
         throw new InvalidOperationException($"No telephone fixture found at address {addressId}");
     }
 
-    private static Person CreatePerson(SimulationState state, Address home, Fixture phone,
+    /// <summary>
+    /// Creates a stripped-down person without a job, traits, city assignment, or computed sleep schedule.
+    /// Useful for isolating specific behaviors (answering machine path, pickup-presence guard, etc.)
+    /// without the complexity of a real PersonGenerator setup. If you need a realistic person,
+    /// use <see cref="BuildRealGameState"/> instead.
+    /// </summary>
+    private static Person CreateMinimalPerson(SimulationState state, Address home, Fixture phone,
         string firstName, bool hasVehicle = false)
     {
         var person = new Person
@@ -93,6 +101,59 @@ public class DateCoordinationIntegrationTests
         return person;
     }
 
+    /// <summary>
+    /// Builds a SimulationState that mirrors SimulationManager._Ready as closely as possible.
+    /// Uses CityGenerator with seed 42 to create Boston (with real streets, businesses, addresses),
+    /// generates 5 regular NPCs via PersonGenerator, then creates Jack and Susan with real jobs,
+    /// traits, and sleep schedules. Returns references to Jack, Susan, and the mapConfig for test assertions.
+    /// </summary>
+    private static (SimulationState state, Person jack, Person susan, MapConfig mapConfig) BuildRealGameState()
+    {
+        AddressTemplateRegistry.RegisterAll();
+        var state = new SimulationState(new GameClock(new DateTime(1980, 1, 1, 8, 30, 0)));
+
+        var country = new Country { Name = "United States" };
+        state.Countries.Add(country);
+
+        var boston = new CityEntity
+        {
+            Id = state.GenerateEntityId(),
+            Name = "Boston",
+            CountryName = country.Name
+        };
+        state.Cities[boston.Id] = boston;
+
+        var bostonCityGen = new CityGenerator(seed: 42);
+        state.CityGrids[boston.Id] = bostonCityGen.Generate(state, boston);
+
+        var mapConfig = new MapConfig();
+        var personGen = new PersonGenerator(mapConfig, new Random(42));
+
+        // Generate 5 regular people (same as real game)
+        for (var i = 0; i < 5; i++)
+            personGen.GeneratePerson(state);
+
+        // Generate Jack and Susan using the real PersonGenerator
+        var jack = personGen.GeneratePerson(state);
+        jack.FirstName = "Jack";
+        jack.LastName = "Malone";
+
+        var susan = personGen.GeneratePerson(state);
+        susan.FirstName = "Susan";
+        susan.LastName = "Hayes";
+
+        state.AddRelationship(new Relationship
+        {
+            Id = state.GenerateEntityId(),
+            PersonAId = jack.Id,
+            PersonBId = susan.Id,
+            Type = RelationshipType.Dating,
+            StartedAt = state.Clock.CurrentTime.AddDays(-90)
+        });
+
+        return (state, jack, susan, mapConfig);
+    }
+
     private static void AssignJob(SimulationState state, Person person, Address workAddress,
         TimeSpan shiftStart, TimeSpan shiftEnd, DayOfWeek[] workDays)
     {
@@ -125,8 +186,10 @@ public class DateCoordinationIntegrationTests
     }
 
     private static void RunSimulation(SimulationState state, int minutes, params Person[] people)
+        => RunSimulation(state, minutes, new MapConfig(), people);
+
+    private static void RunSimulation(SimulationState state, int minutes, MapConfig mapConfig, params Person[] people)
     {
-        var mapConfig = new MapConfig();
         var runner = new ActionRunner(mapConfig);
 
         for (int i = 0; i < minutes; i++)
@@ -155,8 +218,8 @@ public class DateCoordinationIntegrationTests
         var guyPhone = GetTelephone(state, guyHome.Id);
         var girlPhone = GetTelephone(state, girlHome.Id);
 
-        var guy = CreatePerson(state, guyHome, guyPhone, "Guy", hasVehicle: true);
-        var girl = CreatePerson(state, girlHome, girlPhone, "Girl", hasVehicle: false);
+        var guy = CreateMinimalPerson(state, guyHome, guyPhone, "Guy", hasVehicle: true);
+        var girl = CreateMinimalPerson(state, girlHome, girlPhone, "Girl", hasVehicle: false);
 
         var rel = new Relationship
         {
@@ -234,8 +297,8 @@ public class DateCoordinationIntegrationTests
         var guyPhone = GetTelephone(state, guyHome.Id);
         var girlPhone = GetTelephone(state, girlHome.Id);
 
-        var guy = CreatePerson(state, guyHome, guyPhone, "Guy", hasVehicle: true);
-        var girl = CreatePerson(state, girlHome, girlPhone, "Girl", hasVehicle: false);
+        var guy = CreateMinimalPerson(state, guyHome, guyPhone, "Guy", hasVehicle: true);
+        var girl = CreateMinimalPerson(state, girlHome, girlPhone, "Girl", hasVehicle: false);
 
         var rel = new Relationship
         {
@@ -324,8 +387,8 @@ public class DateCoordinationIntegrationTests
         var guyPhone = GetTelephone(state, guyHome.Id);
         var girlPhone = GetTelephone(state, girlHome.Id);
 
-        var guy = CreatePerson(state, guyHome, guyPhone, "Jack", hasVehicle: true);
-        var girl = CreatePerson(state, girlHome, girlPhone, "Susan");
+        var guy = CreateMinimalPerson(state, guyHome, guyPhone, "Jack", hasVehicle: true);
+        var girl = CreateMinimalPerson(state, girlHome, girlPhone, "Susan");
 
         // Do NOT strip either person's MaintainRelationshipObjective
         state.AddRelationship(new Relationship
@@ -362,8 +425,8 @@ public class DateCoordinationIntegrationTests
         var guyPhone = GetTelephone(state, guyHome.Id);
         var girlPhone = GetTelephone(state, girlHome.Id);
 
-        var guy = CreatePerson(state, guyHome, guyPhone, "Jack", hasVehicle: true);
-        var girl = CreatePerson(state, girlHome, girlPhone, "Susan");
+        var guy = CreateMinimalPerson(state, guyHome, guyPhone, "Jack", hasVehicle: true);
+        var girl = CreateMinimalPerson(state, girlHome, girlPhone, "Susan");
 
         state.AddRelationship(new Relationship
         {
@@ -401,8 +464,8 @@ public class DateCoordinationIntegrationTests
         var guyPhone = GetTelephone(state, guyHome.Id);
         var girlPhone = GetTelephone(state, girlHome.Id);
 
-        var guy = CreatePerson(state, guyHome, guyPhone, "Jack", hasVehicle: true);
-        var girl = CreatePerson(state, girlHome, girlPhone, "Susan");
+        var guy = CreateMinimalPerson(state, guyHome, guyPhone, "Jack", hasVehicle: true);
+        var girl = CreateMinimalPerson(state, girlHome, girlPhone, "Susan");
 
         // Do NOT strip either person's MaintainRelationshipObjective
         state.AddRelationship(new Relationship
@@ -459,8 +522,8 @@ public class DateCoordinationIntegrationTests
         var girlPhone = GetTelephone(state, girlHome.Id);
 
         // Create people — neither gets an OrganizeDateObjective pre-added
-        var guy = CreatePerson(state, guyHome, guyPhone, "Jack", hasVehicle: true);
-        var girl = CreatePerson(state, girlHome, girlPhone, "Susan");
+        var guy = CreateMinimalPerson(state, guyHome, guyPhone, "Jack", hasVehicle: true);
+        var girl = CreateMinimalPerson(state, girlHome, girlPhone, "Susan");
 
         // AddRelationship automatically adds MaintainRelationshipObjective to both
         state.AddRelationship(new Relationship
@@ -516,8 +579,8 @@ public class DateCoordinationIntegrationTests
         var guyPhone = GetTelephone(state, guyHome.Id);
         var girlPhone = GetTelephone(state, girlHome.Id);
 
-        var guy = CreatePerson(state, guyHome, guyPhone, "Guy", hasVehicle: true);
-        var girl = CreatePerson(state, girlHome, girlPhone, "Girl");
+        var guy = CreateMinimalPerson(state, guyHome, guyPhone, "Guy", hasVehicle: true);
+        var girl = CreateMinimalPerson(state, girlHome, girlPhone, "Girl");
 
         var rel = new Relationship
         {
@@ -594,8 +657,8 @@ public class DateCoordinationIntegrationTests
         var guyPhone = GetTelephone(state, guyHome.Id);
         var girlPhone = GetTelephone(state, girlHome.Id);
 
-        var guy = CreatePerson(state, guyHome, guyPhone, "Jack", hasVehicle: true);
-        var girl = CreatePerson(state, girlHome, girlPhone, "Susan");
+        var guy = CreateMinimalPerson(state, guyHome, guyPhone, "Jack", hasVehicle: true);
+        var girl = CreateMinimalPerson(state, girlHome, girlPhone, "Susan");
 
         // Both have 9am-5pm jobs, Mon-Fri
         var weekdays = new[] { DayOfWeek.Monday, DayOfWeek.Tuesday, DayOfWeek.Wednesday,
@@ -650,8 +713,8 @@ public class DateCoordinationIntegrationTests
         var guyPhone = GetTelephone(state, guyHome.Id);
         var girlPhone = GetTelephone(state, girlHome.Id);
 
-        var guy = CreatePerson(state, guyHome, guyPhone, "Jack", hasVehicle: true);
-        var girl = CreatePerson(state, girlHome, girlPhone, "Susan");
+        var guy = CreateMinimalPerson(state, guyHome, guyPhone, "Jack", hasVehicle: true);
+        var girl = CreateMinimalPerson(state, girlHome, girlPhone, "Susan");
 
         state.AddRelationship(new Relationship
         {
@@ -691,7 +754,7 @@ public class DateCoordinationIntegrationTests
         var office = CreateAddress(state, AddressType.Office, 5, 5);
         var phone = GetTelephone(state, home.Id);
 
-        var worker = CreatePerson(state, home, phone, "Susan");
+        var worker = CreateMinimalPerson(state, home, phone, "Susan");
         var weekdays = new[] { DayOfWeek.Monday, DayOfWeek.Tuesday, DayOfWeek.Wednesday,
             DayOfWeek.Thursday, DayOfWeek.Friday };
         AssignJob(state, worker, office, TimeSpan.FromHours(9), TimeSpan.FromHours(17), weekdays);
@@ -741,8 +804,8 @@ public class DateCoordinationIntegrationTests
         var guyPhone = GetTelephone(state, guyHome.Id);
         var girlPhone = GetTelephone(state, girlHome.Id);
 
-        var guy = CreatePerson(state, guyHome, guyPhone, "Jack", hasVehicle: true);
-        var girl = CreatePerson(state, girlHome, girlPhone, "Susan");
+        var guy = CreateMinimalPerson(state, guyHome, guyPhone, "Jack", hasVehicle: true);
+        var girl = CreateMinimalPerson(state, girlHome, girlPhone, "Susan");
 
         var weekdays = new[] { DayOfWeek.Monday, DayOfWeek.Tuesday, DayOfWeek.Wednesday,
             DayOfWeek.Thursday, DayOfWeek.Friday };
@@ -824,8 +887,8 @@ public class DateCoordinationIntegrationTests
         var guyPhone = GetTelephone(state, guyHome.Id);
         var girlPhone = GetTelephone(state, girlHome.Id);
 
-        var guy = CreatePerson(state, guyHome, guyPhone, "Jack", hasVehicle: true);
-        var girl = CreatePerson(state, girlHome, girlPhone, "Susan");
+        var guy = CreateMinimalPerson(state, guyHome, guyPhone, "Jack", hasVehicle: true);
+        var girl = CreateMinimalPerson(state, girlHome, girlPhone, "Susan");
 
         var weekdays = new[] { DayOfWeek.Monday, DayOfWeek.Tuesday, DayOfWeek.Wednesday,
             DayOfWeek.Thursday, DayOfWeek.Friday };
@@ -883,8 +946,8 @@ public class DateCoordinationIntegrationTests
         var guyPhone = GetTelephone(state, guyHome.Id);
         var girlPhone = GetTelephone(state, girlHome.Id);
 
-        var guy = CreatePerson(state, guyHome, guyPhone, "Jack", hasVehicle: true);
-        var girl = CreatePerson(state, girlHome, girlPhone, "Susan");
+        var guy = CreateMinimalPerson(state, guyHome, guyPhone, "Jack", hasVehicle: true);
+        var girl = CreateMinimalPerson(state, girlHome, girlPhone, "Susan");
 
         // Guy works 7am-6pm — blocks most of the day
         AssignJob(state, guy, office, TimeSpan.FromHours(7), TimeSpan.FromHours(18),
@@ -916,6 +979,92 @@ public class DateCoordinationIntegrationTests
         var disbandedGroups = state.Groups.Values.Where(g =>
             g.Type == GroupType.Date && g.Status == GroupStatus.Disbanded).ToList();
         Assert.NotEmpty(disbandedGroups);
+    }
+
+    /// <summary>
+    /// The definitive test: mirrors SimulationManager._Ready exactly.
+    /// Jack and Susan are generated by PersonGenerator with real jobs, real traits,
+    /// real sleep schedules, and real city addresses. Both must go to work AND go on a date.
+    /// If this test passes but the game is broken, the test setup is wrong.
+    /// </summary>
+    [Fact]
+    public void RealGame_JackAndSusan_BothWorkAndGoOnDate()
+    {
+        var (state, jack, susan, mapConfig) = BuildRealGameState();
+
+        // Verify setup: both should have jobs (from PersonGenerator)
+        Assert.True(jack.BusinessId.HasValue, "Jack should have a job from PersonGenerator");
+        Assert.True(susan.BusinessId.HasValue, "Susan should have a job from PersonGenerator");
+
+        // Both should have MaintainRelationshipObjective (from AddRelationship)
+        Assert.Contains(jack.Objectives, o => o is MaintainRelationshipObjective);
+        Assert.Contains(susan.Objectives, o => o is MaintainRelationshipObjective);
+
+        // Both should have WorkShiftObjective (from PersonGenerator)
+        Assert.Contains(jack.Objectives, o => o is WorkShiftObjective);
+        Assert.Contains(susan.Objectives, o => o is WorkShiftObjective);
+
+        // Run 48 hours — enough for work + date
+        RunSimulation(state, 48 * 60, mapConfig, jack, susan);
+
+        var jackEvents = state.Journal.GetEventsForPerson(jack.Id);
+        var susanEvents = state.Journal.GetEventsForPerson(susan.Id);
+
+        // BOTH should have gone to work (PersonGenerator assigns real work schedules)
+        Assert.Contains(jackEvents, e =>
+            e.EventType == SimulationEventType.ActivityStarted
+            && e.Description != null && e.Description.Contains("working as"));
+        Assert.Contains(susanEvents, e =>
+            e.EventType == SimulationEventType.ActivityStarted
+            && e.Description != null && e.Description.Contains("working as"));
+
+        // A date should have been completed
+        var disbandedDates = state.Groups.Values.Where(g =>
+            g.Type == GroupType.Date && g.Status == GroupStatus.Disbanded).ToList();
+        Assert.True(disbandedDates.Count > 0,
+            "No date happened. Jack's objectives: " +
+            string.Join(", ", jack.Objectives.Select(o => $"{o.GetType().Name}({o.Status})")) +
+            " Susan's objectives: " +
+            string.Join(", ", susan.Objectives.Select(o => $"{o.GetType().Name}({o.Status})")));
+
+        // Both had dinner
+        Assert.Contains(jackEvents, e =>
+            e.EventType == SimulationEventType.ActivityStarted && e.Description == "having dinner");
+        Assert.Contains(susanEvents, e =>
+            e.EventType == SimulationEventType.ActivityStarted && e.Description == "having dinner");
+    }
+
+    /// <summary>
+    /// Susan must go to work on her first workday after game start.
+    /// Uses real PersonGenerator setup — this catches the bug where WorkShiftObjective
+    /// gets dropped during replans from MaintainRelationshipObjective injection.
+    /// </summary>
+    [Fact]
+    public void RealGame_Susan_GoesToWorkOnFirstWorkday()
+    {
+        var (state, jack, susan, mapConfig) = BuildRealGameState();
+
+        // Verify Susan has a WorkShiftObjective
+        Assert.Contains(susan.Objectives, o => o is WorkShiftObjective);
+
+        // Get Susan's work schedule to know what to expect
+        var business = state.Businesses[susan.BusinessId.Value];
+        var position = business.Positions.First(p => p.Id == susan.PositionId.Value);
+
+        // Run 24 hours
+        RunSimulation(state, 24 * 60, mapConfig, jack, susan);
+
+        // Susan should have a "working as" event if today is a workday
+        var susanEvents = state.Journal.GetEventsForPerson(susan.Id);
+        var todayIsWorkDay = position.WorkDays.Contains(state.Clock.CurrentTime.AddHours(-24).DayOfWeek);
+
+        if (todayIsWorkDay)
+        {
+            Assert.Contains(susanEvents, e =>
+                e.EventType == SimulationEventType.ActivityStarted
+                && e.Description != null && e.Description.Contains("working as"));
+        }
+        // If not a workday, that's fine — we just need to verify it's not a scheduling bug
     }
 }
 

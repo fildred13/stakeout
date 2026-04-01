@@ -47,12 +47,21 @@ public class WorkShiftObjective : Objective
                     var duration = shiftEnd - effectiveStart;
                     var displayText = $"working as {position.Role}";
 
+                    // When replanning mid-shift (shiftStart < planStart), the person needs to
+                    // travel to work and won't arrive exactly at planStart. Extend the window end
+                    // by a commute buffer so NpcBrain can fit travel + remaining work in the slot.
+                    // Without this, NpcBrain's (duration + travelTime) > (shiftEnd - planStart)
+                    // causes work to be silently dropped even though the shift isn't over.
+                    var windowEnd = shiftStart < planStart
+                        ? shiftEnd + TimeSpan.FromHours(1)
+                        : shiftEnd;
+
                     actions.Add(new PlannedAction
                     {
                         Action = new WaitAction(duration, displayText),
                         TargetAddressId = business.AddressId,
                         TimeWindowStart = effectiveStart,
-                        TimeWindowEnd = shiftEnd,
+                        TimeWindowEnd = windowEnd,
                         Duration = duration,
                         DisplayText = displayText,
                         SourceObjective = this
