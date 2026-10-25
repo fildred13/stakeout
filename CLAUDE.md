@@ -8,7 +8,7 @@ STAKEOUT is a 1984-themed detective investigation game built in Godot 4.6 using 
 
 ### CRITICAL: No `cd` prefixing — applies to ALL agents and subagents
 
-The working directory is already the project root (`h:/Dropbox/sean-tower/Documents/git/stakeout`). **NEVER** prefix any command with `cd`. This includes:
+The working directory is already the project root (`G:/gamedev/stakeout`). **NEVER** prefix any command with `cd`. This includes:
 
 - `cd "path" && git add ...` — WRONG
 - `cd "path" && dotnet test ...` — WRONG
