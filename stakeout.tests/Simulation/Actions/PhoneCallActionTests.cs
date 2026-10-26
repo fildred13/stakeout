@@ -131,5 +131,6 @@ public class PhoneCallActionTests
 
         var phoneTraces = state.GetTracesForFixture(phone.Id, state.Clock.CurrentTime);
         Assert.Contains(phoneTraces, t => t.Description != null && t.Description.Contains("please call back"));
+        Assert.Single(CheckAnsweringMachineAction.GetMessages(state, phone.Id, state.Clock.CurrentTime));
     }
 }

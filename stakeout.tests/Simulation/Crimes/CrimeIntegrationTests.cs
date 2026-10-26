@@ -44,7 +44,7 @@ public class CrimeIntegrationTests
         state.People[personB.Id] = personB;
 
         // Generate crime
-        var generator = new CrimeGenerator();
+        var generator = new CrimeGenerator(new Random(1));
         var crime = generator.Generate(CrimeTemplateType.SerialKiller, state);
         Assert.NotNull(crime);
         Assert.Equal(CrimeStatus.InProgress, crime.Status);

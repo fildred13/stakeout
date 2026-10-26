@@ -63,7 +63,8 @@ public class CheckAnsweringMachineActionTests
 
         // Leave a message trace on recipient's phone
         TraceEmitter.EmitRecord(state, phone.Id, caller.Id,
-            $"Message from {caller.FirstName} {caller.LastName}: please call back");
+            $"Message from {caller.FirstName} {caller.LastName}: please call back",
+            RecordKind.PhoneMessage);
 
         var action = new CheckAnsweringMachineAction();
         var ctx = new ActionContext

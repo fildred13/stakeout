@@ -6,7 +6,11 @@
 bin/
 obj/
 
-# Superpowers server state
-.superpowers/**/.server-stopped
-.superpowers/**/.server.pid
-.superpowers/**/waiting.html
+# Superpowers brainstorm companion (temporary mockup pages)
+.superpowers/
+
+# Per-user Claude Code settings
+.claude/settings.local.json
+
+# Per-user editor workspace
+*.code-workspace

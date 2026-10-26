@@ -42,11 +42,12 @@ public class PhoneCallAction : IAction
         // Outgoing record on caller's home phone
         if (ctx.Person.HomePhoneFixtureId.HasValue)
             TraceEmitter.EmitRecord(ctx.State, ctx.Person.HomePhoneFixtureId.Value,
-                ctx.Person.Id, $"Outgoing call to {ctx.State.Addresses[_targetAddressId].Id}");
+                ctx.Person.Id, $"Outgoing call to {ctx.State.Addresses[_targetAddressId].Id}",
+                RecordKind.CallLog);
 
         // Incoming record on target phone
         TraceEmitter.EmitRecord(ctx.State, _targetFixtureId, ctx.Person.Id,
-            $"Incoming call from {ctx.Person.FirstName} {ctx.Person.LastName}");
+            $"Incoming call from {ctx.Person.FirstName} {ctx.Person.LastName}", RecordKind.CallLog);
 
         var recipient = ctx.State.People[_recipientId];
         if (recipient.CurrentAddressId == _targetAddressId)
@@ -67,7 +68,8 @@ public class PhoneCallAction : IAction
         {
             // Recipient absent — leave message trace
             TraceEmitter.EmitRecord(ctx.State, _targetFixtureId, ctx.Person.Id,
-                $"Message from {ctx.Person.FirstName} {ctx.Person.LastName}: please call back");
+                $"Message from {ctx.Person.FirstName} {ctx.Person.LastName}: please call back",
+                RecordKind.PhoneMessage);
 
             // Notify OrganizeDateObjective on the caller
             var obj = ctx.Person.Objectives

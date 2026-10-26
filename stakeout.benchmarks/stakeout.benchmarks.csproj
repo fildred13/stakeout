@@ -7,4 +7,10 @@
   <ItemGroup>
     <ProjectReference Include="../stakeout.csproj" />
   </ItemGroup>
+  <!-- Godot's source generators flow in through the game project reference but only make sense for the game itself -->
+  <Target Name="RemoveGodotSourceGenerators" BeforeTargets="CoreCompile">
+    <ItemGroup>
+      <Analyzer Remove="@(Analyzer)" Condition="'%(Filename)' == 'Godot.SourceGenerators'" />
+    </ItemGroup>
+  </Target>
 </Project>

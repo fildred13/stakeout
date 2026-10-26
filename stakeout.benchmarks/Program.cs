@@ -46,7 +46,7 @@ class Program
         var clock = new GameClock(clockStart);
         var state = new SimulationState(clock);
         var mapConfig = new MapConfig();
-        var personGenerator = new PersonGenerator(mapConfig);
+        var personGenerator = new PersonGenerator(mapConfig, new Random(42));
 
         var city = new CityEntity
         {

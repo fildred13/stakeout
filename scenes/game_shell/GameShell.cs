@@ -47,7 +47,6 @@ public partial class GameShell : Control
 
     // Crime Generator
     private Label _crimeResultLabel;
-    private CrimeGenerator _crimeGenerator;
 
     // Person Inspectors (multiple allowed, auto-updating)
     private readonly List<(int personId, Window window, VBoxContainer content)> _inspectorWindows = new();
@@ -112,7 +111,6 @@ public partial class GameShell : Control
         var scroll = _debugSidebar.GetNode<ScrollContainer>("ScrollContainer");
         _debugPeopleList = scroll.GetNode<VBoxContainer>("PeopleList");
 
-        _crimeGenerator = new CrimeGenerator();
     }
 
     public void LoadContentView(string scenePath)
@@ -236,7 +234,7 @@ public partial class GameShell : Control
 
     private void OnGenerateCrimePressed()
     {
-        var crime = _crimeGenerator.Generate(CrimeTemplateType.SerialKiller, _simulationManager.State);
+        var crime = _simulationManager.CrimeGenerator.Generate(CrimeTemplateType.SerialKiller, _simulationManager.State);
         if (crime == null)
         {
             _crimeResultLabel.Text = "Failed: not enough people";

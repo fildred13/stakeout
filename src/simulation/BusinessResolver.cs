@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Stakeout.Simulation.Entities;
 
@@ -5,12 +6,12 @@ namespace Stakeout.Simulation;
 
 public static class BusinessResolver
 {
-    public static List<Person> Resolve(SimulationState state, Business business, PersonGenerator generator)
+    public static List<Person> Resolve(SimulationState state, Business business, PersonGenerator generator, Random random)
     {
         if (business.IsResolved) return new();
 
         var address = state.Addresses[business.AddressId];
-        LocationGenerator.ResolveAddressInterior(address, state);
+        LocationGenerator.ResolveAddressInterior(address, state, random);
 
         var spawned = new List<Person>();
         foreach (var position in business.Positions)

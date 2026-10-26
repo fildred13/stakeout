@@ -9,19 +9,18 @@ public class SerialKillerTemplate : ICrimeTemplate
     public CrimeTemplateType Type => CrimeTemplateType.SerialKiller;
     public string Name => "Serial Killer";
 
-    public Crime Instantiate(SimulationState state)
+    public Crime Instantiate(SimulationState state, Random random)
     {
         var alivePeople = state.People.Values.Where(p => p.IsAlive).ToList();
         if (alivePeople.Count < 2) return null;
 
-        var rng = new Random();
-        var killer = alivePeople[rng.Next(alivePeople.Count)];
+        var killer = alivePeople[random.Next(alivePeople.Count)];
 
         var crime = new Crime
         {
             Id = state.GenerateEntityId(),
             TemplateType = CrimeTemplateType.SerialKiller,
-            CreatedAt = DateTime.Now,
+            CreatedAt = state.Clock.CurrentTime,
             Roles = new Dictionary<string, int?>
             {
                 { "Killer", killer.Id },

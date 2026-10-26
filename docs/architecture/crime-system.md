@@ -1,34 +1,38 @@
 # Crime System
 
 ## Purpose
-Generates and executes crimes as structured scenarios that inject Objectives onto NPCs, producing observable Traces in the world. Crime templates define the cast, objectives, and steps; the scheduling system handles execution.
+Creates crimes as structured scenarios: casts NPCs into roles and records the crime in `SimulationState`. **Currently
+a stub** - the old objective/scheduler pipeline it drove was removed in the NPC brain rewrite (P3), and Project 7
+("Crime Templates & Scenarios" in `docs/future_plans/simulation_overhaul_plan.md`) rebuilds it on the brain,
+groups and trace systems.
 
 ## Key Files
 | File | Role |
 |------|------|
-| `src/simulation/crimes/ICrimeTemplate.cs` | Interface — Type, Name, Instantiate(state) → Crime |
-| `src/simulation/crimes/SerialKillerTemplate.cs` | First template — casts a killer, creates 3-step CommitMurder objective (ChooseVictim → KillPerson → GoHome) |
-| `src/simulation/crimes/CrimeGenerator.cs` | Registry of templates by CrimeTemplateType; Generate() instantiates and returns a Crime |
-| `src/simulation/crimes/Crime.cs` | Crime record — roles (name→personId), status, related trace/objective IDs; CrimeTemplateType, CrimeStatus enums |
-| `src/simulation/traces/Trace.cs` | Trace record — type (Item/Sighting/Mark/Condition/Record/Fingerprint), location or person attachment, description, data; TraceType enum |
-| `src/simulation/traces/FingerprintService.cs` | Static service — deposits fingerprint Traces on connections (per-side) and items, applies smudging formula to decay old prints |
+| `src/simulation/crimes/ICrimeTemplate.cs` | Interface - Type, Name, `Instantiate(state, random)` returns a Crime |
+| `src/simulation/crimes/SerialKillerTemplate.cs` | Only template - picks a random living Killer; Victim role stays null; injects no objectives yet |
+| `src/simulation/crimes/CrimeGenerator.cs` | Template registry; `Generate(type, state)` instantiates with the simulation's seeded RNG |
+| `src/simulation/crimes/Crime.cs` | Crime record - roles (name to personId), status, related trace/objective IDs; enums |
+| `src/simulation/traces/Trace.cs` | Evidence record - TraceType (Mark/Item/Sighting/Record/Fingerprint/Condition), RecordKind, where/who/decay |
+| `src/simulation/traces/TraceEmitter.cs` | Static helpers that create Traces; objectives call it from `EmitTraces` |
+| `src/simulation/traces/InvestigationQuery.cs` | Read-side helper for finding traces at a location (future investigation UI) |
 
 ## How It Works
-1. **CrimeGenerator.Generate()** looks up the template by type and calls `Instantiate(state)`.
-2. **Template.Instantiate()** casts NPCs into roles (e.g., picks a random alive person as Killer), creates a Crime record in `state.Crimes`, and injects Objectives onto cast members.
-3. **ObjectiveResolver** processes the new Objectives during the next resolution pass. Instant steps (like ChooseVictim) execute immediately — picking a victim, storing the ID in `Objective.Data`, and updating `Crime.Roles`.
-4. **ScheduleBuilder** incorporates the crime's Tasks (e.g., KillPerson at 1:00 AM, priority 40) into the daily schedule, auto-inserting travel.
-5. **PersonBehavior** detects the KillPerson action boundary and calls **ActionExecutor.Execute()**, which sets `victim.IsAlive = false` and produces Traces (Condition on victim, Mark at location).
+1. The debug sidebar's "Generate Now" button calls `SimulationManager.CrimeGenerator.Generate(SerialKiller, state)`.
+2. The template casts a Killer from living people, stores the Crime in `state.Crimes`, and returns it.
+3. Nothing else happens yet: no objectives are injected, so the killer's behavior is unchanged.
+
+Traces are already produced by ordinary NPC life (sightings while running, phone call logs and messages,
+fingerprints), so the evidence side exists independently of crimes.
 
 ## Key Decisions
-- **Templates are C# classes, not data files:** Keeps logic co-located with casting and objective tree definitions. Designed to become data-driven later.
-- **Crime.Roles uses Dictionary\<string, int?\>:** Flexible role mapping (Killer, Victim, etc.). Victim starts null, populated when ChooseVictim resolves.
-- **Trace taxonomy defined upfront:** Six types (Item, Sighting, Mark, Condition, Record, Fingerprint) cover all planned evidence categories. Condition and Mark are produced by crime actions; Fingerprint is produced by FingerprintService during door traversal and key usage.
-- **One crime at a time:** Multiple simultaneous crimes are out of scope for the initial implementation.
+- **Templates are C# classes, not data files:** keeps casting logic next to the objective tree it will build.
+- **Crime.Roles is `Dictionary<string, int?>`:** roles can be filled later (Victim chosen when the plan runs).
+- **Seeded RNG and game clock only:** crimes must be reproducible from the world seed for replay/backfill (P6).
+- **One crime at a time** for the first scenario.
 
 ## Connection Points
-- **Scheduling system:** Crime Objectives flow through the same ObjectiveResolver → ScheduleBuilder → PersonBehavior pipeline as CoreNeed objectives
-- **SimulationState:** Crimes and Traces dictionaries store all crime records and evidence
-- **Debug UI:** GameShell's Crime Generator button triggers CrimeGenerator.Generate(); Person Inspector shows objectives and traces
-- **Fingerprint system:** FingerprintService deposits fingerprint Traces; surfaces (connections, items) maintain a FingerprintSurface index of trace IDs for fast lookup and smudging
-- **Future:** Trace system will expand with Item lifecycle, Sighting generation, and player investigation mechanics
+- **NPC brain (P7):** crimes will inject Objectives (`ObjectiveSource.Crime`) that `NpcBrain.PlanDay` schedules like any other.
+- **Groups (P5):** multi-person crimes will reuse `Group` (`GroupType.CriminalMeeting` already exists).
+- **SimulationState:** `Crimes` and `Traces` dictionaries.
+- **Game shell:** debug sidebar shows the generated killer/victim names.

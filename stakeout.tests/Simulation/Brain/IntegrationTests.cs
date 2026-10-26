@@ -25,7 +25,7 @@ public class IntegrationTests
         var cityGen = new CityGenerator(seed: 42);
         state.CityGrids[city.Id] = cityGen.Generate(state, city);
 
-        var gen = new PersonGenerator(new MapConfig());
+        var gen = new PersonGenerator(new MapConfig(), new Random(1));
         var person = gen.GeneratePerson(state);
 
         return (state, person);
@@ -98,7 +98,7 @@ public class IntegrationTests
         var cityGen = new CityGenerator(seed: 42);
         state.CityGrids[city.Id] = cityGen.Generate(state, city);
 
-        var gen = new PersonGenerator(new MapConfig());
+        var gen = new PersonGenerator(new MapConfig(), new Random(1));
         for (int i = 0; i < 5; i++)
         {
             var person = gen.GeneratePerson(state);

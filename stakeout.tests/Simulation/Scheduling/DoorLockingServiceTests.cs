@@ -23,9 +23,9 @@ public class DoorLockingServiceTests
         var cityGen = new CityGenerator(seed: 42);
         state.CityGrids[city.Id] = cityGen.Generate(state, city);
 
-        var gen = new PersonGenerator(new MapConfig());
+        var gen = new PersonGenerator(new MapConfig(), new Random(1));
         var biz = state.Businesses.Values.First();
-        BusinessResolver.Resolve(state, biz, gen);
+        BusinessResolver.Resolve(state, biz, gen, new Random(1));
 
         return (state, biz);
     }
@@ -56,8 +56,8 @@ public class DoorLockingServiceTests
         if (officeBiz == null) return;
         if (!officeBiz.IsResolved)
         {
-            var gen = new PersonGenerator(new MapConfig());
-            BusinessResolver.Resolve(state, officeBiz, gen);
+            var gen = new PersonGenerator(new MapConfig(), new Random(1));
+            BusinessResolver.Resolve(state, officeBiz, gen, new Random(1));
         }
 
         // Saturday = closed for offices

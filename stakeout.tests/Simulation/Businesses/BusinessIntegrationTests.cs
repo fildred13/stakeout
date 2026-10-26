@@ -31,7 +31,7 @@ public class BusinessIntegrationTests
     public void FullDaySimulation_NpcGoesToWork()
     {
         var state = CreateState();
-        var gen = new PersonGenerator(new MapConfig());
+        var gen = new PersonGenerator(new MapConfig(), new Random(1));
         var person = gen.GeneratePerson(state);
 
         Assert.Contains(person.Objectives, o => o is WorkShiftObjective);
@@ -64,7 +64,7 @@ public class BusinessIntegrationTests
     public void FullDaySimulation_WithActionRunner_CompletesActivities()
     {
         var state = CreateState();
-        var gen = new PersonGenerator(new MapConfig());
+        var gen = new PersonGenerator(new MapConfig(), new Random(1));
         var person = gen.GeneratePerson(state);
 
         var biz = state.Businesses[person.BusinessId.Value];
@@ -99,10 +99,10 @@ public class BusinessIntegrationTests
     public void BusinessResolver_SpawnedWorkers_AllHaveSchedules()
     {
         var state = CreateState();
-        var gen = new PersonGenerator(new MapConfig());
+        var gen = new PersonGenerator(new MapConfig(), new Random(1));
         var biz = state.Businesses.Values.First();
 
-        var spawned = BusinessResolver.Resolve(state, biz, gen);
+        var spawned = BusinessResolver.Resolve(state, biz, gen, new Random(1));
 
         foreach (var person in spawned)
         {

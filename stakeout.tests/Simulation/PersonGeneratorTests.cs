@@ -39,7 +39,7 @@ public class PersonGeneratorTests
     private static PersonGenerator CreateGenerator()
     {
         var mapConfig = new MapConfig();
-        return new PersonGenerator(mapConfig);
+        return new PersonGenerator(mapConfig, new Random(1));
     }
 
     [Fact]
@@ -369,7 +369,7 @@ public class PersonGeneratorTests
         state.Cities[city.Id] = city;
         state.CityGrids[city.Id] = new CityGenerator(seed: 1).Generate(state, city);
 
-        var gen = new PersonGenerator(new MapConfig());
+        var gen = new PersonGenerator(new MapConfig(), new Random(1));
         // Generate enough people to find a suburban home resident
         Person suburbanPerson = null;
         for (int i = 0; i < 100; i++)

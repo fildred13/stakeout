@@ -4,6 +4,27 @@
 
 STAKEOUT is a 1984-themed detective investigation game built in Godot 4.6 using C# (.NET) and the GL Compatibility renderer. The game is inspired by Sid Meier's Covert Action and Shadows of Doubt — a "game of minigames" focused on investigation mechanics (stakeouts, wiretapping, crime scene analysis, suspect tailing, etc.) presented through menu-heavy interactive screens, and powered by a detailed underlying dynamic simulation.
 
+## Status and Roadmap
+
+Development follows the project sequence in `docs/future_plans/simulation_overhaul_plan.md` (P1-P8). P1-P5 are done
+(locations, traces, NPC brain, businesses, groups/dating). Next up: P6 History Backfill & NPC Spawning, then P7 Crime
+Templates (the crime system is currently a stub), then P8 Player Interaction UI. `todo.md` holds loose ideas and bugs
+seen in playtesting. Each project gets a spec in `docs/superpowers/specs/` and a plan in `docs/superpowers/plans/`.
+
+## Build, Test, Run
+
+- Build everything: `dotnet build stakeout.sln` (game, tests, benchmarks; should be 0 warnings)
+- Tests (xUnit, ~400, a few seconds): `dotnet test stakeout.tests/`
+- Benchmarks: `dotnet run --project stakeout.benchmarks/ -c Release` (frame budget and day profile by NPC count)
+- Godot editor/game: `../shared/tools/Godot_v4.6.1-stable_mono_win64/` (the VS Code "Play" launch config uses it)
+
+## Code Layout
+
+- `src/simulation/` - pure C# simulation (no scene nodes except `SimulationManager`; uses `Godot.Vector2` only). All tests target this.
+- `src/evidence/` - evidence board data model. `scenes/` - Godot UI scenes and their scripts.
+- Simulation code takes a `Random` and reads `state.Clock.CurrentTime`; never `new Random()` or `DateTime.Now`, so worlds replay from a seed.
+- Extending the sim: use the `add-address-type` and `add-npc-objective` skills.
+
 ## Working Conventions
 
 ### CRITICAL: No `cd` prefixing — applies to ALL agents and subagents

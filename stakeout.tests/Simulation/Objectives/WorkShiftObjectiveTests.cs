@@ -23,7 +23,7 @@ public class WorkShiftObjectiveTests
         var cityGen = new CityGenerator(seed: 42);
         state.CityGrids[city.Id] = cityGen.Generate(state, city);
 
-        var gen = new PersonGenerator(new MapConfig());
+        var gen = new PersonGenerator(new MapConfig(), new Random(1));
         var person = gen.GeneratePerson(state);
         var biz = state.Businesses[person.BusinessId.Value];
 

@@ -12,10 +12,18 @@ public enum TraceType
     Condition,      // wound, cause of death — attached to a person
 }
 
+public enum RecordKind
+{
+    Document,       // letter, note, email
+    CallLog,        // incoming/outgoing call entry on a phone
+    PhoneMessage,   // answering machine message asking for a call back
+}
+
 public class Trace
 {
     public int Id { get; set; }
     public TraceType Type { get; set; }
+    public RecordKind? RecordKind { get; set; }  // set only for Type == Record
     public string Description { get; set; }
     public DateTime CreatedAt { get; set; }
     public bool IsActive { get; set; } = true;

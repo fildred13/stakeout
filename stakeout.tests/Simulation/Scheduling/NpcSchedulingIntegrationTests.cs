@@ -60,7 +60,7 @@ public class NpcSchedulingIntegrationTests
 
         Assert.NotNull(officeBiz); // Test infra check: office businesses must exist in generated city
 
-        var person = new PersonGenerator(new MapConfig()).GeneratePerson(
+        var person = new PersonGenerator(new MapConfig(), new Random(1)).GeneratePerson(
             state,
             new SpawnRequirements { BusinessId = officeBiz.Id, PositionId = officePos.Id });
 

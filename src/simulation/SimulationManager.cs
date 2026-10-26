@@ -25,19 +25,18 @@ public partial class SimulationManager : Node
     private readonly MapConfig _mapConfig = new();
     public MapConfig MapConfig => _mapConfig;
     private readonly PersonGenerator _personGenerator;
-    private readonly LocationGenerator _locationGenerator;
     private readonly ActionRunner _actionRunner;
 
     private readonly Random _random = new(42);
-    private readonly CrimeGenerator _crimeGenerator = new();
+    private readonly CrimeGenerator _crimeGenerator;
     public CrimeGenerator CrimeGenerator => _crimeGenerator;
 
     public SimulationManager(SimulationState state)
     {
         State = state;
-        _locationGenerator = new LocationGenerator(_mapConfig);
-        _personGenerator = new PersonGenerator(_mapConfig);
+        _personGenerator = new PersonGenerator(_mapConfig, _random);
         _actionRunner = new ActionRunner(_mapConfig);
+        _crimeGenerator = new CrimeGenerator(_random);
     }
 
     public override void _Ready()
@@ -133,7 +132,7 @@ public partial class SimulationManager : Node
             // Plan day on wake-up (first tick, plan exhausted, or plan is null)
             if (person.DayPlan == null || person.DayPlan.IsExhausted)
             {
-                person.DayPlan = NpcBrain.PlanDay(person, State, State.Clock.CurrentTime);
+                person.DayPlan = NpcBrain.PlanDay(person, State, State.Clock.CurrentTime, _mapConfig);
                 State.Journal.Append(new SimulationEvent
                 {
                     Timestamp = State.Clock.CurrentTime,

@@ -1,38 +1,45 @@
 # Simulation Core
 
 ## Purpose
-The core simulation layer that manages all game world state: entities (people, locations, jobs), world generation, time progression, and event logging. Everything flows through SimulationState as the single source of truth.
+Owns all game-world state and advances it in time. Everything flows through `SimulationState` as the single source
+of truth; `SimulationManager` is the Godot node that builds the world and ticks it each frame.
 
 ## Key Files
 | File | Role |
 |------|------|
-| `src/simulation/SimulationState.cs` | Central data store — dictionaries of all entities, Crimes, Traces, GameClock, EventJournal, ID generation |
-| `src/simulation/SimulationManager.cs` | Godot Node orchestrator — initializes world in `_Ready()`, ticks clock and calls ActionRunner.Tick() per person in `_Process()`, emits events for UI |
-| `src/simulation/PersonGenerator.cs` | Creates a Person with home, job, trait-derived Objectives, and initial state |
-| `src/simulation/LocationGenerator.cs` | Generates addresses, streets, cities — handles street reuse and realistic address numbering |
-| `src/simulation/entities/Person.cs` | Person entity — IsAlive, Objectives list, DayPlan, CurrentActivity, home/job/position/travel state |
-| `src/simulation/entities/Player.cs` | Player entity — home address, current address/position, travel info (reuses NPC TravelInfo) |
-| `src/simulation/GameClock.cs` | Tracks in-game DateTime with a float TimeScale property (scaling applied by SimulationManager) |
-| `src/simulation/MapConfig.cs` | Map bounds and distance-based travel time calculation |
-| `src/simulation/events/EventJournal.cs` | Append-only event store, dual-indexed (global list + per-person dictionary) |
-| `src/simulation/events/SimulationEvent.cs` | Immutable event record with timestamp, person ID, event type, and contextual IDs |
-| `src/GameManager.cs` | Top-level Godot Node — creates SimulationState, EvidenceBoard, SimulationManager; wires them together |
+| `src/simulation/SimulationState.cs` | Central store - dictionaries of every entity (people, businesses, cities, streets, addresses, locations, sublocations, fixtures, items, traces, crimes, groups, relationships, vehicles), GameClock, EventJournal, ID generation, query helpers |
+| `src/simulation/SimulationManager.cs` | Godot Node - builds Boston and NYC, spawns NPCs and the player in `_Ready()`; in `_Process()` ticks the clock, plans/ticks every living NPC, updates door locks and player travel |
+| `src/simulation/PersonGenerator.cs` | Creates a Person: job (open Position), home (suburban house or apartment unit), traits, objectives, home phone, keys |
+| `src/simulation/LocationGenerator.cs` | Lazy interior generation: `PickAndResolveAddress`, `ResolveAddressInterior` |
+| `src/simulation/BusinessResolver.cs` | Spawns staff for every unfilled Position of a business on demand |
+| `src/simulation/GameClock.cs` | In-game DateTime and TimeScale |
+| `src/simulation/MapConfig.cs` | Map size and distance-based travel time (max 1 h corner to corner) |
+| `src/simulation/events/EventJournal.cs` | Append-only event log, indexed globally and per person |
+| `src/simulation/entities/*` | Plain entity classes (Person, Player, Address, Location, Business, Group, ...) |
+| `src/GameManager.cs` | Autoload that creates SimulationState, SimulationManager and EvidenceBoard |
 
 ## How It Works
-GameManager creates a SimulationState (empty) and SimulationManager, adding it to the scene tree. On `_Ready()`, SimulationManager generates a city scaffold (Boston, USA) via LocationGenerator, spawns 5 NPCs via PersonGenerator, and creates a Player with a home address. It emits C# events (PersonAdded, AddressAdded, PlayerCreated) so UI layers can react.
+`SimulationManager._Ready()` registers address templates, generates two cities with `CityGenerator` (seeds 42 and 84),
+which also creates every business. It spawns 5 random NPCs plus a dating couple (Jack and Susan, for manual testing
+of P5), then the player in an unclaimed suburban home with a key to its front door.
 
-PersonGenerator creates each Person with trait-derived Objectives (Sleep, and any trait objectives such as GoForARun or EatOut). On first tick, NpcBrain.PlanDay sorts those objectives by priority, greedily schedules their PlannedActions into the day, and fills gaps with IdleAtHome. The resulting DayPlan lives on the Person entity.
+Each `_Process` frame: tick the clock by `delta * TimeScale`; for each living person, run `NpcBrain.PlanDay` if they
+have no plan or it is exhausted, then `ActionRunner.Tick`; then `DoorLockingService` locks or unlocks business
+entrances by opening hours; then player travel is interpolated.
 
-Each frame, SimulationManager ticks the GameClock and calls ActionRunner.Tick() for each alive person. ActionRunner handles travel interpolation, activity ticking, and advancing the plan index. Player travel is updated separately. All state changes are logged to the EventJournal.
+Generation is lazy ("progressive growth", see `docs/design/simulation/simulation_overview.md`): addresses exist on
+the grid from the start, but their Locations are only built when a person, the player, or a business needs them.
 
 ## Key Decisions
-- **State-primary with event journal:** Entities hold mutable current state; the journal is a parallel append-only log. Chosen over event-sourced because the simulation needs fast current-state reads every frame.
-- **Single SimulationState:** All entity dictionaries in one place. Crimes and Traces live here alongside People and Addresses.
-- **DayPlan lives on Person:** NpcBrain builds the plan and stores it on `Person.DayPlan`. The plan is rebuilt each morning at wake-up rather than reactively when Objectives change.
-- **ID generation is centralized:** `SimulationState.GenerateEntityId()` provides monotonically increasing IDs across all entity types.
+- **State-primary with an event journal:** entities hold mutable current state; the journal is a parallel log for UI and future replay.
+- **Single SimulationState:** one place to query, and later to save.
+- **Centralized IDs:** `GenerateEntityId()` gives one monotonically increasing ID space across all entity types.
+- **Seeded randomness:** world generation and crimes take a `Random` from the caller; avoid `new Random()` and `DateTime.Now` in simulation code.
+- **`Person.CurrentAddressId == null` means in transit** (`Player` still uses 0).
 
 ## Connection Points
-- **Crime system** injects Objectives onto People via CrimeGenerator; those objectives are picked up on the next PlanDay run
-- **NPC brain system** (see npc-brain.md) reads from SimulationState (addresses) and ActionRunner writes back to Person entities and EventJournal
-- **Evidence board** is created by GameManager alongside SimulationState but currently has no direct data flow from simulation
-- **Game shell** accesses simulation through GameManager's public `State` and `SimulationManager` properties
+- **NPC brain** (`npc-brain.md`): planning and action execution per person.
+- **City generation** (`city-generation.md`) and **businesses** (`businesses.md`) build the world.
+- **Social coordination** (`social-coordination.md`): relationships, phone calls, dates.
+- **Crime system** (`crime-system.md`): stub, rebuilt in P7.
+- **Game shell / evidence board:** read state through `GameManager.State` and `SimulationManager`.

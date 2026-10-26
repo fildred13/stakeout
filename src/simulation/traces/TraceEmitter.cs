@@ -68,11 +68,12 @@ public static class TraceEmitter
     }
 
     public static int EmitRecord(SimulationState state, int fixtureId,
-        int? personId, string description)
+        int? personId, string description, RecordKind kind = RecordKind.Document)
     {
         return AddTrace(state, new Trace
         {
             Type = TraceType.Record,
+            RecordKind = kind,
             FixtureId = fixtureId,
             CreatedByPersonId = personId,
             Description = description

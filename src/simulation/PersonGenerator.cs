@@ -15,11 +15,6 @@ public class PersonGenerator
     private readonly Random _random;
     private readonly MapConfig _mapConfig;
 
-    public PersonGenerator(MapConfig mapConfig)
-        : this(mapConfig, new Random())
-    {
-    }
-
     public PersonGenerator(MapConfig mapConfig, Random random)
     {
         _random = random;

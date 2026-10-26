@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using Stakeout.Simulation;
 using Stakeout.Simulation.Addresses;
@@ -20,7 +21,7 @@ public class BusinessResolverTests
         state.Cities[city.Id] = city;
         var cityGen = new CityGenerator(seed: 42);
         state.CityGrids[city.Id] = cityGen.Generate(state, city);
-        var gen = new PersonGenerator(new MapConfig());
+        var gen = new PersonGenerator(new MapConfig(), new Random(1));
         return (state, gen);
     }
 
@@ -31,7 +32,7 @@ public class BusinessResolverTests
         var biz = state.Businesses.Values.First();
         var emptyCount = biz.Positions.Count(p => p.AssignedPersonId == null);
 
-        var spawned = BusinessResolver.Resolve(state, biz, gen);
+        var spawned = BusinessResolver.Resolve(state, biz, gen, new Random(1));
 
         Assert.Equal(emptyCount, spawned.Count);
         Assert.All(biz.Positions, p => Assert.NotNull(p.AssignedPersonId));
@@ -43,7 +44,7 @@ public class BusinessResolverTests
         var (state, gen) = Setup();
         var biz = state.Businesses.Values.First();
 
-        BusinessResolver.Resolve(state, biz, gen);
+        BusinessResolver.Resolve(state, biz, gen, new Random(1));
 
         Assert.True(biz.IsResolved);
     }
@@ -61,7 +62,7 @@ public class BusinessResolverTests
         });
 
         var remainingEmpty = biz.Positions.Count(p => p.AssignedPersonId == null);
-        var spawned = BusinessResolver.Resolve(state, biz, gen);
+        var spawned = BusinessResolver.Resolve(state, biz, gen, new Random(1));
 
         Assert.Equal(remainingEmpty, spawned.Count);
     }
@@ -72,8 +73,8 @@ public class BusinessResolverTests
         var (state, gen) = Setup();
         var biz = state.Businesses.Values.First();
 
-        BusinessResolver.Resolve(state, biz, gen);
-        var second = BusinessResolver.Resolve(state, biz, gen);
+        BusinessResolver.Resolve(state, biz, gen, new Random(1));
+        var second = BusinessResolver.Resolve(state, biz, gen, new Random(1));
 
         Assert.Empty(second);
     }
@@ -84,7 +85,7 @@ public class BusinessResolverTests
         var (state, gen) = Setup();
         var biz = state.Businesses.Values.First();
 
-        var spawned = BusinessResolver.Resolve(state, biz, gen);
+        var spawned = BusinessResolver.Resolve(state, biz, gen, new Random(1));
 
         Assert.All(spawned, p =>
             Assert.Contains(p.Objectives, o => o is Stakeout.Simulation.Objectives.WorkShiftObjective));

@@ -13,7 +13,6 @@ public class ActionRunner
 {
     private readonly MapConfig _mapConfig;
     private readonly Dictionary<int, Random> _personRandoms = new();
-    private readonly Dictionary<int, bool> _pendingAnsweringMachineCheck = new();
 
     public ActionRunner(MapConfig mapConfig)
     {
@@ -121,10 +120,10 @@ public class ActionRunner
 
     private bool TryInjectAnsweringMachineCheck(Person person, SimulationState state)
     {
-        if (!_pendingAnsweringMachineCheck.TryGetValue(person.Id, out var pending) || !pending)
+        if (!person.NeedsAnsweringMachineCheck)
             return false;
 
-        _pendingAnsweringMachineCheck[person.Id] = false;
+        person.NeedsAnsweringMachineCheck = false;
 
         var action = new CheckAnsweringMachineAction();
         var ctx = CreateContext(person, state);
@@ -190,7 +189,7 @@ public class ActionRunner
         var currentTime = state.Clock.CurrentTime;
 
         // Log departure if currently at an address (not already traveling)
-        if (person.CurrentAddressId.HasValue && person.CurrentAddressId != 0)
+        if (person.CurrentAddressId.HasValue)
         {
             state.Journal.Append(new SimulationEvent
             {
@@ -216,7 +215,7 @@ public class ActionRunner
             ToAddressId = destinationAddressId
         };
 
-        person.CurrentAddressId = 0; // In transit
+        person.CurrentAddressId = null; // In transit
     }
 
     private void UpdateTravel(Person person, SimulationState state)
@@ -231,18 +230,10 @@ public class ActionRunner
             person.TravelInfo = null;
 
             // Check for answering machine messages when arriving home
-            if (travel.ToAddressId == person.HomeAddressId && person.HomePhoneFixtureId.HasValue)
+            if (travel.ToAddressId == person.HomeAddressId && person.HomePhoneFixtureId.HasValue
+                && CheckAnsweringMachineAction.GetMessages(state, person.HomePhoneFixtureId.Value, currentTime).Any())
             {
-                var messageTraces = state.GetTracesForFixture(person.HomePhoneFixtureId.Value, state.Clock.CurrentTime)
-                    .Where(t => t.Type == TraceType.Record
-                             && t.Description != null
-                             && t.Description.Contains("please call back"))
-                    .ToList();
-
-                if (messageTraces.Count > 0)
-                {
-                    _pendingAnsweringMachineCheck[person.Id] = true;
-                }
+                person.NeedsAnsweringMachineCheck = true;
             }
 
             state.Journal.Append(new SimulationEvent

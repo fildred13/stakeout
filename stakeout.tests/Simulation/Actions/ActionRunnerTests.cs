@@ -86,6 +86,7 @@ public class ActionRunnerTests
 
         Assert.NotNull(person.TravelInfo);
         Assert.Equal(2, person.TravelInfo.ToAddressId);
+        Assert.Null(person.CurrentAddressId);
         Assert.Null(person.CurrentActivity);
     }
 

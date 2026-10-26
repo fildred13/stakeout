@@ -10,9 +10,12 @@ namespace Stakeout.Simulation.Brain;
 
 public static class NpcBrain
 {
+    private static readonly MapConfig DefaultMapConfig = new();
+
     public static DayPlan PlanDay(Person person, SimulationState state,
         DateTime currentTime, MapConfig mapConfig = null)
     {
+        mapConfig ??= DefaultMapConfig;
         var plan = new DayPlan();
         var planStart = currentTime;
         var planEnd = currentTime.AddHours(24);
@@ -27,9 +30,7 @@ public static class NpcBrain
         var scheduled = new List<(DateTime start, DateTime end, PlannedAction action)>();
 
         // The person's starting address (current or home if in transit)
-        var startAddressId = (person.CurrentAddressId.HasValue && person.CurrentAddressId.Value != 0)
-            ? person.CurrentAddressId
-            : (int?)person.HomeAddressId;
+        int? startAddressId = person.CurrentAddressId ?? person.HomeAddressId;
 
         foreach (var objective in objectives)
         {
@@ -170,9 +171,6 @@ public static class NpcBrain
         if (!fromAddressId.HasValue || !state.Addresses.TryGetValue(fromAddressId.Value, out var fromAddr))
             return 0f;
 
-        if (mapConfig != null)
-            return mapConfig.ComputeTravelTimeHours(fromAddr.Position, target.Position);
-        var diagonal = new Godot.Vector2(4800, 4800).Length();
-        return fromAddr.Position.DistanceTo(target.Position) / diagonal * 1.0f;
+        return mapConfig.ComputeTravelTimeHours(fromAddr.Position, target.Position);
     }
 }

@@ -1,34 +1,40 @@
 # Game Shell
 
 ## Purpose
-Persistent UI frame with a left sidebar (clock, time controls, context-sensitive menu) and a swappable content area. Content views plug into the shell without full scene changes; immersive views (minigames, evidence board) use full scene transitions instead.
+Persistent UI frame with a left sidebar (clock, time controls, context-sensitive menu) and a swappable content area.
+Content views plug into the shell without full scene changes; immersive views (evidence board) use full scene
+transitions instead.
 
 ## Key Files
 | File | Role |
 |------|------|
-| `scenes/game_shell/GameShell.cs` | Shell controller — sidebar setup, content view loading, menu rendering, debug panel (crime generator, people list, person inspector dialog) |
-| `scenes/game_shell/GameShell.tscn` | Scene layout — LeftSidebar (1/4 width), ContentArea (3/4 width, clip_contents), DebugSidebar, DebugMenuButton |
-| `scenes/city/CityView.cs` | City map content view — renders address icons, entity dots (dead NPCs in red), action-aware hover tooltips, right-click context menus |
-| `scenes/city/CityView.tscn` | City scene — CityMap with MapBackground texture, LocationIcons, EntityDots layers, HoverLabel |
-| `scenes/address/AddressView.cs` | Address content view — shows location name, lists occupants, provides submenu navigation |
-| `scenes/address/AddressView.tscn` | Address scene — centered label |
-| `src/GameManager.cs` | Stores `ActiveContentView` path so the shell can restore state after full scene changes |
+| `scenes/game_shell/GameShell.cs` | Shell controller - sidebar, time scale buttons, content view loading, debug sidebar (crime generator, people list, person inspector windows) |
+| `scenes/game_shell/GameShell.tscn` | Layout - LeftSidebar (1/4 width), ContentArea (3/4, clip_contents), DebugSidebar, DebugMenuButton |
+| `scenes/city/CityView.cs` | City map - draws the CityGrid (roads, buildings, parks, street labels) with pan/zoom, NPC/player dots, hover tooltips, right-click menus (travel, add to evidence board) |
+| `scenes/address/AddressView.cs` | Address view - location name, occupants, submenu navigation |
+| `scenes/address/BlueprintView.cs`, `GraphView.cs` | Stubs, to be rebuilt in P8 (Player UI) |
+| `scenes/evidence_board/*` | Evidence board scene (polaroids, red string, dossier windows) reached by full scene change |
+| `scenes/main_menu/`, `scenes/options_menu/` | Entry menu and display options (`src/DisplaySettings.cs`) |
+| `src/GameManager.cs` | Autoload - owns SimulationState, SimulationManager, EvidenceBoard; remembers `ActiveContentView` across scene changes |
 
 ## How It Works
-GameShell is the primary game scene (navigated to from MainMenu). On `_Ready()`, it sets up the sidebar and loads the active content view (default: CityView) into ContentArea via `LoadContentView()`. Content views implement `IContentView` to receive a GameShell reference and call `SetMenuItems()` to populate the sidebar menu.
+MainMenu starts the game and switches to GameShell. `_Ready()` builds the sidebar and loads the active content view
+(default CityView) into ContentArea. Content views implement `IContentView` to get a GameShell reference and call
+`SetMenuItems()` to fill the sidebar menu.
 
-The debug sidebar (toggled via DebugMenuButton) contains a Crime Generator section (generate serial killer crimes on demand) and a People list. Clicking a person name opens a Person Inspector dialog (Window node) showing identity, location, objectives with step status, schedule timeline, and recent events. The crime generator calls CrimeGenerator.Generate() and triggers schedule rebuilds.
+The debug sidebar (DebugMenuButton) holds the crime generator and a people list. Clicking a person opens a Person
+Inspector window showing identity, location, objectives (current one marked), the DayPlan timeline, and recent
+EventJournal entries; open inspectors refresh on a timer.
 
-CityView renders entity dots with action-aware colors (white=active, grey=sleeping, red=dead) and enhanced hover tooltips showing current action with destination/workplace details (e.g., "TravelByCar → 42 Oak St", "Work at 1 Main St").
+Time controls set `GameClock.TimeScale`; `SimulationManager._Process` advances the world by `delta * TimeScale`.
 
 ## Key Decisions
-- **IContentView interface over Godot signals/Call:** C# `is` pattern matching is more reliable than Godot's `HasMethod`/`Call` across the Variant bridge.
-- **Content views set their own menus:** Each view calls `SetMenuItems()` with its context-specific options.
-- **Crime Generator UI rebuilt in PopulateDebugPeopleList:** The debug sidebar clears and rebuilds all children on each open, so crime generator controls are recreated alongside the people list to survive the rebuild cycle.
-- **Single active inspector window:** Only one Person Inspector dialog can be open at a time; opening a new one closes the previous.
+- **IContentView interface over Godot signals/Call:** C# `is` matching is more reliable than `HasMethod`/`Call` across the Variant bridge.
+- **Content views set their own menus** via `SetMenuItems()`.
+- **Debug sidebar rebuilt on open:** `PopulateDebugPeopleList` clears and recreates all children, including the crime generator controls.
+- **One inspector per person;** opening an existing one focuses it.
 
 ## Connection Points
-- **SimulationManager:** Content views read state for display; CityView triggers `StartPlayerTravel()` for movement; GameShell calls `RebuildSchedule()` after crime generation
-- **Crime system:** GameShell uses CrimeGenerator and ObjectiveResolver to trigger and display crime state
-- **Evidence board:** GameShell navigates to EvidenceBoard via full scene change
-- **GameManager:** Provides SimulationManager, EvidenceBoard, and ActiveContentView persistence
+- **SimulationManager:** views read `State`; CityView calls `StartPlayerTravel()`; the crime button uses `SimulationManager.CrimeGenerator`.
+- **Evidence board:** CityView right-click menus add Persons/Addresses to `GameManager.EvidenceBoard`; the shell opens the board scene.
+- **NPC brain:** inspector reads `Person.Objectives`, `DayPlan`, `CurrentActivity`.

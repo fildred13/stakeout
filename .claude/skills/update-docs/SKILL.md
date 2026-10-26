@@ -9,7 +9,7 @@ Run this checklist when finishing a development branch, before invoking the supe
 
 ## Steps
 
-1. **Identify touched subsystems.** Run `git diff main --name-only` (or the appropriate base branch) to see what files changed. Group them by subsystem (simulation-core, simulation-scheduling, evidence-board, or other).
+1. **Identify touched subsystems.** Run `git diff main --name-only` (or the appropriate base branch) to see what files changed. Group them by the docs in `docs/architecture/` (simulation-core, npc-brain, social-coordination, businesses, city-generation, location-hierarchy, crime-system, game-shell, evidence-board) or "other".
 
 2. **Check architecture docs.** For each touched subsystem:
    - Does `docs/architecture/<subsystem>.md` exist?

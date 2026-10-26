@@ -26,6 +26,7 @@ The board has its own ID space (`_nextItemId`) separate from simulation entity I
 - **Pure data model, no UI:** The board stores positions but has no rendering logic. UI scenes read from this model.
 
 ## Connection Points
-- **Created by:** GameManager alongside SimulationState — currently independent, no automatic population
+- **Created by:** GameManager alongside SimulationState (recreated on `Reinitialize`)
 - **Links to simulation via:** EvidenceItem.EntityType + EntityId (foreign key to Person.Id or Address.Id in SimulationState)
-- **Will be populated by:** UI layer (not yet implemented) based on player interactions and discoveries
+- **Populated by:** CityView right-click menus ("add to evidence board" on addresses and people); CityView also tints pinned addresses
+- **UI:** `scenes/evidence_board/` — EvidenceBoardScene (pan/zoom corkboard), EvidencePolaroid, StringLayer (red twine), DossierWindow

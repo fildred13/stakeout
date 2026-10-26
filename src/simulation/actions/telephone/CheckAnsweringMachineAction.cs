@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using Stakeout.Simulation.Objectives;
 using Stakeout.Simulation.Traces;
@@ -13,6 +14,12 @@ public class CheckAnsweringMachineAction : IAction
     public string Name => "CheckAnsweringMachine";
     public string DisplayText => "Checking answering machine";
 
+    public static IEnumerable<Trace> GetMessages(SimulationState state, int phoneFixtureId, DateTime currentTime)
+    {
+        return state.GetTracesForFixture(phoneFixtureId, currentTime)
+            .Where(t => t.Type == TraceType.Record && t.RecordKind == RecordKind.PhoneMessage);
+    }
+
     public void OnStart(ActionContext ctx) { }
 
     public ActionStatus Tick(ActionContext ctx, TimeSpan delta)
@@ -25,12 +32,8 @@ public class CheckAnsweringMachineAction : IAction
     {
         if (!ctx.Person.HomePhoneFixtureId.HasValue) return;
 
-        var messageTraces = ctx.State.GetTracesForFixture(
-            ctx.Person.HomePhoneFixtureId.Value, ctx.CurrentTime)
-            .Where(t => t.Type == TraceType.Record
-                     && t.Description != null
-                     && t.Description.Contains("please call back")
-                     && t.CreatedByPersonId.HasValue)
+        var messageTraces = GetMessages(ctx.State, ctx.Person.HomePhoneFixtureId.Value, ctx.CurrentTime)
+            .Where(t => t.CreatedByPersonId.HasValue)
             .ToList();
 
         if (!ctx.State.RelationshipsByPersonId.TryGetValue(ctx.Person.Id, out var relationships))

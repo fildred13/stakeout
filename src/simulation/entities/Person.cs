@@ -18,7 +18,7 @@ public class Person
     public int? HomeLocationId { get; set; }
     public int? BusinessId { get; set; }
     public int? PositionId { get; set; }
-    public int? CurrentAddressId { get; set; }
+    public int? CurrentAddressId { get; set; }  // null while in transit
     public int? CurrentLocationId { get; set; }
     public int? CurrentSubLocationId { get; set; }
     public Vector2 CurrentPosition { get; set; }
@@ -30,6 +30,7 @@ public class Person
     public int? HomePhoneFixtureId { get; set; }
     public int? VehicleId { get; set; }
     public bool NeedsReplan { get; set; }
+    public bool NeedsAnsweringMachineCheck { get; set; }
 
     // New P3 fields
     public List<Objective> Objectives { get; set; } = new();

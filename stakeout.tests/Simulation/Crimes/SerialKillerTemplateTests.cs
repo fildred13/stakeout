@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using Stakeout.Simulation;
 using Stakeout.Simulation.Crimes;
@@ -37,7 +38,7 @@ public class SerialKillerTemplateTests
         var state = CreateStateWithPeople(3);
         var template = new SerialKillerTemplate();
 
-        var crime = template.Instantiate(state);
+        var crime = template.Instantiate(state, new Random(1));
 
         Assert.NotNull(crime);
         Assert.True(crime.Roles.ContainsKey("Killer"));
@@ -51,7 +52,7 @@ public class SerialKillerTemplateTests
         var state = CreateStateWithPeople(3);
         var template = new SerialKillerTemplate();
 
-        var crime = template.Instantiate(state);
+        var crime = template.Instantiate(state, new Random(1));
 
         Assert.NotNull(crime);
         Assert.True(crime.Roles.ContainsKey("Victim"));
@@ -64,7 +65,7 @@ public class SerialKillerTemplateTests
         var state = CreateStateWithPeople(3);
         var template = new SerialKillerTemplate();
 
-        var crime = template.Instantiate(state);
+        var crime = template.Instantiate(state, new Random(1));
 
         Assert.NotNull(crime);
         Assert.True(state.Crimes.ContainsKey(crime.Id));
@@ -77,7 +78,7 @@ public class SerialKillerTemplateTests
         var state = CreateStateWithPeople(1);
         var template = new SerialKillerTemplate();
 
-        var crime = template.Instantiate(state);
+        var crime = template.Instantiate(state, new Random(1));
 
         Assert.Null(crime);
     }
