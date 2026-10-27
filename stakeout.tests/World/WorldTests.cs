@@ -57,7 +57,7 @@ public class WorldWeekTests : IClassFixture<WeekFixture>
         {
             var toVenue = _world.History.TripsOf(date.DriverId)
                 .First(t => t.Depart >= date.Start.AddMinutes(-1) && t.ToAddressId == date.VenueAddressId);
-            Assert.NotNull(toVenue.VehicleId);
+            Assert.True(toVenue.VehicleId.HasValue || toVenue.Taxi, $"date {date.Id} went on foot");
             Assert.Equal(new[] { date.DriverId, date.PassengerId }, toVenue.PersonIds);
         }
     }

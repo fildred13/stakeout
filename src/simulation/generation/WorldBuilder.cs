@@ -14,7 +14,7 @@ namespace Stakeout.Simulation.Generation;
 /// <summary>Creates a complete, populated world from a seed. Same seed, same world.</summary>
 public static class WorldBuilder
 {
-    public static readonly DateTime DefaultStart = new(1984, 10, 8, 3, 0, 0);
+    public static readonly DateTime DefaultStart = new(1984, 10, 10, 3, 0, 0);
 
     public static World Build(int seed, DateTime? start = null)
     {

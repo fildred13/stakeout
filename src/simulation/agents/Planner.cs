@@ -92,6 +92,10 @@ public class Planner
             }
         }
 
+        // Errands a scenario injected come first; sleep and everything else fit around them.
+        foreach (var extra in agent.Injected) blocks.Add(extra);
+        agent.Injected.Clear();
+
         // Sleep fills the night, around any commitment that falls in it.
         var sleepFrom = sleepStart > now ? sleepStart : now;
         foreach (var (s, e) in Subtract(sleepFrom, wake, blocks))
@@ -103,9 +107,6 @@ public class Planner
                 ArriveBy = s, LeaveAt = e, Label = "asleep"
             });
         }
-
-        foreach (var extra in agent.Injected) blocks.Add(extra);
-        agent.Injected.Clear();
 
         blocks.Sort((a, b) => a.ArriveBy.CompareTo(b.ArriveBy));
 

@@ -100,6 +100,7 @@ public class InvariantChecker
     {
         foreach (var call in _world.History.Calls)
         {
+            if (call.Outcome == CallOutcome.Emergency) continue;
             var phone = _world.State.Fixtures[call.ToPhoneId];
             int location = _world.Phones.PhoneLocation(phone);
             if (call.Outcome == CallOutcome.Answered)

@@ -18,6 +18,8 @@ public class World
 {
     public int Seed { get; }
     public int CityId { get; internal set; }
+    /// <summary>The detective's person id (0 when the world has no player).</summary>
+    public int PlayerId { get; internal set; }
     public SimulationState State { get; }
     public Scheduler Scheduler { get; }
     public HistoryStore History { get; } = new();
@@ -33,6 +35,7 @@ public class World
     public Places Places { get; }
     public PhoneSystem Phones { get; }
     public SocialLife Social { get; }
+    public Crime.CrimeSystem Crimes { get; }
 
     /// <summary>Hooks run when an agent settles into an appointment (scenarios, crime, police).</summary>
     public event Action<Agent, Appointment> Settled;
@@ -51,6 +54,7 @@ public class World
         Places = new Places(this);
         Phones = new PhoneSystem(this);
         Social = new SocialLife(this);
+        Crimes = new Crime.CrimeSystem(this);
     }
 
     public DateTime Now => Scheduler.Now;

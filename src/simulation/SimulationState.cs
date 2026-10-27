@@ -62,6 +62,14 @@ public class SimulationState
         return Streets.TryGetValue(a.StreetId, out var s) ? $"{a.Number} {s.Name}" : $"Address {a.Id}";
     }
 
+    /// <summary>Street address of someone's home, with the unit for apartments.</summary>
+    public string HomeLine(Person person)
+    {
+        var line = AddressLine(person.HomeAddressId);
+        return Addresses[person.HomeAddressId].Type == AddressType.ApartmentBuilding
+            ? $"{line}, {Locations[person.HomeLocationId].Name}" : line;
+    }
+
     public string PlaceName(int addressId)
     {
         var biz = BusinessAt(addressId);
@@ -113,6 +121,9 @@ public class SimulationState
 
     public AccessPoint GetAccessPoint(int id) => _accessPoints.TryGetValue(id, out var ap) ? ap : null;
     public int LocationOfAccessPoint(int id) => _accessPointLocation[id];
+
+    /// <summary>The location a fixture is in, whether it sits in the location or in one of its sublocations.</summary>
+    public int LocationOfFixture(Fixture f) => f.LocationId ?? SubLocations[f.SubLocationId.Value].LocationId;
 
     public Fixture Phone(int locationId) =>
         AllFixturesIn(locationId).FirstOrDefault(f => f.Type == FixtureType.Telephone);

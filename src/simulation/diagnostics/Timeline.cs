@@ -24,7 +24,7 @@ public static class Timeline
         {
             string how = t.VehicleId.HasValue
                 ? $"{(t.LeaderId == personId ? "drives" : "rides in")} the {state.Vehicles[t.VehicleId.Value].Description}"
-                : "walks";
+                : t.Taxi ? "takes a cab" : "walks";
             var others = t.PersonIds.Where(id => id != personId).Select(id => state.People[id].FirstName).ToList();
             string with = others.Count > 0 ? $" with {string.Join(", ", others)}" : "";
             lines.Add((t.Depart, $"{t.Depart:ddd HH:mm}-{t.Arrive:HH:mm}  {how}{with} to {state.PlaceName(t.ToAddressId)}"));

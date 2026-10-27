@@ -128,7 +128,7 @@ public class Movement
             vehicle.ParkedAddressId = null;
         }
 
-        var mode = vehicleId.HasValue ? TravelMode.Drive : TravelMode.Walk;
+        var mode = vehicleId.HasValue ? TravelMode.Drive : _world.Router.OnFootOrTaxi(fromAddressId, toAddressId);
         var trip = new TripFact
         {
             Id = _world.NextFactId(),
@@ -237,6 +237,7 @@ public class Movement
     public TimeSpan TravelEstimate(int fromAddressId, int toAddressId, TravelMode mode)
     {
         if (fromAddressId == toAddressId) return TimeSpan.Zero;
+        if (mode != TravelMode.Drive) mode = _world.Router.OnFootOrTaxi(fromAddressId, toAddressId);
         var seconds = _world.Router.Between(fromAddressId, toAddressId, mode).DurationSeconds;
         if (LobbyOf(fromAddressId) != null) seconds += 60;
         if (LobbyOf(toAddressId) != null) seconds += 60;

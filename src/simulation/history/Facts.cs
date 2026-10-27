@@ -52,6 +52,7 @@ public sealed class TripFact
     public int ToAddressId { get; init; }
 
     public bool Overlaps(DateTime from, DateTime to) => Depart < to && Arrive > from;
+    public bool Taxi => Route.Mode == TravelMode.Taxi;
 
     /// <summary>When the trip passes <paramref name="cell"/>, or null.</summary>
     public DateTime? TimeAt(int cell)
@@ -61,7 +62,7 @@ public sealed class TripFact
     }
 }
 
-public enum CallOutcome { Answered, AnsweringMachine, NoAnswer }
+public enum CallOutcome { Answered, AnsweringMachine, NoAnswer, Emergency }
 
 /// <summary>A telephone call between two phone fixtures. The phone company keeps the record either way.</summary>
 public sealed class CallFact

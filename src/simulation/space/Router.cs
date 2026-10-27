@@ -4,7 +4,8 @@ using Godot;
 
 namespace Stakeout.Simulation.Space;
 
-public enum TravelMode { Drive, Walk }
+/// <summary>How a trip is made. A taxi is an anonymous cab: it drives the roads but is not a simulated vehicle.</summary>
+public enum TravelMode { Drive, Walk, Taxi }
 
 /// <summary>
 /// A path along road cells with the time (seconds after departure) at which the traveller enters each cell.
@@ -65,6 +66,9 @@ public class Router
     public const int WalkSecondsPerCell = 60;      // ~4.8 km/h
     public const int DriveOverheadSeconds = 60;    // walk to car, start, park
     public const int WalkOverheadSeconds = 30;
+    public const int TaxiWaitSeconds = 360;     // phoning for a cab and waiting for it
+    /// <summary>Beyond this many cells on foot, people without a car take a cab.</summary>
+    public const int MaxWalkCells = 12;
 
     private readonly RoadGraph _roads;
     private readonly Dictionary<(int, int, TravelMode), Route> _cache = new();
@@ -89,6 +93,10 @@ public class Router
     public Route Between(int fromAddressId, int toAddressId, TravelMode mode) =>
         Find(_roads.AccessCell(fromAddressId), _roads.AccessCell(toAddressId), mode);
 
+    /// <summary>Walking, unless it is far enough that someone without a car would call a cab.</summary>
+    public TravelMode OnFootOrTaxi(int fromAddressId, int toAddressId) =>
+        Between(fromAddressId, toAddressId, TravelMode.Walk).Cells.Length > MaxWalkCells ? TravelMode.Taxi : TravelMode.Walk;
+
     public int CellCost(int cell, TravelMode mode) => mode == TravelMode.Walk
         ? WalkSecondsPerCell
         : _roads.IsArterial(cell) ? ArterialSecondsPerCell : StreetSecondsPerCell;
@@ -103,7 +111,12 @@ public class Router
 
     private Route Search(int fromCell, int toCell, TravelMode mode)
     {
-        int overhead = mode == TravelMode.Drive ? DriveOverheadSeconds : WalkOverheadSeconds;
+        int overhead = mode switch
+        {
+            TravelMode.Drive => DriveOverheadSeconds,
+            TravelMode.Taxi => DriveOverheadSeconds + TaxiWaitSeconds,
+            _ => WalkOverheadSeconds
+        };
         if (fromCell == toCell)
             return new Route(new[] { fromCell }, new[] { overhead / 2 }, overhead, mode);
 

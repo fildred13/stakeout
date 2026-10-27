@@ -59,6 +59,24 @@ public class PopulationGenerator
         BuildTensions(everyone);
         PlaceCameras();
         PlaceDocuments(everyone);
+        PlaceGuns(everyone);
+    }
+
+    private void PlaceGuns(List<Person> everyone)
+    {
+        foreach (var p in everyone.Where(p => p.Has(Traits.GunOwner)).OrderBy(p => p.Id))
+        {
+            var nightstand = _state.AllFixturesIn(p.HomeLocationId).FirstOrDefault(f => f.Type == FixtureType.Nightstand);
+            if (nightstand == null) continue;
+            var gun = new Item
+            {
+                Id = _state.GenerateEntityId(), ItemType = ItemType.Handgun, OwnerPersonId = p.Id,
+                Name = _rng.NextDouble() < 0.6 ? ".38 Smith & Wesson revolver" : "9mm Browning pistol",
+                FixtureId = nightstand.Id
+            };
+            gun.Data["registered"] = _rng.NextDouble() < 0.8;
+            _state.Items[gun.Id] = gun;
+        }
     }
 
     // ---- people ----
@@ -452,7 +470,7 @@ public class PopulationGenerator
                     int borrower = aBorrowed ? rel.PersonAId : rel.PersonBId;
                     int lender = rel.Other(borrower);
                     int amount = _rng.Next(5, 61) * 100;
-                    var t = Add(TensionKind.Debt, borrower, lender, 0.2 + _rng.NextDouble() * 0.6 + amount / 20000.0, amount);
+                    var t = Add(TensionKind.Debt, borrower, lender, 0.2 + _rng.NextDouble() * 0.5 + amount / 30000.0, amount);
                     Know(t, Friends(lender), 0.5);
                     Know(t, Partners(lender), 0.9);
                     Know(t, Partners(borrower), 0.4);
@@ -528,7 +546,7 @@ public class PopulationGenerator
                 var other = _state.People[rel.Other(p.Id)];
                 if (other.HouseholdId == p.HouseholdId) continue;
                 var phone = _state.PhoneOf(other);
-                book.Text.Add($"{other.FullName} - {phone?.PhoneNumber ?? "no phone"} - {_state.AddressLine(other.HomeAddressId)}");
+                book.Text.Add($"{other.FullName} - {phone?.PhoneNumber ?? "no phone"} - {_state.HomeLine(other)}");
             }
             if (p.BusinessId.HasValue)
             {
