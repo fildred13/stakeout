@@ -3,5 +3,6 @@ namespace Stakeout.Evidence;
 public enum EvidenceEntityType
 {
     Person,
-    Address
+    Address,
+    Clue
 }

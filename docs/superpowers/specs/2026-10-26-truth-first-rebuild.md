@@ -68,7 +68,12 @@ The player is a Person in the same world (home office, car, witnesses and neighb
 game time. Tools: notebook, fingerprint kit, lockpicks, phone (police contact, phone book, catalogue: wiretaps),
 cash. Save files are the seed plus the timestamped command log, replayed on load.
 
-## Progress
-- [ ] M1 core engine + benchmark  - [ ] M2 living city  - [ ] M3 joint activities, date, switch-over
-- [ ] M4 observers  - [ ] M5 pre-run, player agent, save/load  - [ ] M6 murder + case evaluation + bot detective
-- [ ] M7 UI: city, places, interviews, case file, stakeout, wiretap, lockpicking  - [ ] docs, cleanup
+## Progress (2026-10-27)
+- [x] M1 core engine + benchmark  - [x] M2 living city  - [x] M3 joint activities, date, switch-over
+- [x] M4 observers  - [x] M5 pre-run, player agent, save/load (command log)  - [x] M6 murder + case evaluation + bot detective
+- [x] M7 UI: city map, rooms, interviews, case file, stakeout + tailing, wiretap, lockpicking, phone, verdict
+- [x] docs
+
+Deviations from the plan: taxis for people without cars; no NYC; the DA formula is 1 - exp(-total/55) with pillar
+caps; the evidence board layout is not saved (UI state). Open ideas: more crime types, police as agents, player
+reputation, tailing on foot, choosing which tapes to buy, multi-case careers.

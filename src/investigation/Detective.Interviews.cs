@@ -22,6 +22,9 @@ public partial class Detective
 {
     private static readonly TimeSpan QuestionTime = TimeSpan.FromMinutes(4);
 
+    /// <summary>Everything each person has been asked and what they answered, in order.</summary>
+    public Dictionary<int, List<(Topic Topic, int? Subject, string Answer)>> Transcripts { get; } = new();
+
     private bool IsKiller(int personId) => Case != null && Case.Truth.KillerId == personId;
     private bool IsAccompliceFor(int personId, int killerId) =>
         Case != null && Case.Truth.KillerId == killerId && Case.Truth.AlibiAgreed && Case.Truth.AccompliceId == personId;
@@ -52,6 +55,8 @@ public partial class Detective
         if (firstMeeting && topic != Topic.Introduce)
             result.Answer = $"(\"{person.FullName}.\") {result.Answer}";
         foreach (var c in result.Clues) AddClue(c);
+        if (!Transcripts.TryGetValue(personId, out var transcript)) Transcripts[personId] = transcript = new();
+        transcript.Add((topic, subjectId, result.Answer));
         if (IsKiller(personId) && topic != Topic.Introduce && Case.QuestionedSuspects.Add(personId))
             World.Crimes.OnSuspectQuestioned(personId);
         Spend(QuestionTime);
@@ -177,7 +182,7 @@ public partial class Detective
             "affair" => $"We were... close. Please keep that between us.",
             "friend" => $"{victim.FirstName} was a friend of mine.",
             "coworker" => $"We worked together.",
-            "neighbor" => $"{victim.HeShe.Substring(0, 1).ToUpper() + victim.HeShe[1..]} lived {(p.HomeAddressId == victim.HomeAddressId ? "down the hall" : "next door")}. We'd say hello.",
+            "neighbor" => $"{victim.HeShe.Substring(0, 1).ToUpper() + victim.HeShe[1..]} lived {(p.HomeAddressId != victim.HomeAddressId ? "next door" : State.Locations[p.HomeLocationId].Floor == State.Locations[victim.HomeLocationId].Floor ? "down the hall" : "in the building")}. We'd say hello.",
             _ => $"I didn't really know {victim.HimHer}."
         };
         var last = LastSawAlive(p.Id, victim.Id);

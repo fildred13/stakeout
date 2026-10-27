@@ -1,32 +1,27 @@
 # Evidence Board
 
 ## Purpose
-A graph-based data model for the player's investigation corkboard. Tracks evidence items (linked to simulation entities) and connections between them (the "red twine"). Pure data layer — no UI logic.
+The player's corkboard: pinned people, places and clues joined by red twine. A pure data model plus a pan/zoom scene.
 
 ## Key Files
 | File | Role |
 |------|------|
-| `src/evidence/EvidenceBoard.cs` | Graph container: items dictionary + connections list, add/remove with cascading deletes |
-| `src/evidence/EvidenceItem.cs` | One pinned item: board-local ID, entity type/ID (links to simulation), board position |
-| `src/evidence/EvidenceConnection.cs` | Undirected edge between two items, normalized (FromItemId < ToItemId), value-equality semantics |
-| `src/evidence/EvidenceEntityType.cs` | Enum: Person, Address (will grow as more entity types become evidence-worthy) |
+| `src/evidence/EvidenceBoard.cs` | Items dictionary + connections list, add/remove with cascading deletes |
+| `src/evidence/EvidenceItem.cs` | One pinned item: board-local id, entity type and id, board position |
+| `src/evidence/EvidenceConnection.cs` | Undirected edge, normalized (From < To), value equality |
+| `src/evidence/EvidenceEntityType.cs` | Person, Address, Clue |
+| `scenes/evidence_board/EvidenceBoardScene.cs` | Corkboard scene: polaroids, twine, dossier on click |
+| `scenes/evidence_board/DossierWindow.cs` | What the detective knows about a pinned item (never more) |
 
 ## How It Works
-EvidenceBoard maintains a dictionary of EvidenceItems (keyed by board-local ID) and a list of EvidenceConnections. Each EvidenceItem maps a simulation entity (Person or Address, by type + ID) to a position on the board.
-
-Connections are bidirectional — EvidenceConnection normalizes the two item IDs so the smaller is always `FromItemId`. This gives set-like deduplication via Equals/GetHashCode. Removing an item cascades to remove all its connections via `RemoveAllConnections()`.
-
-`HasItem()` allows callers to check whether a simulation entity is already pinned before adding a duplicate.
-
-The board has its own ID space (`_nextItemId`) separate from simulation entity IDs.
+Items map an entity (Person id, Address id, or the detective's Clue id) to a board position. The shell pins things
+from the map, the People tab, interviews and the notebook (`GameShell.PinToBoard`); the "Board" button opens the
+scene. Connections are made by dragging from one thumbtack to another.
 
 ## Key Decisions
-- **Separate ID space from simulation:** Board item IDs are independent. The same simulation entity could theoretically appear multiple times (not currently enforced, but `HasItem()` check exists).
-- **Connections use value-equality semantics:** Normalized ordering + Equals/GetHashCode override means connection identity is purely structural, not reference-based.
-- **Pure data model, no UI:** The board stores positions but has no rendering logic. UI scenes read from this model.
+- **Separate id space from the simulation**; `HasItem` prevents duplicates.
+- **Dossiers show player knowledge only** (`Detective.People`, clues), so the board never leaks the truth.
+- **Board layout is UI state:** it is not part of the command-log save (a fresh board after loading).
 
 ## Connection Points
-- **Created by:** GameManager alongside SimulationState (recreated on `Reinitialize`)
-- **Links to simulation via:** EvidenceItem.EntityType + EntityId (foreign key to Person.Id or Address.Id in SimulationState)
-- **Populated by:** CityView right-click menus ("add to evidence board" on addresses and people); CityView also tints pinned addresses
-- **UI:** `scenes/evidence_board/` — EvidenceBoardScene (pan/zoom corkboard), EvidencePolaroid, StringLayer (red twine), DossierWindow
+- Owned by `GameManager` (reset with each game); reads `GameSession.Detective` for captions and dossiers.

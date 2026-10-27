@@ -1,38 +1,39 @@
 # Crime System
 
 ## Purpose
-Creates crimes as structured scenarios: casts NPCs into roles and records the crime in `SimulationState`. **Currently
-a stub** - the old objective/scheduler pipeline it drove was removed in the NPC brain rewrite (P3), and Project 7
-("Crime Templates & Scenarios" in `docs/future_plans/simulation_overhaul_plan.md`) rebuilds it on the brain,
-groups and trace systems.
+Turns a real tension between two people into a murder that happens in the simulated world, with a cover-up,
+a discovery, and a police report that starts the player's case.
 
 ## Key Files
 | File | Role |
 |------|------|
-| `src/simulation/crimes/ICrimeTemplate.cs` | Interface - Type, Name, `Instantiate(state, random)` returns a Crime |
-| `src/simulation/crimes/SerialKillerTemplate.cs` | Only template - picks a random living Killer; Victim role stays null; injects no objectives yet |
-| `src/simulation/crimes/CrimeGenerator.cs` | Template registry; `Generate(type, state)` instantiates with the simulation's seeded RNG |
-| `src/simulation/crimes/Crime.cs` | Crime record - roles (name to personId), status, related trace/objective IDs; enums |
-| `src/simulation/traces/Trace.cs` | Evidence record - TraceType (Mark/Item/Sighting/Record/Fingerprint/Condition), RecordKind, where/who/decay |
-| `src/simulation/traces/TraceEmitter.cs` | Static helpers that create Traces; objectives call it from `EmitTraces` |
-| `src/simulation/traces/InvestigationQuery.cs` | Read-side helper for finding traces at a location (future investigation UI) |
+| `src/simulation/crime/CrimeSystem.cs` | Casting, plotting (the phone call or a break-in), weapons, cover-up, stash, false alibi, discovery, police report |
+| `src/simulation/crime/MurderActivity.cs` | The killing as a joint activity: invited, uninvited (waits for the victim) or break-in |
+| `src/simulation/crime/DiscoveryActivity.cs` | A neighbour (or a worried friend) finds the body and phones the police |
+| `src/simulation/crime/MurderCase.cs` | The truth about one murder (never shown to the player directly) |
+| `src/simulation/entities/Relationship.cs` | `Tension`: debt, jealousy, affair, embezzlement, grudge; who knows about it |
 
 ## How It Works
-1. The debug sidebar's "Generate Now" button calls `SimulationManager.CrimeGenerator.Generate(SerialKiller, state)`.
-2. The template casts a Killer from living people, stores the Crime in `state.Crimes`, and returns it.
-3. Nothing else happens yet: no objectives are injected, so the killer's behavior is unchanged.
-
-Traces are already produced by ordinary NPC life (sightings while running, phone call logs and messages,
-fingerprints), so the evidence side exists independently of crimes.
+1. `ScheduleMurder(day)` casts at noon: tensions (not grudges) whose target lives alone and keeps a normal night,
+   scored by intensity, motive kind, violent trait and having a car. `TryPlot` needs an evening when both are free
+   and the victim is still up (invited), or the victim asleep at home at about 2:30 (break-in).
+2. Invited: the killer phones from home (three tries) to announce a visit; answered or heard on the machine, the
+   victim commits to staying home. Unanswered, the killer turns up anyway and waits; if the victim never comes
+   home, `FallBackToBreakIn`.
+3. `MurderActivity`: touches (door, table), cigarettes, an argument noise, then the kill (weapon item, noise,
+   `DeathFact`, the victim's presence becomes Dead). Cover-up: careful killers wipe; the weapon is dropped, dumped
+   in a park trash can on the way home (injected appointment) or stashed at home with bloody clothes (`OnSettled`).
+4. Next morning the killer may ask a friend for a false alibi (a recorded call). After the detective questions the
+   killer, they phone the accomplice again and may dump a weapon kept at home (`OnSuspectQuestioned`).
+5. From 6:45 the next morning, neighbours at home are tried every 20 minutes; the finder goes in, screams, goes
+   home and makes an Emergency call. `Reported` fires (the scanner alert); the coroner removes the body 5 hours later.
 
 ## Key Decisions
-- **Templates are C# classes, not data files:** keeps casting logic next to the objective tree it will build.
-- **Crime.Roles is `Dictionary<string, int?>`:** roles can be filled later (Victim chosen when the plan runs).
-- **Seeded RNG and game clock only:** crimes must be reproducible from the world seed for replay/backfill (P6).
-- **One crime at a time** for the first scenario.
+- **Motives come from the population, not from the crime:** tensions, their witnesses and their paper trails
+  (IOUs, letters, ledgers) exist from world creation, along with weaker red herrings.
+- **The crime is built from the same activities as everyday life**, so it obeys the same physics and leaves the
+  same kinds of facts.
 
 ## Connection Points
-- **NPC brain (P7):** crimes will inject Objectives (`ObjectiveSource.Crime`) that `NpcBrain.PlanDay` schedules like any other.
-- **Groups (P5):** multi-person crimes will reuse `Group` (`GroupType.CriminalMeeting` already exists).
-- **SimulationState:** `Crimes` and `Traces` dictionaries.
-- **Game shell:** debug sidebar shows the generated killer/victim names.
+- Uses **agents** and **social coordination**; facts are read by **observers**; `Reported` starts the
+  **investigation**. `GameSession.NewGame` schedules the murder for the last night before the player's first morning.

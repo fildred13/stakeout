@@ -109,7 +109,7 @@ public partial class Detective
         var clue = AddClue(new Clue
         {
             Id = NextClueId(), Kind = ClueKind.Body, Title = "The body", FoundAt = Now, Source = "Crime scene",
-            Text = $"{cause} {struggle} Body temperature and rigor put the time of death between {Describe.Clock(from)} and {Describe.Clock(to)} {from:dddd}.",
+            Text = $"{cause} {struggle} Body temperature and rigor put the time of death between {from:dddd} {Describe.Clock(from)} and {(to.Date == from.Date ? "" : to.ToString("dddd") + " ")}{Describe.Clock(to)}.",
             TimeFrom = from, TimeTo = to, AboutPersonId = murder.VictimId
         });
         Spend(TimeSpan.FromMinutes(12));

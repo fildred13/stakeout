@@ -7,7 +7,5 @@
   <ItemGroup>
     <Compile Remove="stakeout.tests\**" />
     <Compile Remove="stakeout.benchmarks\**" />
-    <!-- TEMP during the rebuild: UI is rewritten last -->
-    <Compile Remove="scenes\**" />
   </ItemGroup>
 </Project>

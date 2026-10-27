@@ -2,38 +2,29 @@
 
 ## Purpose
 Gives commercial addresses an operator: a named Business with opening hours and staff Positions (role, shift,
-work days). NPCs get jobs by filling Positions, and shifts become WorkShiftObjectives in their day plans.
+work days). Every Position is filled at world creation.
 
 ## Key Files
 | File | Role |
 |------|------|
-| `src/simulation/entities/Business.cs` | Business, BusinessHours (per weekday, open/close; 00:00-00:00 = 24h), Position |
+| `src/simulation/entities/Business.cs` | Business, BusinessHours (per weekday; 00:00-00:00 = 24h), Position |
 | `src/simulation/businesses/IBusinessTemplate.cs` | Hours, positions and name generation for one BusinessType |
-| `src/simulation/businesses/*BusinessTemplate.cs` | Diner (24/7, three 8h shifts), DiveBar, Office |
+| `src/simulation/businesses/*BusinessTemplate.cs` | Diner (24/7, three shifts, staggered days off), DiveBar, Office |
 | `src/simulation/businesses/BusinessTemplateRegistry.cs` | BusinessType to template |
-| `src/simulation/businesses/BusinessGenerator.cs` | Creates a Business per Commercial address (AddressType to BusinessType map) |
-| `src/simulation/BusinessResolver.cs` | Spawns NPCs for every unfilled Position and marks the business resolved |
-| `src/simulation/objectives/WorkShiftObjective.cs` | Turns a Position's shifts into PlannedActions at the business address |
-| `src/simulation/scheduling/DoorLockingService.cs` | Each tick, locks/unlocks the `main_entrance` of resolved businesses by opening hours |
+| `src/simulation/businesses/BusinessGenerator.cs` | Creates a Business per Commercial address |
+| `src/simulation/agents/Planner.cs` | `Shifts` (shift instances in a window), `IsOpen` (opening hours) |
 
 ## How It Works
-1. `CityGenerator` calls `BusinessGenerator.CreateBusinessesForCity`: every Commercial address gets a Business with
-   hours and Positions, but no staff (`IsResolved = false`).
-2. `PersonGenerator.GeneratePerson` gives each new NPC a job: either the Position in its `SpawnRequirements`, or the
-   first open Position in its city. It resolves the workplace interior, sets `Person.BusinessId/PositionId`, marks
-   the Position assigned, and adds a `WorkShiftObjective`.
-3. `BusinessResolver.Resolve` fills *all* remaining Positions of one business at once (used when a business becomes
-   relevant, e.g. the player visits).
-4. `WorkShiftObjective.GetActions` emits one entry per shift overlapping the plan window, including overnight shifts
-   and a commute buffer when replanning mid-shift.
+1. `CityGenerator` calls `BusinessGenerator.CreateBusinessesForCity`.
+2. `PopulationGenerator` creates one person per Position and derives their sleep schedule from the shift.
+3. The planner puts each shift in the worker's agenda; `Places.Workplace` puts them in the room for their role.
+4. Customers only plan visits while the business is open; the detective needs opening hours to enter public rooms.
 
 ## Key Decisions
-- **Businesses exist up front, staff on demand:** fits the progressive-growth model; only relevant workplaces are fully staffed.
-- **Business separate from Address:** the building (Address/Locations) and its operator (Business) can change independently.
-- **Door locking keyed to `IsResolved`:** unstaffed businesses are skipped. Note that nothing in the live game calls
-  `BusinessResolver` yet, so in play no doors are locked by this service (only covered by tests).
+- **Fully staffed up front:** open diners always have someone on site (an invariant checks this), and every worker
+  is a potential witness.
+- **Diner days off are staggered** across a shift's positions so nobody works seven days and no shift is empty.
 
 ## Connection Points
-- **City generation** creates businesses; **location hierarchy** provides the `main_entrance` AccessPoint.
-- **NPC brain** schedules WorkShiftObjective (priority 60).
+- **City generation** creates businesses; **agents** schedule the shifts; **witness memory** lets staff recognize regulars.
 - **Adding a business type:** steps 9-11 of the `add-address-type` skill.

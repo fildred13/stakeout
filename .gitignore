@@ -14,3 +14,4 @@ obj/
 
 # Per-user editor workspace
 *.code-workspace
+override.cfg

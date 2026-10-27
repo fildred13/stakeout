@@ -1,42 +1,33 @@
-# Social Coordination (Relationships, Phones, Groups)
+# Social Coordination: Calls, Commitments, Joint Activities
 
 ## Purpose
-Lets NPCs coordinate with each other: relationships create recurring social goals, phone calls carry invitations
-(or leave answering-machine messages), and Groups move several people through a shared activity. The first use
-is dating (P5); the same pieces are meant for criminal meetings and heists (P7).
+Lets people do things together (dates, visits, a crime) with real co-presence, and arrange them only through
+communication that leaves a record.
 
 ## Key Files
 | File | Role |
 |------|------|
-| `src/simulation/entities/Relationship.cs` | Dating / Friend / CriminalAssociate between two people |
-| `src/simulation/entities/Group.cs` | Shared activity: members, driver, pickup and meetup address/time, GroupPhase |
-| `src/simulation/entities/PendingInvitation.cs` | A ringing phone: from, to, proposed Group |
-| `src/simulation/entities/Vehicle.cs` | Car entity (placeholder; travel does not use it yet) |
-| `src/simulation/objectives/MaintainRelationshipObjective.cs` | Dating partners: weekly, adds an OrganizeDateObjective for 7pm at a diner |
-| `src/simulation/objectives/OrganizeDateObjective.cs` | State machine: NeedToCall, AwaitingAnswer, MessageLeft, DateOrganized; creates the Group |
-| `src/simulation/objectives/GoOnDateObjective.cs` | Per member; returns actions for the current GroupPhase (driver en route, pickup, venue, drive back) |
-| `src/simulation/objectives/CallBackObjective.cs` | Return call after hearing a message (priority 10) |
-| `src/simulation/actions/telephone/PhoneCallAction.cs` | Caller side: call-log traces; invitation if recipient is home, else a `RecordKind.PhoneMessage` trace |
-| `src/simulation/actions/telephone/AcceptPhoneCallAction.cs` | Recipient side: accepts, calls `OrganizeDateObjective.OnAccepted` |
-| `src/simulation/actions/telephone/CheckAnsweringMachineAction.cs` | Reads phone messages from known contacts, adds CallBackObjectives |
+| `src/simulation/agents/JointActivity.cs` | Base class: participants, meeting point, start, patience, holding/releasing agents, `MoveTogether`, `Touch` |
+| `src/simulation/agents/SocialActivities.cs` | `DateActivity` (pickup, one car to the diner, one table, drop-off) and `VisitActivity` |
+| `src/simulation/agents/PhoneSystem.cs` | Calls between phone fixtures; who answers; answering machines and tapes; wiretap hooks |
+| `src/simulation/agents/SocialLife.cs` | Evening calls to arrange dates and visits; call-backs after messages; `IsFree` |
 
 ## How It Works
-1. `SimulationState.AddRelationship` (Dating) gives both partners a MaintainRelationshipObjective.
-2. When due, one partner gets an OrganizeDateObjective; it creates a Forming Group and plans a PhoneCallAction from home.
-3. If the partner is home, a PendingInvitation is queued; `ActionRunner` interrupts them with AcceptPhoneCallAction.
-   On accept the Group becomes Active, both members get a GoOnDateObjective and `NeedsReplan = true`.
-4. If not home, a phone-message trace is left. Arriving home sets `Person.NeedsAnsweringMachineCheck`; the check adds
-   a CallBackObjective, whose call reaches the original organizer and continues at step 3.
-5. GoOnDateObjective advances `Group.CurrentPhase` as each phase's action completes; the driver must verify the
-   passenger is at the pickup. After the drive back the Group is Disbanded.
+1. When someone settles at home in the evening, `SocialLife` may schedule a call to a date or a friend.
+2. `PhoneSystem.Call` looks at who is awake in the callee's phone location. The intended person answers and agrees
+   or declines (`CallPurpose.OnAnswered`); someone else takes a "not here"; a machine records the message; or nobody
+   answers. Every call is a `CallFact` (toll records), with a transcript (tapes, wiretaps).
+3. Agreement creates the joint activity and `Commit()`s it: every participant gets the block in their agenda.
+4. At the start time the activity checks who is ready at the meeting point (with patience), then runs its script:
+   `MoveTogether` (leader's car if parked there, else on foot or by cab) and staying in one room together.
+5. Messages are heard when the person gets home (`CheckMachine`); half are erased, the rest stay on the tape.
 
 ## Key Decisions
-- **Coordination through objectives + replan,** not a separate group scheduler: each member still plans with `NpcBrain`.
-- **Phones are Fixtures with Traces:** every call leaves evidence (call logs, messages) the player can later find.
-- **Interrupts are narrow:** only an incoming call preempts an activity.
-- **Duplicate-organizer guard:** MaintainRelationship skips if either partner is already organizing; acceptance completes the other's competing OrganizeDate.
+- **Commitments only through communication:** every arrangement leaves a phone record, so it can become evidence.
+- **One object per joint activity:** participants share trips and rooms, so a camera sees one car with two people.
+- **Activities define their own failure:** wait with patience, then proceed (`CanBeginWith`) or abort and release.
 
 ## Connection Points
-- **NPC brain** (`npc-brain.md`) schedules all of these objectives; `ActionRunner` owns the interrupts.
-- **Traces** (`crime-system.md`): phone records are the main trace producer today.
-- **Tests:** `stakeout.tests/Simulation/Groups/DateCoordinationIntegrationTests.cs` runs full date scenarios with real generated people.
+- **Agents** execute the blocks; **crime system** reuses the same machinery (MurderActivity, DiscoveryActivity).
+- **Observers** read `CallFact`s (phone records, tapes); **investigation** taps lines via `PhoneSystem.Taps`.
+- Adding a joint activity: `add-npc-activity` skill.

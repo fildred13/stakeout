@@ -56,12 +56,15 @@ Use `random` (never `new Random()`) so generation stays reproducible from the ci
 
 ## Conventions the rest of the sim relies on
 
-- One Location tagged `"entrance"` holding an AccessPoint tagged `"main_entrance"`. `DoorLockingService` locks and
-  unlocks that door from business hours; `SimulationManager.CreatePlayerKey` and `PersonGenerator` look for it.
+- One Location tagged `"entrance"` holding an AccessPoint tagged `"main_entrance"` (visitors touch it; the detective
+  examines and picks it). A Location named `"Lobby"` makes everyone cross it for a minute on the way in and out.
+- Customers settle in the Location tagged `service_area`; staff by role in `Places.Workplace` (add your role there).
 - Common Location tags: `exterior`, `publicly_accessible`, `staff_only`, `private`, `residential`, `work_area`,
-  `service_area`, `food`, `social`, `storage`, `restroom`, `parking`. Objectives find places by tag, not by name.
+  `service_area`, `food`, `social`, `storage`, `restroom`, `parking`. `Places` and the planner find rooms by tag, not by name.
 - SubLocations only for rooms inside a Location (e.g. rooms of an apartment unit). No deeper nesting.
-- Homes need a `FixtureType.Telephone` so `PersonGenerator` can set `HomePhoneFixtureId` (see `LocationBuilders.ApartmentUnit`).
+- Homes are Locations tagged `home` built with `LocationBuilders.HomeRooms` (phone, desk, knife block, nightstand,
+  closet, hamper): `PopulationGenerator` houses people in them and evidence lives in those fixtures.
+- Interiors are generated for every address at world creation (`WorldBuilder`), so keep them modest in size.
 - Reuse `LocationBuilders` helpers (`ExteriorParkingLot`, `ApartmentUnit`, `Restroom`, `SecurityRoom`); add a new helper
   there when a second template needs the same room.
 

@@ -1,3 +1,7 @@
+> **Superseded (2026-10-27).** The engine described here was replaced by the truth-first rebuild: see
+> `docs/future_plans/2026-10-26-architecture-reassessment.md`, `docs/superpowers/specs/2026-10-26-truth-first-rebuild.md`
+> and `docs/architecture/`. Kept for the design history.
+
 # Simulation Overhaul — Master Plan
 
 This document captures the design decisions and project sequence for a major overhaul of the NPC simulation engine. It serves as the "constitution" for all sub-projects — each sub-project gets its own design spec, implementation plan, and implementation cycle, but must align with the decisions here.

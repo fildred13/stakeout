@@ -6,24 +6,32 @@ STAKEOUT is a 1984-themed detective investigation game built in Godot 4.6 using 
 
 ## Status and Roadmap
 
-Development follows the project sequence in `docs/future_plans/simulation_overhaul_plan.md` (P1-P8). P1-P5 are done
-(locations, traces, NPC brain, businesses, groups/dating). Next up: P6 History Backfill & NPC Spawning, then P7 Crime
-Templates (the crime system is currently a stub), then P8 Player Interaction UI. `todo.md` holds loose ideas and bugs
-seen in playtesting. Each project gets a spec in `docs/superpowers/specs/` and a plan in `docs/superpowers/plans/`.
+The truth-first rebuild (`docs/future_plans/2026-10-26-architecture-reassessment.md`, spec
+`docs/superpowers/specs/2026-10-26-truth-first-rebuild.md`) replaced the old P1-P8 engine on branch `rebuild`: a
+discrete-event simulation of a fully populated Boston, murders that grow out of real tensions, evidence observed from
+History, and a playable investigation UI. `todo.md` holds loose ideas and bugs seen in playtesting. Each project gets
+a spec in `docs/superpowers/specs/` and a plan in `docs/superpowers/plans/`.
 
 ## Build, Test, Run
 
 - Build everything: `dotnet build stakeout.sln` (game, tests, benchmarks; should be 0 warnings)
-- Tests (xUnit, ~400, a few seconds): `dotnet test stakeout.tests/`
-- Benchmarks: `dotnet run --project stakeout.benchmarks/` exists but is hollow (its tick loop is an empty TODO since P3, and it crashes at 1000 NPCs)
+- Tests (xUnit, ~190, about 30 s; a simulated week and two solved cases): `dotnet test stakeout.tests/`
+- Benchmark: `dotnet run --project stakeout.benchmarks -c Release -- 42 7` (build a city, run 7 days, check invariants).
+  `MURDER=1` adds a murder and prints the timelines; `-- bot 1 2 3` runs the scripted detective on those seeds (`CLUES=1` prints its clues)
 - Godot editor/game: `../shared/tools/Godot_v4.6.1-stable_mono_win64/` (the VS Code "Play" launch config uses it)
+- UI test run (screenshots of the opening of a case): `Godot_v4.6.1-stable_mono_win64_console.exe --path . --position 5000,100 --resolution 1280x720 -- --ui-test=<dir> --seed=5`,
+  with a temporary `override.cfg` containing `[display]` `window/size/no_focus=true` (gitignored; delete it after).
+  Never launch it while the user is using the PC: it must not take focus or cover the screen.
 
 ## Code Layout
 
-- `src/simulation/` - pure C# simulation (no scene nodes except `SimulationManager`; uses `Godot.Vector2` only). All tests target this.
-- `src/evidence/` - evidence board data model. `scenes/` - Godot UI scenes and their scripts.
-- Simulation code takes a `Random` and reads `state.Clock.CurrentTime`; never `new Random()` or `DateTime.Now`, so worlds replay from a seed.
-- Extending the sim: use the `add-address-type` and `add-npc-objective` skills.
+- `src/simulation/` - pure C# simulation (uses `Godot.Vector2` only): `core/` scheduler and RNG, `space/` roads,
+  `history/` facts, `agents/` planning and joint activities, `crime/`, `observers/`, `generation/`, `diagnostics/`.
+- `src/investigation/` - the player's API (`Detective`, `GameSession`, `CaseEvaluator`, `AutoDetective`).
+- `src/evidence/` - evidence board data model. `scenes/` - Godot UI, built in code (`scenes/ui/Ui.cs` theme).
+- Determinism: simulation code uses `Rng.For/Unit/Chance(world.Seed, Purpose.X, keys...)` and the world's time; never
+  `new Random()`, `DateTime.Now` or unordered iteration where order matters. Player actions go through `GameSession.Do`.
+- Extending the sim: use the `add-address-type` and `add-npc-activity` skills. Run `InvariantChecker` after changes.
 
 ## Working Conventions
 

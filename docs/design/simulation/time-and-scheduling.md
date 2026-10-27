@@ -1,3 +1,6 @@
+> **Outdated (2026-10-27).** Time is now a discrete-event simulation: Godot only feeds `World.AdvanceTo(t)`, and the
+> same seed gives the same history at any speed. See `docs/architecture/simulation-core.md` and `agents.md`.
+
 # Time and Scheduling
 
 ## Overview

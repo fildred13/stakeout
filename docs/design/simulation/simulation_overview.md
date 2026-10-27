@@ -1,3 +1,6 @@
+> **Outdated (2026-10-27).** Progressive growth was dropped: the whole city is populated at world creation and lives
+> for five days before the player's first morning. See `docs/architecture/population.md` and `crime-system.md`.
+
 The simulation behind STAKEOUT is by far the most computationally expensive part of the game. It is designed with a principal of progressive growth. At first, very few entities are simulated. This is best understood with an example:
 
 At the very start of the game, there are no simulated entities. The player is sitting at home waiting for a call for a case to start. The simulation realizes that the player has no case to solve, so a case is generated.

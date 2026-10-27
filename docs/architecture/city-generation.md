@@ -13,7 +13,8 @@ every plot, places an airport, and creates the businesses that occupy commercial
 | `src/simulation/city/PlotType.cs` | Plot kinds, plot sizes (`GetSize`), PlotType to AddressType mapping |
 | `src/simulation/entities/AddressType.cs` | AddressType, AddressCategory (Residential/Commercial/Public), AddressType to PlotType mapping |
 | `src/simulation/data/StreetData.cs`, `NameData.cs`, `BusinessNameData.cs` | Name tables |
-| `scenes/city/CityView.cs` | Draws the grid (roads, buildings with driveways, parks, street labels) |
+| `src/simulation/space/RoadGraph.cs` | The road cells as a graph for routing (see `simulation-core.md`) |
+| `scenes/city/CityMap.cs` | Draws the grid, live traffic and the places the player knows |
 
 ## How It Works
 `CityGenerator.Generate(state, city)`:
@@ -26,14 +27,12 @@ every plot, places an airport, and creates the businesses that occupy commercial
 6. A 10x20 airport is placed where it fits; `City.AirportAddressId` points to it.
 7. `BusinessGenerator.CreateBusinessesForCity` creates one Business per Commercial address (see `businesses.md`).
 
-Address interiors are *not* generated here; see `location-hierarchy.md` for lazy resolution.
+Interiors are generated right after, for every address, by `WorldBuilder` (see `location-hierarchy.md`).
 
 ## Key Decisions
-- **Grid, not graph:** positions are `GridX/GridY * 48` px; travel time is straight-line distance (`MapConfig`), roads are visual only.
-- **One seed per city** (Boston 42, NYC 84): the same world every run, which tests and bug reports rely on.
-- **Everything placed up front, resolved lazily:** cheap addresses for the whole map, expensive interiors only on demand.
+- **Grid plus road graph:** positions are `GridX/GridY * 48` px; trips follow road cells (about 80 m each).
+- **One city per game, seeded by the game seed:** the same world every run for a seed, which tests and bug reports rely on.
 
 ## Connection Points
-- **SimulationManager** calls it once per city during `_Ready()` and stores the result in `state.CityGrids[cityId]`.
-- **LocationGenerator.PickAndResolveAddress** picks unclaimed addresses of a type from the grid for homes.
+- **WorldBuilder** calls it and stores the result in `state.CityGrids[cityId]`; `RoadGraph` is built from it.
 - **Adding a building type:** follow the `add-address-type` skill.

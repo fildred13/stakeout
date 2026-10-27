@@ -39,7 +39,7 @@ horizontal_alignment = 1
 layout_mode = 2
 theme_override_fonts/font = ExtResource("3_menu_font")
 theme_override_font_sizes/font_size = 16
-text = "Resume"
+text = "Back to the case"
 
 [node name="NewGameButton" type="Button" parent="VBoxContainer"]
 layout_mode = 2

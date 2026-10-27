@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using Godot;
 using Stakeout.Evidence;
+using Stakeout.Investigation;
 using Stakeout.Simulation;
 using Stakeout.Simulation.Entities;
 
@@ -32,44 +33,33 @@ public partial class DossierWindow : Panel
         AddThemeStyleboxOverride("panel", style);
     }
 
-    public void Populate(EvidenceItem item, SimulationState state)
+    public void Populate(EvidenceItem item, Detective detective)
     {
+        var state = detective.State;
         if (item.EntityType == EvidenceEntityType.Person && state.People.TryGetValue(item.EntityId, out var person))
         {
             _titleLabel.Text = person.FullName;
             var lines = new System.Collections.Generic.List<string>();
-
-            if (state.Addresses.TryGetValue(person.HomeAddressId, out var home))
-            {
-                var street = state.Streets[home.StreetId];
-                lines.Add($"Home: {home.Number} {street.Name}");
-            }
-            // TODO: Project 4 — Job/Business section will be restored with Business entities
-
-            _bodyLabel.Text = string.Join("\n", lines);
+            detective.People.TryGetValue(person.Id, out var known);
+            if (known?.AddressKnown == true) lines.Add($"Home: {state.HomeLine(person)}");
+            if (known?.EmployerKnown == true && person.BusinessId.HasValue) lines.Add($"Work: {state.Businesses[person.BusinessId.Value].Name}");
+            if (known?.VehicleKnown == true && person.VehicleId.HasValue) lines.Add($"Car: {state.Vehicles[person.VehicleId.Value].Description}");
+            if (known?.Met == true) lines.Add(detective.Looks(person.Id));
+            _bodyLabel.Text = lines.Count > 0 ? string.Join('\n', lines) : "Not much known yet.";
         }
         else if (item.EntityType == EvidenceEntityType.Address && state.Addresses.TryGetValue(item.EntityId, out var address))
         {
-            var street = state.Streets[address.StreetId];
-            _titleLabel.Text = $"{address.Number} {street.Name} — {address.Type}";
-
-            var people = state.People.Values
-                .Where(p => p.HomeAddressId == address.Id)
-                .ToList();
-
-            if (people.Count > 0)
-            {
-                var peopleLines = people.Select(p =>
-                {
-                    var rel = p.HomeAddressId == address.Id ? "lives here" : "works here";
-                    return $"{p.FullName} ({rel})";
-                });
-                _bodyLabel.Text = string.Join("\n", peopleLines);
-            }
-            else
-            {
-                _bodyLabel.Text = "No known associates.";
-            }
+            _titleLabel.Text = state.PlaceName(address.Id);
+            var people = detective.People.Values
+                .Where(k => k.AddressKnown && state.People[k.PersonId].HomeAddressId == address.Id)
+                .Select(k => $"{state.People[k.PersonId].FullName} lives here").ToList();
+            _bodyLabel.Text = people.Count > 0 ? string.Join('\n', people) : "No known associates.";
+        }
+        else if (item.EntityType == EvidenceEntityType.Clue)
+        {
+            var clue = detective.Clues.FirstOrDefault(c => c.Id == item.EntityId);
+            _titleLabel.Text = clue?.Title ?? "?";
+            _bodyLabel.Text = clue == null ? "" : clue.Text + $"  ({clue.Source}, {clue.FoundAt:ddd HH:mm})";
         }
     }
 

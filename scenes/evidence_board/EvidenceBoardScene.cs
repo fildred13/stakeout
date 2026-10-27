@@ -2,6 +2,8 @@ using System.Collections.Generic;
 using Godot;
 using Stakeout;
 using Stakeout.Evidence;
+using System.Linq;
+using Stakeout.Investigation;
 using Stakeout.Simulation.Entities;
 
 public partial class EvidenceBoardScene : Control
@@ -38,6 +40,12 @@ public partial class EvidenceBoardScene : Control
         _polaroidContainer = GetNode<Control>("CorkboardCanvas/PolaroidContainer");
 
         _gameManager = GetNode<GameManager>("/root/GameManager");
+        if (_gameManager.Session == null)
+        {
+            GetTree().CallDeferred(SceneTree.MethodName.ChangeSceneToFile, "res://scenes/main_menu/MainMenu.tscn");
+            return;
+        }
+        Theme = Stakeout.UI.Ui.Theme;
         _boardData = _gameManager.EvidenceBoard;
         _polaroidScene = GD.Load<PackedScene>("res://scenes/evidence_board/EvidencePolaroid.tscn");
         _dossierScene = GD.Load<PackedScene>("res://scenes/evidence_board/DossierWindow.tscn");
@@ -223,26 +231,42 @@ public partial class EvidenceBoardScene : Control
 
     private (string initials, string caption) ResolveEntityDisplay(EvidenceItem item)
     {
-        var state = _gameManager.SimulationManager.State;
+        var state = _gameManager.Session.World.State;
 
         if (item.EntityType == EvidenceEntityType.Person && state.People.TryGetValue(item.EntityId, out var person))
+            return ($"{person.FirstName[0]}{person.LastName[0]}", person.FullName);
+        if (item.EntityType == EvidenceEntityType.Address && state.Addresses.TryGetValue(item.EntityId, out var address))
         {
-            var initials = $"{person.FirstName[0]}{person.LastName[0]}";
-            return (initials, person.FullName);
-        }
-        else if (item.EntityType == EvidenceEntityType.Address && state.Addresses.TryGetValue(item.EntityId, out var address))
-        {
-            var street = state.Streets[address.StreetId];
             var icon = address.Type switch
             {
                 AddressType.SuburbanHome => "H",
+                AddressType.ApartmentBuilding => "A",
                 AddressType.Diner => "D",
                 AddressType.DiveBar => "B",
                 AddressType.Office => "O",
+                AddressType.Park => "P",
                 _ => "?"
             };
-            var caption = $"{address.Number} {street.Name}";
-            return (icon, caption);
+            return (icon, state.PlaceName(address.Id));
+        }
+        if (item.EntityType == EvidenceEntityType.Clue)
+        {
+            var clue = _gameManager.Session.Detective.Clues.FirstOrDefault(c => c.Id == item.EntityId);
+            if (clue != null)
+            {
+                string icon = clue.Kind switch
+                {
+                    ClueKind.Print or ClueKind.PrintMatch => "FP",
+                    ClueKind.Tape or ClueKind.Wiretap or ClueKind.PhoneRecord => "TEL",
+                    ClueKind.Camera or ClueKind.Stakeout => "CAM",
+                    ClueKind.Alibi or ClueKind.AlibiCheck => "ALI",
+                    ClueKind.Motive or ClueKind.Document => "WHY",
+                    ClueKind.Item or ClueKind.Lab or ClueKind.Ballistics => "EVD",
+                    ClueKind.Body or ClueKind.Coroner => "BODY",
+                    _ => "?"
+                };
+                return (icon, clue.Title);
+            }
         }
 
         return ("?", "Unknown");
@@ -258,7 +282,7 @@ public partial class EvidenceBoardScene : Control
         _currentDossier.Position = GetViewportRect().Size / 2 - new Vector2(125, 100);
         _currentDossier.TreeExiting += () => _currentDossier = null;
         AddChild(_currentDossier);
-        _currentDossier.Populate(item, _gameManager.SimulationManager.State);
+        _currentDossier.Populate(item, _gameManager.Session.Detective);
     }
 
     private void OnPolaroidRemoved(int itemId)
