@@ -191,6 +191,8 @@ public partial class GameShell
 
     // ---- stakeout ----
 
+    public void StartStakeoutForTest() => StartStakeout();
+
     private void StartStakeout()
     {
         if (Session.Do("stakeout") is true) SetSpeed(600);

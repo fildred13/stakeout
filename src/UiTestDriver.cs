@@ -127,6 +127,22 @@ public partial class UiTestDriver : Node
             Shot("phone");
             shell.CloseModal();
 
+            // A stakeout on the office building for a while, then the lockpick screen on a neighbour's door.
+            session.Do("leave");
+            shell.StartStakeoutForTest();
+            for (int i = 0; i < 60; i++) await Frames(1);
+            Shot("stakeout");
+            session.Do("endstakeout");
+            shell.SetSpeed(0);
+            var locked = d.RoomsHere().FirstOrDefault(l => d.CanEnter(l.Id, out _) == Access.Locked);
+            if (locked != null)
+            {
+                shell.OpenLockpick(locked.Id);
+                await Frames(20);
+                Shot("lockpick");
+                shell.CloseModal();
+            }
+
             var bot = new AutoDetective(d);
             var verdict = bot.Run();
             shell.AfterAction();
