@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Stakeout.Simulation.Data;
 using Stakeout.Simulation.Entities;
 
@@ -40,23 +41,23 @@ public class DinerBusinessTemplate : IBusinessTemplate
             (Start: new TimeSpan(21, 0, 0), End: new TimeSpan(5, 0, 0)),
         };
 
-        foreach (var shift in shifts)
+        // Staff work six days a week; days off are staggered so every shift always has someone on.
+        for (int shiftIndex = 0; shiftIndex < shifts.Length; shiftIndex++)
         {
-            // 1 cook per shift
-            positions.Add(MakePosition(state, "cook", shift.Start, shift.End, AllDays));
+            var shift = shifts[shiftIndex];
+            int slot = 0;
+            DayOfWeek[] Days()
+            {
+                int off = (slot++ * 3 + shiftIndex * 2) % 7;
+                return AllDays.Where((_, i) => i != off).ToArray();
+            }
 
-            // 1-2 waiters per shift
+            positions.Add(MakePosition(state, "cook", shift.Start, shift.End, Days()));
             int waiterCount = 1 + random.Next(2);
             for (int i = 0; i < waiterCount; i++)
-            {
-                positions.Add(MakePosition(state, "waiter", shift.Start, shift.End, AllDays));
-            }
-
-            // 0-1 manager per shift
+                positions.Add(MakePosition(state, "waiter", shift.Start, shift.End, Days()));
             if (random.Next(2) == 1)
-            {
-                positions.Add(MakePosition(state, "manager", shift.Start, shift.End, AllDays));
-            }
+                positions.Add(MakePosition(state, "manager", shift.Start, shift.End, Days()));
         }
 
         return positions;

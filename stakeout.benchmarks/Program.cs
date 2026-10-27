@@ -1,181 +1,69 @@
 using System;
 using System.Diagnostics;
+using System.Linq;
 using Stakeout.Simulation;
-using Stakeout.Simulation.Addresses;
-using Stakeout.Simulation.City;
-using Stakeout.Simulation.Entities;
-using CityEntity = Stakeout.Simulation.Entities.City;
+using Stakeout.Simulation.Generation;
+using Stakeout.Simulation.History;
 
 namespace Stakeout.Benchmarks;
 
-class Program
+/// <summary>
+/// Measures world creation and simulation speed for a fully populated city.
+/// Usage: dotnet run --project stakeout.benchmarks -c Release [seed] [days]
+/// </summary>
+public static class Program
 {
-    static void Main(string[] args)
+    public static void Main(string[] args)
     {
-        AddressTemplateRegistry.RegisterAll();
+        int seed = args.Length > 0 ? int.Parse(args[0]) : 42;
+        int days = args.Length > 1 ? int.Parse(args[1]) : 7;
 
-        var dayProfileNpcCount = 1000;
-        if (args.Length > 0 && int.TryParse(args[0], out var parsed) && parsed > 0)
-        {
-            dayProfileNpcCount = parsed;
-        }
+        var sw = Stopwatch.StartNew();
+        var world = WorldBuilder.Build(seed);
+        world.Start();
+        var build = sw.Elapsed;
+        Console.WriteLine($"Built seed {seed}: {world.State.People.Count} people, {world.State.Households.Count} households, " +
+                          $"{world.State.Vehicles.Count} cars, {world.State.Businesses.Count} businesses, " +
+                          $"{world.State.Locations.Count} locations in {build.TotalSeconds:F2}s");
 
-        // Mode 1: Frame Budget
-        var npcCounts = new[] { 50, 200, 300, 500, 1000, 5000 };
-        Console.WriteLine("Frame Budget (5 game-minutes, 1s tick delta)");
-        Console.WriteLine(new string('-', 60));
-        Console.WriteLine($"{"NPCs",-8} {"Avg ms/tick",-14} {"Max ms/tick",-14} {"Ticks/sec",-12} {"Memory MB",-10}");
-        Console.WriteLine(new string('-', 60));
-
-        foreach (var count in npcCounts)
-        {
-            RunFrameBudget(count);
-            GC.Collect();
-            GC.WaitForPendingFinalizers();
-            GC.Collect();
-        }
-
-        Console.WriteLine();
-
-        // Mode 2: Day Profile
-        RunDayProfile(dayProfileNpcCount, 500);
-    }
-
-    static SimulationState CreateSimulation(int npcCount, DateTime? clockStart = null)
-    {
-        var clock = new GameClock(clockStart);
-        var state = new SimulationState(clock);
-        var mapConfig = new MapConfig();
-        var personGenerator = new PersonGenerator(mapConfig, new Random(42));
-
-        var city = new CityEntity
-        {
-            Id = state.GenerateEntityId(),
-            Name = "Boston",
-            CountryName = "United States"
-        };
-        state.Cities[city.Id] = city;
-
-        // Generate city grid so PersonGenerator can pick addresses
-        var cityGen = new CityGenerator(seed: 42);
-        state.CityGrids[city.Id] = cityGen.Generate(state, city);
-
-        Console.Error.Write($"  Generating {npcCount} NPCs...");
-        Console.Error.Flush();
-        for (int i = 0; i < npcCount; i++)
-        {
-            personGenerator.GeneratePerson(state);
-        }
-        Console.Error.WriteLine(" done");
-        Console.Error.Flush();
-
-        return state;
-    }
-
-    static void RunFrameBudget(int npcCount)
-    {
-        var state = CreateSimulation(npcCount);
-
-        var tickCount = 0;
-        var totalMs = 0.0;
-        var maxMs = 0.0;
-        var sw = new Stopwatch();
-        var tickDelta = 1.0;
-        var totalTicks = 300; // 5 game-minutes
-
-        var memBefore = GC.GetTotalMemory(true);
-        Console.Error.Write($"  Ticking {npcCount} NPCs: ");
-        Console.Error.Flush();
-
-        for (int s = 0; s < totalTicks; s++)
+        for (int d = 1; d <= days; d++)
         {
             sw.Restart();
-
-            state.Clock.Tick(tickDelta);
-            foreach (var person in state.People.Values)
-            {
-                if (!person.IsAlive) continue;
-                // TODO: Project 3 — person behavior update will be rebuilt
-            }
-
-            sw.Stop();
-            var ms = sw.Elapsed.TotalMilliseconds;
-            totalMs += ms;
-            if (ms > maxMs) maxMs = ms;
-            tickCount++;
+            long events = world.Scheduler.EventsProcessed;
+            world.AdvanceTo(world.Now.AddDays(1));
+            Console.WriteLine($"Day {d} ({world.Now:ddd dd MMM}): {sw.Elapsed.TotalMilliseconds:F0} ms, " +
+                              $"{world.Scheduler.EventsProcessed - events} events, trips {world.History.Trips.Count}, " +
+                              $"presence {world.History.PresenceCount}, calls {world.History.Calls.Count}, " +
+                              $"routes cached {world.Router.CacheSize}, " +
+                              $"joint {world.Joints.Count(j => j.Finished && !j.Aborted)}/{world.Joints.Count}");
         }
-
-        Console.Error.WriteLine("done");
-        Console.Error.Flush();
-
-        var memAfter = GC.GetTotalMemory(false);
-        var memMb = (memAfter - memBefore) / (1024.0 * 1024.0);
-        var avgMs = totalMs / tickCount;
-        var ticksPerSec = avgMs > 0 ? 1000.0 / avgMs : 0;
-
-        Console.WriteLine($"{npcCount,-8} {avgMs,-14:F4} {maxMs,-14:F4} {ticksPerSec,-12:F0} {memMb,-10:F1}");
-        Console.Out.Flush();
-    }
-
-    static void RunDayProfile(int npcCount, int simHours)
-    {
-        var midnight = new DateTime(1980, 1, 1, 0, 0, 0);
-        var state = CreateSimulation(npcCount, midnight);
-
-        Console.WriteLine($"Day Profile ({npcCount} NPCs, {simHours} game-hours, 1s tick delta)");
-        Console.WriteLine(new string('-', 60));
-        Console.WriteLine($"{"Hour",-8} {"Avg ms/tick",-14} {"Max ms/tick",-14} {"Events",-12} {"Memory MB",-10}");
-        Console.WriteLine(new string('-', 60));
-
-        var sw = new Stopwatch();
-        var tickDelta = 1.0;
-        var ticksPerHour = 3600;
-
-        var totalMs = 0.0;
-        var totalMaxMs = 0.0;
-        var totalTicks = 0;
-        var totalEventsBefore = state.Journal.AllEvents.Count;
-
-        for (int hour = 0; hour < simHours; hour++)
+        sw.Restart();
+        var violations = new Stakeout.Simulation.Diagnostics.InvariantChecker(world).CheckAll();
+        Console.WriteLine($"Invariants checked in {sw.Elapsed.TotalSeconds:F1}s: {violations.Count} violations");
+        foreach (var v in violations.Take(25)) Console.WriteLine("  " + v);
+        if (Environment.GetEnvironmentVariable("DEBUG_CALLS") == "1")
+            foreach (var call in world.History.Calls.Where(c => violations.Any(v => v.StartsWith($"Call {c.Id}"))).Take(3))
+            {
+                Console.WriteLine($"Call {call.Id} at {call.Time:ddd HH:mm:ss} from phone {call.FromPhoneId} to {call.ToPhoneId} {call.Outcome}");
+                foreach (var pid in new[] { call.CallerId, call.AnsweredById ?? call.CallerId })
+                    foreach (var p in world.History.PresenceOf(pid, call.Time.AddMinutes(-30), call.Time.AddMinutes(30)))
+                        Console.WriteLine($"   {world.State.People[pid].FirstName} {p.Start:HH:mm:ss}-{p.End:HH:mm:ss} loc {p.LocationId} sub {p.SubLocationId} {p.Activity}");
+                Console.WriteLine($"   phone loc {world.Phones.PhoneLocation(world.State.Fixtures[call.FromPhoneId])}");
+            }
+        var date = world.Joints.OfType<Stakeout.Simulation.Agents.DateActivity>().FirstOrDefault(j => j.Finished && !j.Aborted);
+        if (date != null)
         {
-            var hourMs = 0.0;
-            var hourMaxMs = 0.0;
-            var hourEventsBefore = state.Journal.AllEvents.Count;
-
-            for (int s = 0; s < ticksPerHour; s++)
+            Console.WriteLine($"--- A date (#{date.Id}) ---");
+            foreach (var id in new[] { date.DriverId, date.PassengerId })
             {
-                sw.Restart();
-
-                state.Clock.Tick(tickDelta);
-                foreach (var person in state.People.Values)
-                {
-                    if (!person.IsAlive) continue;
-                    // TODO: Project 3 — person behavior update will be rebuilt
-                }
-
-                sw.Stop();
-                var ms = sw.Elapsed.TotalMilliseconds;
-                hourMs += ms;
-                if (ms > hourMaxMs) hourMaxMs = ms;
+                Console.WriteLine(world.State.People[id].FullName + ":");
+                Console.WriteLine(Stakeout.Simulation.Diagnostics.Timeline.Format(
+                    Stakeout.Simulation.Diagnostics.Timeline.ForPerson(world, id, date.Start.AddHours(-26), date.Start.AddHours(6))));
             }
-
-            totalMs += hourMs;
-            if (hourMaxMs > totalMaxMs) totalMaxMs = hourMaxMs;
-            totalTicks += ticksPerHour;
-
-            var hourEvents = state.Journal.AllEvents.Count - hourEventsBefore;
-            var memMb = GC.GetTotalMemory(false) / (1024.0 * 1024.0);
-            var avgMs = hourMs / ticksPerHour;
-
-            var label = $"{hour:D2}:00";
-            Console.WriteLine($"{label,-8} {avgMs,-14:F4} {hourMaxMs,-14:F4} {hourEvents,-12} {memMb,-10:F1}");
         }
-
-        var totalEvents = state.Journal.AllEvents.Count - totalEventsBefore;
-        var totalAvgMs = totalMs / totalTicks;
-        var totalMemMb = GC.GetTotalMemory(false) / (1024.0 * 1024.0);
-
-        Console.WriteLine(new string('-', 60));
-        Console.WriteLine($"{"Total",-8} {totalAvgMs,-14:F4} {totalMaxMs,-14:F4} {totalEvents,-12} {totalMemMb,-10:F1}");
+        var aborted = world.Joints.Count(j => j.Aborted);
+        Console.WriteLine($"Joint activities: {world.Joints.Count}, aborted {aborted}");
+        var mem = GC.GetTotalMemory(true) / (1024 * 1024);
+        Console.WriteLine($"Managed memory: {mem} MB");
     }
 }

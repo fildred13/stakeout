@@ -14,13 +14,6 @@ public class PersonTests
     }
 
     [Fact]
-    public void HomeLocationId_DefaultsToNull()
-    {
-        var person = new Person();
-        Assert.Null(person.HomeLocationId);
-    }
-
-    [Fact]
     public void Person_InventoryItemIds_DefaultsToEmptyList()
     {
         var person = new Person();

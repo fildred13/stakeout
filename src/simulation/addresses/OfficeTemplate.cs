@@ -8,8 +8,14 @@ public class OfficeTemplate : IAddressTemplate
 {
     public void Generate(Address address, SimulationState state, Random random)
     {
-        LocationBuilders.CreateLocation(state, address, "Lobby",
+        var lobby = LocationBuilders.CreateLocation(state, address, "Lobby",
             new[] { "publicly_accessible", "entrance" });
+        var lobbyCamera = LocationBuilders.CreateFixture(state, FixtureType.Camera, "Lobby Camera",
+            locationId: lobby.Id, subLocationId: null, tags: new[] { "indoor_camera" });
+        lobbyCamera.WatchedLocationId = lobby.Id;
+        // Its watched road cell is set once the road graph exists.
+        LocationBuilders.CreateFixture(state, FixtureType.Camera, "Street Camera",
+            locationId: lobby.Id, subLocationId: null, tags: new[] { "exterior_camera" });
 
         LocationBuilders.SecurityRoom(state, address);
 

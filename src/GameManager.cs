@@ -4,37 +4,22 @@ using Stakeout.Simulation;
 
 namespace Stakeout;
 
+/// <summary>Autoload that owns the running game between scene changes.</summary>
 public partial class GameManager : Node
 {
-    public SimulationState State { get; private set; }
-    public SimulationManager SimulationManager { get; private set; }
-    public EvidenceBoard EvidenceBoard { get; private set; }
-    public string ActiveContentView { get; set; } = "res://scenes/city/CityView.tscn";
-    public bool IsGameActive { get; set; } = false;
-    public float PreviousTimeScale { get; set; } = 1.0f;
+    public World World { get; set; }
+    public EvidenceBoard EvidenceBoard { get; private set; } = new();
+    public bool IsGameActive { get; set; }
 
     public override void _Ready()
     {
         DisplaySettings.Load();
-        State = new SimulationState();
-        EvidenceBoard = new EvidenceBoard();
-        SimulationManager = new SimulationManager(State);
-        AddChild(SimulationManager);
     }
 
-    public void Reinitialize()
+    public void Reset()
     {
-        // Remove old SimulationManager from the tree
-        if (SimulationManager != null)
-        {
-            RemoveChild(SimulationManager);
-            SimulationManager.QueueFree();
-        }
-
-        State = new SimulationState();
+        World = null;
         EvidenceBoard = new EvidenceBoard();
-        SimulationManager = new SimulationManager(State);
-        AddChild(SimulationManager);
-        PreviousTimeScale = 1.0f;
+        IsGameActive = false;
     }
 }

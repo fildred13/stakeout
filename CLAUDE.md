@@ -15,7 +15,7 @@ seen in playtesting. Each project gets a spec in `docs/superpowers/specs/` and a
 
 - Build everything: `dotnet build stakeout.sln` (game, tests, benchmarks; should be 0 warnings)
 - Tests (xUnit, ~400, a few seconds): `dotnet test stakeout.tests/`
-- Benchmarks: `dotnet run --project stakeout.benchmarks/ -c Release` (frame budget and day profile by NPC count)
+- Benchmarks: `dotnet run --project stakeout.benchmarks/` exists but is hollow (its tick loop is an empty TODO since P3, and it crashes at 1000 NPCs)
 - Godot editor/game: `../shared/tools/Godot_v4.6.1-stable_mono_win64/` (the VS Code "Play" launch config uses it)
 
 ## Code Layout

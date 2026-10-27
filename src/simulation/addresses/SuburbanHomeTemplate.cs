@@ -8,21 +8,11 @@ public class SuburbanHomeTemplate : IAddressTemplate
 {
     public void Generate(Address address, SimulationState state, Random random)
     {
-        var yard = LocationBuilders.CreateLocation(state, address, "Front Yard",
+        LocationBuilders.CreateLocation(state, address, "Front Yard",
             new[] { "exterior", "publicly_accessible" });
 
-        yard.AccessPoints.Add(new AccessPoint
-        {
-            Id = state.GenerateEntityId(),
-            Name = "Window",
-            Type = AccessPointType.Window,
-            Tags = new[] { "covert_entry" },
-            IsLocked = true,
-            LockMechanism = LockMechanism.Key
-        });
-
         var interior = LocationBuilders.CreateLocation(state, address, "Interior",
-            new[] { "residential", "private", "entrance" });
+            new[] { "residential", "private", "entrance", "home" });
 
         interior.AccessPoints.Add(new AccessPoint
         {
@@ -39,23 +29,21 @@ public class SuburbanHomeTemplate : IAddressTemplate
             Id = state.GenerateEntityId(),
             Name = "Back Door",
             Type = AccessPointType.Door,
-            Tags = new[] { "staff_entry" },
+            Tags = new[] { "back_entry", "covert_entry" },
             IsLocked = true,
             LockMechanism = LockMechanism.Key
         });
 
-        LocationBuilders.CreateSubLocation(state, interior, "Hallway", new[] { "hallway" });
-        var kitchen = LocationBuilders.CreateSubLocation(state, interior, "Kitchen", new[] { "kitchen", "food" });
-        LocationBuilders.CreateFixture(state, FixtureType.TrashCan, "Trash Can", locationId: null, subLocationId: kitchen.Id);
-        LocationBuilders.CreateFixture(state, FixtureType.Telephone, "Kitchen Telephone", locationId: null, subLocationId: kitchen.Id);
-        LocationBuilders.CreateSubLocation(state, interior, "Living Room", new[] { "living", "social" });
-        LocationBuilders.CreateSubLocation(state, interior, "Bathroom", new[] { "restroom" });
-
-        int bedroomCount = random.Next(2, 4);
-        for (int i = 1; i <= bedroomCount; i++)
+        interior.AccessPoints.Add(new AccessPoint
         {
-            LocationBuilders.CreateSubLocation(state, interior, $"Bedroom {i}",
-                new[] { "bedroom", "private" });
-        }
+            Id = state.GenerateEntityId(),
+            Name = "Kitchen Window",
+            Type = AccessPointType.Window,
+            Tags = new[] { "covert_entry" },
+            IsLocked = true
+        });
+
+        LocationBuilders.CreateSubLocation(state, interior, "Hallway", new[] { "hallway" });
+        LocationBuilders.HomeRooms(state, interior, bedrooms: random.Next(2, 4), phoneInKitchen: true);
     }
 }

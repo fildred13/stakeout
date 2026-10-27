@@ -51,9 +51,9 @@ public class FixtureQueryTests
     public void GetFixturesForLocation_ReturnsMatchingFixtures()
     {
         var state = new SimulationState();
-        state.Fixtures[1] = new Fixture { Id = 1, LocationId = 10, Name = "Trash Can", Type = FixtureType.TrashCan };
-        state.Fixtures[2] = new Fixture { Id = 2, LocationId = 10, Name = "Trash Can 2", Type = FixtureType.TrashCan };
-        state.Fixtures[3] = new Fixture { Id = 3, LocationId = 99, Name = "Other", Type = FixtureType.TrashCan };
+        state.AddFixture(new Fixture { Id = 1, LocationId = 10, Name = "Trash Can", Type = FixtureType.TrashCan });
+        state.AddFixture(new Fixture { Id = 2, LocationId = 10, Name = "Trash Can 2", Type = FixtureType.TrashCan });
+        state.AddFixture(new Fixture { Id = 3, LocationId = 99, Name = "Other", Type = FixtureType.TrashCan });
 
         var result = state.GetFixturesForLocation(10);
         Assert.Equal(2, result.Count);
@@ -64,8 +64,8 @@ public class FixtureQueryTests
     public void GetFixturesForSubLocation_ReturnsMatchingFixtures()
     {
         var state = new SimulationState();
-        state.Fixtures[1] = new Fixture { Id = 1, SubLocationId = 20, Name = "Trash Can", Type = FixtureType.TrashCan };
-        state.Fixtures[2] = new Fixture { Id = 2, SubLocationId = 99, Name = "Other", Type = FixtureType.TrashCan };
+        state.AddFixture(new Fixture { Id = 1, SubLocationId = 20, Name = "Trash Can", Type = FixtureType.TrashCan });
+        state.AddFixture(new Fixture { Id = 2, SubLocationId = 99, Name = "Other", Type = FixtureType.TrashCan });
 
         var result = state.GetFixturesForSubLocation(20);
         Assert.Single(result);

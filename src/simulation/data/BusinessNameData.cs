@@ -34,7 +34,7 @@ public static class BusinessNameData
         var pattern = random.Next(3);
         return pattern switch
         {
-            0 => $"{NameData.FirstNames[random.Next(NameData.FirstNames.Length)]}'s Diner",
+            0 => $"{NameData.FemaleFirstNames[random.Next(NameData.FemaleFirstNames.Length)]}'s Diner",
             1 => $"{NameData.LastNames[random.Next(NameData.LastNames.Length)]}'s",
             _ => $"The {Pick(DinerAdjectives, random)} {Pick(DinerNouns, random)}"
         };

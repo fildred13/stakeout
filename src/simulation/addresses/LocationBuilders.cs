@@ -54,7 +54,7 @@ public static class LocationBuilders
         int floor, string unitLabel, Random rng)
     {
         var unit = CreateLocation(state, address, $"Unit {unitLabel}",
-            new[] { "residential", "private" }, floor);
+            new[] { "residential", "private", "home" }, floor);
         unit.UnitLabel = unitLabel;
 
         unit.AccessPoints.Add(new AccessPoint
@@ -67,13 +67,30 @@ public static class LocationBuilders
             LockMechanism = Entities.LockMechanism.Key
         });
 
-        CreateSubLocation(state, unit, "Bedroom", new[] { "bedroom", "private" });
-        CreateSubLocation(state, unit, "Kitchen", new[] { "kitchen", "food" });
-        var livingRoom = CreateSubLocation(state, unit, "Living Room", new[] { "living", "social" });
-        CreateFixture(state, FixtureType.Telephone, "Telephone", locationId: null, subLocationId: livingRoom.Id);
-        CreateSubLocation(state, unit, "Bathroom", new[] { "restroom" });
-
+        HomeRooms(state, unit, bedrooms: 1, phoneInKitchen: false);
         return unit;
+    }
+
+    /// <summary>The rooms every home has, with the fixtures that hold evidence.</summary>
+    public static void HomeRooms(SimulationState state, Location home, int bedrooms, bool phoneInKitchen)
+    {
+        var kitchen = CreateSubLocation(state, home, "Kitchen", new[] { "kitchen", "food" });
+        CreateFixture(state, FixtureType.KnifeBlock, "Knife Block", null, kitchen.Id);
+        CreateFixture(state, FixtureType.Table, "Kitchen Table", null, kitchen.Id);
+        CreateFixture(state, FixtureType.TrashCan, "Trash Can", null, kitchen.Id);
+        var living = CreateSubLocation(state, home, "Living Room", new[] { "living", "social" });
+        CreateFixture(state, FixtureType.Table, "Coffee Table", null, living.Id);
+        CreateFixture(state, FixtureType.Drawer, "Writing Desk", null, living.Id);
+        CreateFixture(state, FixtureType.Telephone, "Telephone", null, phoneInKitchen ? kitchen.Id : living.Id);
+        for (int i = 1; i <= bedrooms; i++)
+        {
+            var bedroom = CreateSubLocation(state, home, bedrooms == 1 ? "Bedroom" : $"Bedroom {i}",
+                new[] { "bedroom", "private" });
+            CreateFixture(state, FixtureType.Nightstand, "Nightstand", null, bedroom.Id);
+            CreateFixture(state, FixtureType.Closet, "Closet", null, bedroom.Id);
+            CreateFixture(state, FixtureType.Hamper, "Laundry Hamper", null, bedroom.Id);
+        }
+        CreateSubLocation(state, home, "Bathroom", new[] { "restroom" });
     }
 
     public static SubLocation Restroom(SimulationState state, Location parent)
@@ -93,7 +110,7 @@ public static class LocationBuilders
             Type = type,
             Tags = tags ?? Array.Empty<string>()
         };
-        state.Fixtures[fixture.Id] = fixture;
+        state.AddFixture(fixture);
         return fixture;
     }
 }
